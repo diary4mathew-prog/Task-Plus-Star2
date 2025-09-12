@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Customer Tasks (Manual Only)</title>
+  <title>Customer Tasks & Leads</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root{
@@ -19,6 +19,7 @@
     input[type="text"], input[type="date"], textarea, select{
       width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0b1433; color:#eaf0ff; outline:none;
     }
+    textarea{min-height:90px}
     .btn{appearance:none; border:none; border-radius:10px; padding:9px 13px; color:#fff; font-weight:600; cursor:pointer; transition:.15s transform ease, .2s background ease}
     .btn:hover{transform:translateY(-1px)}
     .btn.primary{background:linear-gradient(180deg, var(--accent) 0%, #3f69ff 100%)}
@@ -27,7 +28,7 @@
     .btn.warn{background:linear-gradient(180deg, var(--warn) 0%, #f5b24e 100%); color:#2a1b05}
     .btn.danger{background:linear-gradient(180deg, var(--danger) 0%, #ff5252 100%)}
     .btn.sm{padding:6px 10px; font-size:12px}
-    .tabs{display:flex; gap:8px; margin-top:14px}
+    .tabs{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
     .tab{padding:8px 12px; border-radius:10px; background:#121a35; border:1px solid var(--border); color:#cdd7ff; cursor:pointer; font-weight:700}
     .tab.active{background:#1b2552}
     .card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel2) 100%); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
@@ -71,8 +72,9 @@
 
     /* Modals */
     .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:50}
-    .modal{width:min(980px,96vw); background:#0e1430; border:1px solid var(--border); border-radius:14px; padding:16px}
+    .modal{width:min(980px,96vw); background:#0e1430; border:1px solid var(--border); border-radius:14px; padding:16px; max-height:92vh; overflow:auto}
     .modal h3{margin:0 0 10px 0}
+    .sticky-footer{position:sticky; bottom:0; background:linear-gradient(180deg,#0f1738 0%, #0e1430 100%); border-top:1px solid var(--border); padding-top:10px; margin-top:10px}
 
     /* Toasts */
     #toaster{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:9999}
@@ -97,8 +99,8 @@
 </head>
 <body>
   <header>
-    <h1>Customer Tasks (Manual Only)</h1>
-    <div class="sub">Tip: tap a row to open; tap the status pill to cycle status. WhatsApp icon opens chat.</div>
+    <h1>Customer Tasks & Leads</h1>
+    <div class="sub">Tap a task row to open; tap its status pill to cycle. WhatsApp icon opens chat.</div>
     <div class="toolbar">
       <button class="btn secondary" onclick="window.CT && CT.openSearchCenter()">Search</button>
       <button class="btn secondary" onclick="window.CT && CT.exportCSV()">Export CSV</button>
@@ -111,10 +113,12 @@
     <div class="tabs">
       <div id="tabActive"   class="tab active" onclick="window.CT && CT.switchTab('Active')">Active <span id="countActive" class="small"></span></div>
       <div id="tabCompleted" class="tab"       onclick="window.CT && CT.switchTab('Completed')">Completed <span id="countCompleted" class="small"></span></div>
+      <div id="tabLeads"     class="tab"       onclick="window.CT && CT.switchTab('Leads')">Leads <span id="countLeads" class="small"></span></div>
     </div>
   </header>
 
   <div class="container">
+    <!-- Tasks: Active -->
     <div id="activeView">
       <div class="card">
         <div class="filters">
@@ -135,6 +139,7 @@
       </div>
     </div>
 
+    <!-- Tasks: Completed -->
     <div id="completedView" class="hidden">
       <div class="card">
         <div class="filters">
@@ -143,16 +148,35 @@
         <div id="completedList" class="list"></div>
       </div>
     </div>
+
+    <!-- Leads -->
+    <div id="leadsView" class="hidden">
+      <div class="card">
+        <div class="filters">
+          <button id="addLeadBtn" class="btn primary sm">Add Lead</button>
+          <span class="right"></span>
+          <span class="muted">Filter:</span>
+          <button class="chip lead-filter active" data-leadfilter="All">All</button>
+          <button class="chip lead-filter" data-leadfilter="Talked">Talked</button>
+          <button class="chip lead-filter" data-leadfilter="Interested">Interested</button>
+          <button class="chip lead-filter" data-leadfilter="Waiting Confirmation">Waiting</button>
+          <button class="chip lead-filter" data-leadfilter="Converted">Converted</button>
+        </div>
+        <div id="leadsList" class="list"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Task Modal -->
   <div id="taskModal" class="modal-backdrop">
     <div class="modal">
       <h3 id="taskModalTitle">Add Task</h3>
+
       <div class="inline wrap" style="gap:8px; margin-bottom:8px">
-        <input id="taskSearch" class="grow" type="text" placeholder="Search existing customers by name or digits…" />
+        <input id="taskSearch" class="grow" type="text" placeholder="(Optional) Find existing customer by name or digits…"/>
         <button id="taskSearchBtn" class="btn secondary sm" type="button">Search</button>
       </div>
+
       <div class="inline wrap" style="gap:16px">
         <div class="grow">
           <label>Customer Name</label>
@@ -163,7 +187,9 @@
           <input id="taskCustomerMobile" type="text" placeholder="Any number(s), comma-separated for multiple" />
         </div>
       </div>
-      <div class="small muted" id="taskCustomerMeta" style="margin-top:6px"></div>
+      <div class="small muted" id="taskCustomerMeta" style="margin-top:6px">
+        Tip: You can skip search and just type a new name + any number(s).
+      </div>
 
       <div class="hr"></div>
       <div class="inline wrap" style="gap:16px; margin-top:10px">
@@ -187,22 +213,65 @@
         </div>
       </div>
 
-      <div class="hr"></div>
-      <div class="inline wrap">
+      <!-- Search results are hidden until user types or clicks Search -->
+      <div id="taskSearchResults" class="list" style="margin-top:10px; max-height:36vh; overflow:auto; display:none"></div>
+
+      <div class="sticky-footer inline wrap">
         <div class="inline" style="gap:8px">
           <button id="saveTaskBtn" class="btn ok">Save</button>
           <button id="cancelTaskBtn" class="btn secondary">Cancel</button>
         </div>
-        <div class="right inline" style="gap:8px">
-          <div class="small muted" id="taskTimestamps"></div>
-        </div>
+        <div class="right small muted" id="taskTimestamps"></div>
       </div>
-
-      <div id="taskSearchResults" class="list" style="margin-top:10px; max-height:38vh; overflow:auto;"></div>
     </div>
   </div>
 
-  <!-- SEARCH CENTER -->
+  <!-- Lead Modal -->
+  <div id="leadModal" class="modal-backdrop">
+    <div class="modal">
+      <h3 id="leadModalTitle">Add Lead</h3>
+
+      <div class="inline wrap" style="gap:16px">
+        <div class="grow">
+          <label>Customer Name</label>
+          <input id="leadName" type="text" placeholder="Name" />
+        </div>
+        <div class="grow">
+          <label>Customer Mobile(s)</label>
+          <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
+        </div>
+      </div>
+
+      <div class="inline wrap" style="gap:16px; margin-top:10px">
+        <div class="grow">
+          <label>Product</label>
+          <input id="leadProduct" type="text" placeholder="Product name" />
+        </div>
+        <div style="min-width:240px; flex:1">
+          <label>Status</label>
+          <select id="leadStatus">
+            <option>Talked</option>
+            <option>Interested</option>
+            <option>Waiting Confirmation</option>
+            <option>Converted</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sticky-footer inline wrap">
+        <div class="inline" style="gap:8px">
+          <button id="saveLeadBtn" class="btn ok">Save</button>
+          <button id="cancelLeadBtn" class="btn secondary">Cancel</button>
+        </div>
+        <div class="right inline" style="gap:8px">
+          <button id="deleteLeadBtn" class="btn danger hidden">Delete</button>
+          <div class="small muted" id="leadTimestamps"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEARCH CENTER (unchanged) -->
   <div id="searchCenter" class="modal-backdrop">
     <div class="modal">
       <div class="inline wrap">
@@ -219,8 +288,8 @@
           <div class="grow"><input id="searchInput" type="text" placeholder="Enter value to search…"/></div>
           <select id="searchScope" class="btn secondary sm" style="padding:6px 10px">
             <option value="all">Scope: All (Active + Completed)</option>
-            <option value="active">Scope: Active</option>
-            <option value="completed">Scope: Completed</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
           </select>
           <button id="runSearch" class="btn secondary sm">Search</button>
         </div>
@@ -251,7 +320,7 @@
     </div>
   </div>
 
-  <!-- DELETE CENTER -->
+  <!-- DELETE CENTER (for tasks/customers) -->
   <div id="deleteCenter" class="modal-backdrop">
     <div class="modal">
       <div class="inline wrap">
@@ -263,7 +332,6 @@
         <div id="tabDelCustomers" class="tab">Customers</div>
       </div>
 
-      <!-- Tasks pane -->
       <div id="paneDelTasks" class="card" style="margin-top:10px">
         <div class="sticky-top inline wrap" style="gap:8px">
           <input id="delTaskQuery" class="grow" type="text" placeholder="Search by name, mobile digits, or task text…" />
@@ -289,7 +357,6 @@
         </div>
       </div>
 
-      <!-- Customers pane -->
       <div id="paneDelCustomers" class="card hidden" style="margin-top:10px">
         <div class="sticky-top inline wrap" style="gap:8px">
           <input id="delCustQuery" class="grow" type="text" placeholder="Search customer name or digits…" />
@@ -337,7 +404,7 @@
     /* ===== WhatsApp helpers ===== */
     function waDigitsFromRaw(raw){
       let d = normalizeDigits(raw);
-      d = d.replace(/^00+/, ''); // allow 00 prefix
+      d = d.replace(/^00+/, ''); // allow 00 international prefix
       return d;
     }
     function waIconSVG(){
@@ -377,8 +444,10 @@
     /* ===== Persistence ===== */
     const LS_CUSTOMERS = "ct_customers_v1";
     const LS_TASKS = "ct_tasks_v1";
+    const LS_LEADS = "ct_leads_v1";
     let customers = loadJSON(LS_CUSTOMERS, []);
     let tasks = loadJSON(LS_TASKS, []);
+    let leads = loadJSON(LS_LEADS, []);
     function loadJSON(key, fallback){
       try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }
       catch(e){ console.warn('loadJSON', e); return fallback; }
@@ -387,6 +456,7 @@
       try{
         localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
         localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
+        localStorage.setItem(LS_LEADS, JSON.stringify(leads));
         render();
       }catch(e){ console.error('saveAll', e); }
     }
@@ -399,14 +469,18 @@
       CANCELLED: "Cancelled",
       COMPLETED: "Completed",
     };
+    const LEAD_STATUS = ["Talked","Interested","Waiting Confirmation","Converted"];
     let activeTab = "Active";
     let activeFilter = STATUS.PENDING;
+    let leadFilter = "All";
 
     /* ===== DOM Refs ===== */
     const elActiveView = q("#activeView");
     const elCompletedView = q("#completedView");
+    const elLeadsView = q("#leadsView");
     const elActiveList = q("#activeList");
     const elCompletedList = q("#completedList");
+    const elLeadsList = q("#leadsList");
 
     /* ===== Rendering ===== */
     function isOverdue(t){
@@ -429,7 +503,13 @@
       try{
         q("#countActive").textContent = `(${tasks.filter(t=>t.status!==STATUS.COMPLETED).length})`;
         q("#countCompleted").textContent = `(${tasks.filter(t=>t.status===STATUS.COMPLETED).length})`;
-        if(activeTab==="Active") renderActive(); else renderCompleted();
+        q("#countLeads").textContent = `(${leads.length})`;
+        elActiveView.classList.toggle("hidden", activeTab!=="Active");
+        elCompletedView.classList.toggle("hidden", activeTab!=="Completed");
+        elLeadsView.classList.toggle("hidden", activeTab!=="Leads");
+        if(activeTab==="Active") renderActive();
+        else if(activeTab==="Completed") renderCompleted();
+        else renderLeads();
       }catch(e){ console.error('render', e); }
     }
     function renderActive(){
@@ -497,13 +577,51 @@
       }
     }
 
+    /* ===== Leads rendering ===== */
+    function renderLeads(){
+      elLeadsList.innerHTML = "";
+      let pool = leads.slice();
+      if (leadFilter!=="All") pool = pool.filter(l=>l.status===leadFilter);
+      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
+      if (pool.length===0){
+        elLeadsList.innerHTML = `<div class="row"><div class="meta">No leads${leadFilter!=="All"?" in "+leadFilter:""}.</div><button class="btn primary sm" onclick="CT.openLeadAdd()">Add Lead</button></div>`;
+        return;
+      }
+      for(const l of pool){
+        const row = document.createElement("div");
+        row.className = "row";
+        row.dataset.leadId = l.id;
+        row.tabIndex = 0;
+        row.innerHTML = `
+          <div class="meta">
+            <div class="inline wrap">
+              <strong>${escapeHtml(l.name||"(unnamed)")}</strong>
+              <span class="muted">— ${renderNumsWithWA(l.numbers||[])}</span>
+              <span class="pill ${leadPillClass(l.status)} lead-status" data-id="${l.id}" title="Tap to cycle status">${l.status}</span>
+              ${l.product ? `<span class="pill p-due" style="margin-left:8px">Product: ${escapeHtml(l.product)}</span>` : ""}
+            </div>
+            <div class="muted small" style="margin-top:4px">Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}</div>
+          </div>
+        `;
+        elLeadsList.appendChild(row);
+      }
+    }
+    function leadPillClass(s){
+      switch(s){
+        case "Talked": return "p-pending";
+        case "Interested": return "p-inprog";
+        case "Waiting Confirmation": return "p-onhold";
+        case "Converted": return "p-complete";
+        default: return "p-pending";
+      }
+    }
+
     /* ===== Tabs & Filters ===== */
     CT.switchTab = function(which){
       activeTab = which;
       q("#tabActive").classList.toggle("active", which==="Active");
       q("#tabCompleted").classList.toggle("active", which==="Completed");
-      elActiveView.classList.toggle("hidden", which!=="Active");
-      elCompletedView.classList.toggle("hidden", which!=="Completed");
+      q("#tabLeads").classList.toggle("active", which==="Leads");
       render();
     };
     qAll('.filters .chip[data-filter]').forEach(ch=>{
@@ -514,6 +632,7 @@
         render();
       });
     });
+    // More dropdown in Active tab
     const elMoreBtn = q("#moreBtn");
     const elMoreMenu = q("#moreMenu");
     if (elMoreBtn && elMoreMenu){
@@ -523,6 +642,15 @@
         b.addEventListener("click", ()=>{ activeFilter = b.getAttribute("data-filter"); qAll('.filters .chip[data-filter]').forEach(x=>x.classList.remove("active")); elMoreMenu.style.display = "none"; render(); });
       });
     }
+    // Lead filters
+    qAll('.lead-filter').forEach(ch=>{
+      ch.addEventListener("click", ()=>{
+        qAll('.lead-filter').forEach(x=>x.classList.remove('active'));
+        ch.classList.add('active');
+        leadFilter = ch.getAttribute('data-leadfilter');
+        renderLeads();
+      });
+    });
 
     /* ===== Task Modal ===== */
     const elTaskModal = q("#taskModal");
@@ -546,6 +674,8 @@
     function openTaskModal(customerId=null, taskId=null){
       editingTaskId = taskId;
       editingTaskCustomerId = customerId;
+      elTaskSearch.value = "";
+      hideTaskSearchResults();
 
       if(taskId){
         const t = tasks.find(x=>x.id===taskId);
@@ -562,23 +692,29 @@
         elTaskModalTitle.textContent = "Add Task";
         elTaskCustomerName.value = "";
         elTaskCustomerMobile.value = "";
-        elTaskCustomerMeta.textContent = "Type a name and any number. If a customer exists with same name or number, we will link to it; otherwise a new customer is created.";
+        elTaskCustomerMeta.textContent = "Tip: Type name + any number(s). Use search only if you want to link an existing customer.";
         elTaskDesc.value = "";
         elTaskDue.value = "";
         elTaskStatus.value = STATUS.PENDING;
         elTaskTimestamps.textContent = "";
       }
-      elTaskSearch.value = "";
-      renderTaskSearchResults();
       elTaskModal.style.display = "flex";
       setTimeout(()=>elTaskCustomerName.focus(), 0);
     }
     function closeTaskModal(){ elTaskModal.style.display = "none"; }
+    function hideTaskSearchResults(){
+      elTaskSearchResults.style.display = "none";
+      elTaskSearchResults.innerHTML = "";
+    }
 
-    function renderTaskSearchResults(){
+    function renderTaskSearchResults(force=false){
       const raw = (elTaskSearch.value || "");
       const term = raw.trim().toLowerCase();
       const digitTerm = normalizeDigits(raw);
+      if (!force && term.length<2 && digitTerm.length<2){
+        hideTaskSearchResults();
+        return;
+      }
       let cs = customers.slice();
       if (term || digitTerm) {
         cs = cs.filter(c=>{
@@ -586,7 +722,7 @@
           const nums = (c.numbers || []);
           const numbersJoined = nums.join(" ").toLowerCase();
           const numbersDigits = nums.map(n=> normalizeDigits(n||"")).join(" ");
-          const textHit = name.includes(term) || numbersJoined.includes(term);
+          const textHit = term && name.includes(term) || term && numbersJoined.includes(term);
           const digitHit = digitTerm && numbersDigits.includes(digitTerm);
           return textHit || digitHit;
         });
@@ -597,11 +733,12 @@
         if (bt !== at) return bt - at;
         return (a.name||"").localeCompare(b.name||"");
       });
+      elTaskSearchResults.style.display = "block";
       elTaskSearchResults.innerHTML = "";
       if (cs.length === 0) {
         const row = document.createElement("div");
         row.className = "row";
-        row.innerHTML = `<div class="meta">No customer found. You can type details above and save.</div>`;
+        row.innerHTML = `<div class="meta">No customer found.</div>`;
         elTaskSearchResults.appendChild(row);
         return;
       }
@@ -630,12 +767,13 @@
           elTaskCustomerMobile.value = (c.numbers||[]).join(", ");
           elTaskCustomerMeta.textContent = `Selected existing • Created: ${fmtDate(c.createdAt)} • Updated: ${fmtDate(c.updatedAt)}`;
           showToast('success','Customer selected');
+          hideTaskSearchResults();
         });
       });
     }
-    elTaskSearch.addEventListener("input", renderTaskSearchResults);
-    elTaskSearchBtn.addEventListener("click", renderTaskSearchResults);
-    elTaskSearch.addEventListener("keydown", (e)=>{ if (e.key === "Enter") renderTaskSearchResults(); });
+    elTaskSearch.addEventListener("input", ()=>renderTaskSearchResults(false));
+    elTaskSearchBtn.addEventListener("click", ()=>renderTaskSearchResults(true));
+    elTaskSearch.addEventListener("keydown", (e)=>{ if (e.key === "Enter") renderTaskSearchResults(true); });
 
     elSaveTaskBtn.addEventListener("click", ()=>{
       try{
@@ -644,6 +782,7 @@
         const desc = elTaskDesc.value.trim();
         const due = elTaskDue.value || "";
         const st = elTaskStatus.value;
+        if (!name && numbersRaw.length===0){ showToast('error','Enter name or at least one number'); return; }
         let customer = null;
         if(editingTaskCustomerId){
           customer = customers.find(c=>c.id===editingTaskCustomerId) || null;
@@ -663,6 +802,7 @@
           for(const n of numbersRaw){ if(n && !exist.has(n)){ customer.numbers.push(n); exist.add(n); } }
           customer.updatedAt = nowISO();
         }
+        let newId = editingTaskId;
         if(editingTaskId){
           const t = tasks.find(x=>x.id===editingTaskId);
           t.customerId = customer.id;
@@ -671,11 +811,13 @@
           t.status = st;
           t.updatedAt = nowISO();
         }else{
-          tasks.push({ id: uuid(), customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
+          newId = uuid();
+          tasks.push({ id: newId, customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
         }
         saveAll();
         closeTaskModal();
         showToast('success','Task saved');
+        if (newId) jumpToTaskInMain(newId);
       }catch(e){ console.error('save task', e); showToast('error','Could not save task'); }
     });
     elCancelTaskBtn.addEventListener("click", closeTaskModal);
@@ -688,6 +830,74 @@
       t.status=st; t.updatedAt=nowISO(); saveAll();
       showToast('success', st==='Completed'?'Task completed':'Task status changed');
     };
+
+    /* ===== Leads Modal ===== */
+    const elLeadModal = q("#leadModal");
+    const elLeadModalTitle = q("#leadModalTitle");
+    const elLeadName = q("#leadName");
+    const elLeadNumbers = q("#leadNumbers");
+    const elLeadProduct = q("#leadProduct");
+    const elLeadStatus = q("#leadStatus");
+    const elSaveLeadBtn = q("#saveLeadBtn");
+    const elCancelLeadBtn = q("#cancelLeadBtn");
+    const elDeleteLeadBtn = q("#deleteLeadBtn");
+    const elLeadTimestamps = q("#leadTimestamps");
+    let editingLeadId = null;
+
+    function openLeadModal(leadId=null){
+      editingLeadId = leadId;
+      if (leadId){
+        const l = leads.find(x=>x.id===leadId);
+        elLeadModalTitle.textContent = "Edit Lead";
+        elLeadName.value = l?.name || "";
+        elLeadNumbers.value = (l?.numbers||[]).join(", ");
+        elLeadProduct.value = l?.product || "";
+        elLeadStatus.value = l?.status || "Talked";
+        elLeadTimestamps.textContent = `Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}`;
+        elDeleteLeadBtn.classList.remove('hidden');
+      }else{
+        elLeadModalTitle.textContent = "Add Lead";
+        elLeadName.value = "";
+        elLeadNumbers.value = "";
+        elLeadProduct.value = "";
+        elLeadStatus.value = "Talked";
+        elLeadTimestamps.textContent = "";
+        elDeleteLeadBtn.classList.add('hidden');
+      }
+      elLeadModal.style.display = "flex";
+      setTimeout(()=>elLeadName.focus(), 0);
+    }
+    function closeLeadModal(){ elLeadModal.style.display = "none"; }
+
+    elSaveLeadBtn.addEventListener("click", ()=>{
+      const name = (elLeadName.value||"").trim();
+      const numbers = (elLeadNumbers.value||"").split(",").map(s=>s.trim()).filter(Boolean);
+      const product = (elLeadProduct.value||"").trim();
+      const status = elLeadStatus.value;
+      if (!name && numbers.length===0){ showToast('error','Enter name or at least one number'); return; }
+      if (editingLeadId){
+        const l = leads.find(x=>x.id===editingLeadId);
+        if (!l) return;
+        l.name = name; l.numbers = numbers; l.product = product; l.status = status; l.updatedAt = nowISO();
+      }else{
+        leads.push({ id: uuid(), name, numbers, product, status, createdAt: nowISO(), updatedAt: nowISO() });
+      }
+      saveAll();
+      closeLeadModal();
+      showToast('success','Lead saved');
+    });
+    elCancelLeadBtn.addEventListener("click", closeLeadModal);
+    elDeleteLeadBtn.addEventListener("click", ()=>{
+      if (!editingLeadId) return;
+      if (!confirm('Delete this lead? This cannot be undone.')) return;
+      const idx = leads.findIndex(x=>x.id===editingLeadId);
+      if (idx!==-1) leads.splice(idx,1);
+      saveAll();
+      closeLeadModal();
+      showToast('success','Lead deleted');
+    });
+
+    CT.openLeadAdd = ()=> openLeadModal(null);
 
     /* ===== Search Center ===== */
     const elSearchCenter = q("#searchCenter");
@@ -728,37 +938,27 @@
 
     elStatusChips.forEach(ch=> ch.addEventListener("click", ()=> ch.classList.toggle("active")));
 
-    function setFilterAndRender(key){
-      activeFilter = key;
-      qAll('.filters .chip[data-filter]').forEach(x=>{
-        x.classList.toggle('active', x.getAttribute('data-filter') === key);
-      });
-      render();
+    function performSearch(){
+      const raw = elSearchInput.value || "";
+      const term = raw.trim().toLowerCase();
+      const digits = normalizeDigits(raw);
+      if(!term && searchMode!=="mobile"){ return showNoInput(); }
+      if(!digits && searchMode==="mobile"){ return showNoInput(); }
+      let pool = tasks.slice();
+      if (elSearchScope.value === "active") pool = pool.filter(t=>t.status!==STATUS.COMPLETED);
+      if (elSearchScope.value === "completed") pool = pool.filter(t=>t.status===STATUS.COMPLETED);
+      if (searchMode==="name"){ matches = nameSearch(pool, term); }
+      else if (searchMode==="mobile"){ matches = mobileSearch(pool, digits); }
+      else { matches = taskSearch(pool, term); }
+      matches.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
+      renderSearchResults(raw);
+      currentIdx = matches.length ? 0 : -1;
+      updateMatchPointer();
     }
-
-    function jumpToTaskInMain(taskId){
-      const t = tasks.find(x=>x.id===taskId);
-      if (!t) return;
-      if (t.status === STATUS.COMPLETED){
-        CT.switchTab("Completed");
-      } else {
-        CT.switchTab("Active");
-        const map = {
-          [STATUS.PENDING]: "Pending",
-          [STATUS.INPROG]: "In Progress",
-          [STATUS.ONHOLD]: "On Hold",
-          [STATUS.CANCELLED]: "Cancelled"
-        };
-        setFilterAndRender(map[t.status] || "CoreActive");
-      }
-      const container = (t.status === STATUS.COMPLETED) ? elCompletedList : elActiveList;
-      const row = container.querySelector(`.row[data-task-id="${taskId}"]`);
-      if (row){
-        row.scrollIntoView({behavior:'smooth', block:'center'});
-        row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'), 1200);
-      }
+    function showNoInput(){
+      elSearchResults.innerHTML = `<div class="row"><div class="meta">Enter a value to search.</div></div>`;
+      elSearchCount.textContent = "0 matches"; elMatchIndex.textContent = ""; matches = []; currentIdx = -1;
     }
-
     function nameSearch(taskPool, term){
       const setIds = new Set(customers.filter(c => (c.name||"").toLowerCase().includes(term)).map(c => c.id));
       return taskPool.filter(t => setIds.has(t.customerId));
@@ -785,28 +985,6 @@
         });
       }
       return out;
-    }
-
-    function performSearch(){
-      const raw = elSearchInput.value || "";
-      const term = raw.trim().toLowerCase();
-      const digits = normalizeDigits(raw);
-      if(!term && searchMode!=="mobile"){ return showNoInput(); }
-      if(!digits && searchMode==="mobile"){ return showNoInput(); }
-      let pool = tasks.slice();
-      if (elSearchScope.value === "active") pool = pool.filter(t=>t.status!==STATUS.COMPLETED);
-      if (elSearchScope.value === "completed") pool = pool.filter(t=>t.status===STATUS.COMPLETED);
-      if (searchMode==="name"){ matches = nameSearch(pool, term); }
-      else if (searchMode==="mobile"){ matches = mobileSearch(pool, digits); }
-      else { matches = taskSearch(pool, term); }
-      matches.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      renderSearchResults(raw);
-      currentIdx = matches.length ? 0 : -1;
-      updateMatchPointer();
-    }
-    function showNoInput(){
-      elSearchResults.innerHTML = `<div class="row"><div class="meta">Enter a value to search.</div></div>`;
-      elSearchCount.textContent = "0 matches"; elMatchIndex.textContent = ""; matches = []; currentIdx = -1;
     }
     function renderSearchResults(rawTerm){
       const el = elSearchResults;
@@ -883,7 +1061,6 @@
     function openSearchCenter(){ elSearchCenter.style.display = "flex"; setMode("name"); elSearchInput.value=""; elSearchScope.value="all"; elStatusChips.forEach(c=>c.classList.remove('active')); elDueFrom.value=""; elDueTo.value=""; setTimeout(()=>elSearchInput.focus(),0); }
     function closeSearchCenter(){ elSearchCenter.style.display = "none"; }
     CT.openSearchCenter = openSearchCenter;
-    q("#closeSearchCenter").addEventListener("click", closeSearchCenter);
 
     /* ===== Export / Backup / Import ===== */
     function exportCSV(){
@@ -912,7 +1089,7 @@
       setTimeout(()=>URL.revokeObjectURL(url), 1000);
     }
     function backupJSON(){
-      const payload = { version:1, exportedAt: nowISO(), customers, tasks };
+      const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
       const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -933,7 +1110,7 @@
         const data = JSON.parse(text);
         const added = importDataAppend(data);
         saveAll();
-        showToast('success', `Imported ${added.cust} customers, ${added.task} tasks`);
+        showToast('success', `Imported ${added.cust} customers, ${added.task} tasks, ${added.lead} leads`);
       }catch(err){
         console.error('import', err);
         showToast('error','Import failed: invalid JSON');
@@ -945,11 +1122,13 @@
     function importDataAppend(payload){
       const arrC = Array.isArray(payload.customers) ? payload.customers : [];
       const arrT = Array.isArray(payload.tasks) ? payload.tasks : [];
+      const arrL = Array.isArray(payload.leads) ? payload.leads : [];
       const existingCustIds = new Set(customers.map(c=>c.id));
       const existingTaskIds = new Set(tasks.map(t=>t.id));
+      const existingLeadIds = new Set(leads.map(l=>l.id));
       const idMap = new Map(); // oldCustId -> newCustId (if remapped)
 
-      // Append customers (ensure unique IDs)
+      // Customers
       let custAdded = 0;
       for (const c of arrC){
         if (!c || typeof c !== 'object') continue;
@@ -968,7 +1147,7 @@
         custAdded++;
       }
 
-      // Helper to find or create placeholder customer if task points to unknown
+      // Helper to ensure customer for a task
       function ensureCustomerForTask(t){
         let cid = t.customerId;
         if (idMap.has(cid)) return idMap.get(cid);
@@ -984,7 +1163,7 @@
         return placeholder.id;
       }
 
-      // Append tasks (ensure unique IDs and correct customerId)
+      // Tasks
       let taskAdded = 0;
       for (const t of arrT){
         if (!t || typeof t !== 'object') continue;
@@ -1004,7 +1183,24 @@
         tasks.push(newT);
         taskAdded++;
       }
-      return {cust:custAdded, task:taskAdded};
+
+      // Leads
+      let leadAdded = 0;
+      for (const l of arrL){
+        if (!l || typeof l !== 'object') continue;
+        let nl = {...l};
+        if (!nl.id) nl.id = uuid();
+        if (existingLeadIds.has(nl.id)) nl.id = uuid();
+        existingLeadIds.add(nl.id);
+        nl.createdAt = nl.createdAt || nowISO();
+        nl.updatedAt = nl.updatedAt || nowISO();
+        if (!Array.isArray(nl.numbers)) nl.numbers = [];
+        nl.status = LEAD_STATUS.includes(nl.status) ? nl.status : "Talked";
+        leads.push(nl);
+        leadAdded++;
+      }
+
+      return {cust:custAdded, task:taskAdded, lead:leadAdded};
     }
 
     /* ===== Delete Center ===== */
@@ -1018,15 +1214,9 @@
     const elDelTaskQuery = q("#delTaskQuery");
     const elDelTaskStatus = q("#delTaskStatus");
     const elTblDelTasks = q("#tblDelTasks tbody");
-    const elBtnDelTaskSelectAll = q("#btnDelTaskSelectAll");
-    const elBtnDelTaskClear = q("#btnDelTaskClear");
-    const elBtnDelTaskDelete = q("#btnDelTaskDelete");
 
     const elDelCustQuery = q("#delCustQuery");
     const elTblDelCustomers = q("#tblDelCustomers tbody");
-    const elBtnDelCustSelectAll = q("#btnDelCustSelectAll");
-    const elBtnDelCustClear = q("#btnDelCustClear");
-    const elBtnDelCustDelete = q("#btnDelCustDelete");
 
     CT.openDeleteCenter = function(){
       elDeleteCenter.style.display = "flex";
@@ -1109,13 +1299,9 @@
       }
     }
 
-    elDelTaskQuery.addEventListener("input", renderDelTasks);
-    elDelTaskStatus.addEventListener("change", renderDelTasks);
-    elDelCustQuery.addEventListener("input", renderDelCustomers);
-
-    q("#btnDelTaskSelectAll").addEventListener("click", ()=>{ qAll('#tblDelTasks .tskChk').forEach(ch=> ch.checked = true); });
-    q("#btnDelTaskClear").addEventListener("click", ()=>{ qAll('#tblDelTasks .tskChk').forEach(ch=> ch.checked = false); });
-    q("#btnDelTaskDelete").addEventListener("click", ()=>{
+    q("#btnDelTaskSelectAll")?.addEventListener("click", ()=>{ qAll('#tblDelTasks .tskChk').forEach(ch=> ch.checked = true); });
+    q("#btnDelTaskClear")?.addEventListener("click", ()=>{ qAll('#tblDelTasks .tskChk').forEach(ch=> ch.checked = false); });
+    q("#btnDelTaskDelete")?.addEventListener("click", ()=>{
       const ids = qAll('#tblDelTasks .tskChk:checked').map(ch=> ch.getAttribute('data-id'));
       if (!ids.length) { showToast('info','No tasks selected'); return; }
       if (!confirm(`Delete ${ids.length} selected task(s)? This cannot be undone.`)) return;
@@ -1129,9 +1315,9 @@
       showToast('success', `Deleted ${ids.length} task(s)`);
     });
 
-    q("#btnDelCustSelectAll").addEventListener("click", ()=>{ qAll('#tblDelCustomers .custChk:not([disabled])').forEach(ch=> ch.checked = true); });
-    q("#btnDelCustClear").addEventListener("click", ()=>{ qAll('#tblDelCustomers .custChk').forEach(ch=> ch.checked = false); });
-    q("#btnDelCustDelete").addEventListener("click", ()=>{
+    q("#btnDelCustSelectAll")?.addEventListener("click", ()=>{ qAll('#tblDelCustomers .custChk:not([disabled])').forEach(ch=> ch.checked = true); });
+    q("#btnDelCustClear")?.addEventListener("click", ()=>{ qAll('#tblDelCustomers .custChk').forEach(ch=> ch.checked = false); });
+    q("#btnDelCustDelete")?.addEventListener("click", ()=>{
       const ids = qAll('#tblDelCustomers .custChk:checked').map(ch=> ch.getAttribute('data-id'));
       if (!ids.length) { showToast('info','No customers selected'); return; }
       const taskByCust = new Map();
@@ -1162,42 +1348,91 @@
     }
     CT.cycleStatus = cycleStatus;
 
-    // Active list: click status pill cycles; clicking WA icons should not open the row.
+    // Jump to a task and highlight
+    function jumpToTaskInMain(taskId){
+      const t = tasks.find(x=>x.id===taskId);
+      if (!t) return;
+      if (t.status === STATUS.COMPLETED){
+        activeTab = "Completed";
+      } else {
+        activeTab = "Active";
+        const map = {
+          [STATUS.PENDING]: "Pending",
+          [STATUS.INPROG]: "In Progress",
+          [STATUS.ONHOLD]: "On Hold",
+          [STATUS.CANCELLED]: "Cancelled"
+        };
+        activeFilter = map[t.status] || "CoreActive";
+      }
+      render();
+      const container = (t.status === STATUS.COMPLETED) ? elCompletedList : elActiveList;
+      const row = container.querySelector(`.row[data-task-id="${taskId}"]`);
+      if (row){
+        row.scrollIntoView({behavior:'smooth', block:'center'});
+        row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'), 1200);
+      }
+    }
+    CT.jumpToTaskInMain = jumpToTaskInMain;
+
+    // Tasks: clicking status pill cycles; clicking WA icons should not open the row.
     elActiveList.addEventListener('click', (e)=>{
       const pill = e.target.closest('.status-pill');
       if (pill){ e.preventDefault(); e.stopPropagation(); cycleStatus(pill.getAttribute('data-id')); return; }
-      if (e.target.closest('a.wa') || e.target.closest('.wa')) return; // let WA work
+      if (e.target.closest('a.wa') || e.target.closest('.wa')) return;
       const row = e.target.closest('.row[data-task-id]');
       if (row){ CT.editTask(row.dataset.taskId); }
     });
-    // Completed list: clicking WA icons should not open the row; otherwise open.
     elCompletedList.addEventListener('click', (e)=>{
       if (e.target.closest('a.wa') || e.target.closest('.wa')) return;
       const row = e.target.closest('.row[data-task-id]');
       if (row){ CT.editTask(row.dataset.taskId); }
     });
 
-    // Double-click still opens (desktop)
+    // Leads: click status pill to cycle, click row to edit, WA icon opens chat
+    function cycleLeadStatus(id){
+      const l = leads.find(x=>x.id===id); if(!l) return;
+      const idx = LEAD_STATUS.indexOf(l.status);
+      l.status = LEAD_STATUS[(idx+1) % LEAD_STATUS.length];
+      l.updatedAt = nowISO();
+      saveAll();
+      showToast('success','Lead status: ' + l.status);
+    }
+    elLeadsList.addEventListener('click', (e)=>{
+      const pill = e.target.closest('.lead-status');
+      if (pill){ e.preventDefault(); e.stopPropagation(); cycleLeadStatus(pill.getAttribute('data-id')); return; }
+      if (e.target.closest('a.wa') || e.target.closest('.wa')) return;
+      const row = e.target.closest('.row[data-lead-id]');
+      if (row){ openLeadModal(row.dataset.leadId); }
+    });
+
+    // Double-click opens (desktop)
     elActiveList.addEventListener('dblclick', (e)=>{
       const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId);
     });
     elCompletedList.addEventListener('dblclick', (e)=>{
       const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId);
     });
+    elLeadsList.addEventListener('dblclick', (e)=>{
+      const row = e.target.closest('.row[data-lead-id]'); if (row) openLeadModal(row.dataset.leadId);
+    });
 
     // Keyboard: Enter opens
-    ['#activeList', '#completedList'].forEach(sel=>{
+    ['#activeList', '#completedList', '#leadsList'].forEach(sel=>{
       const root = document.querySelector(sel);
       root.addEventListener('keydown', (e)=>{
         if (e.key !== 'Enter') return;
-        const row = e.target.closest('.row[data-task-id]');
-        if (row) CT.editTask(row.dataset.taskId);
+        const trow = e.target.closest('.row[data-task-id]');
+        const lrow = e.target.closest('.row[data-lead-id]');
+        if (trow) CT.editTask(trow.dataset.taskId);
+        if (lrow) openLeadModal(lrow.dataset.leadId);
       });
     });
 
     /* Public shortcuts */
     CT.openAdd = ()=> openTaskModal(null, null);
     CT.editTask = id => { const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
+    CT.openDeleteCenter = ()=> CT.openDeleteCenter;
+    q("#addLeadBtn")?.addEventListener("click", ()=> openLeadModal(null));
 
     /* Initial render */
     render();
