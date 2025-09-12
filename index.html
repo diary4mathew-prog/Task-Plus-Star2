@@ -271,7 +271,7 @@
     </div>
   </div>
 
-  <!-- SEARCH CENTER (unchanged) -->
+  <!-- SEARCH CENTER -->
   <div id="searchCenter" class="modal-backdrop">
     <div class="modal">
       <div class="inline wrap">
@@ -320,7 +320,7 @@
     </div>
   </div>
 
-  <!-- DELETE CENTER (for tasks/customers) -->
+  <!-- DELETE CENTER -->
   <div id="deleteCenter" class="modal-backdrop">
     <div class="modal">
       <div class="inline wrap">
@@ -1063,6 +1063,44 @@
     CT.openSearchCenter = openSearchCenter;
 
     /* ===== Export / Backup / Import ===== */
+    function csvFromRows(rows){
+      return rows.map(r => r.map(cell => {
+        const s = String(cell ?? "");
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+      }).join(",")).join("\n");
+    }
+    async function downloadCSV(filename, rows){
+      const csv = csvFromRows(rows);
+      const blob = new Blob(["\uFEFF", csv], {type:"text/csv;charset=utf-8"});
+
+      // 1) Try Web Share API (Android-friendly; needs HTTPS/local)
+      try{
+        const file = new File([blob], filename, { type: blob.type });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename, text: "CSV export" });
+          return;
+        }
+      }catch(e){ /* ignore and fall through */ }
+
+      // 2) Try standard download
+      try{
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
+        return;
+      }catch(e){ /* ignore and fall through */ }
+
+      // 3) Fallback: open as data URL (user can save manually)
+      const reader = new FileReader();
+      reader.onload = () => window.open(reader.result, "_blank");
+      reader.readAsDataURL(blob);
+    }
+
     function exportCSV(){
       try{
         const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
@@ -1074,19 +1112,8 @@
         }
         downloadCSV("Customers.csv", custRows);
         downloadCSV("Tasks.csv", taskRows);
-        showToast('success','Exported CSV files');
+        showToast('success','Export started');
       }catch(e){ console.error('export', e); showToast('error','Export failed'); }
-    }
-    function downloadCSV(filename, rows){
-      const csv = rows.map(r => r.map(cell => {
-        const s = String(cell??"");
-        return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
-      }).join(",")).join("\n");
-      const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename; a.click();
-      setTimeout(()=>URL.revokeObjectURL(url), 1000);
     }
     function backupJSON(){
       const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
@@ -1431,7 +1458,6 @@
     /* Public shortcuts */
     CT.openAdd = ()=> openTaskModal(null, null);
     CT.editTask = id => { const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
-    CT.openDeleteCenter = ()=> CT.openDeleteCenter;
     q("#addLeadBtn")?.addEventListener("click", ()=> openLeadModal(null));
 
     /* Initial render */
