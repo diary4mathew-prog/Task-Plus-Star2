@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Upload Center — Customer Tasks & Leads</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a35; --panel2:#0f1530; --text:#eaf0ff; --muted:#aab4d6;
+    --border:#1f2a4f; --accent:#5b8cff; --accent2:#74d680; --warn:#ffcc66; --danger:#ff6b6b; --mark:#fff2a8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,#0a0f1f 0%, #0e1430 100%); color:var(--text)}
+  header{position:sticky; top:0; z-index:10; padding:16px; border-bottom:1px solid var(--border); background:rgba(13,18,40,.7); backdrop-filter:blur(6px) saturate(140%)}
+  .container{max-width:980px; margin:18px auto; padding:0 14px}
+  h1{margin:0; font-size:20px}
+  .sub{margin-top:4px; color:var(--muted); font-size:13px}
+  .card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel2) 100%); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); margin-top:14px}
+  .inline{display:flex; gap:8px; align-items:center}
+  .wrap{flex-wrap:wrap}
+  .grow{flex:1}
+  input[type="text"], textarea, select{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0b1433; color:#eaf0ff; outline:none;
+  }
+  textarea{min-height:140px}
+  .btn{appearance:none; border:none; border-radius:10px; padding:9px 13px; color:#fff; font-weight:600; cursor:pointer; transition:.15s transform ease, .2s background ease}
+  .btn:hover{transform:translateY(-1px)}
+  .btn.primary{background:linear-gradient(180deg, var(--accent) 0%, #3f69ff 100%)}
+  .btn.secondary{background:#1a2446; border:1px solid var(--border); color:#dfe7ff}
+  .btn.ok{background:linear-gradient(180deg, var(--accent2) 0%, #3fbf74 100%)}
+  .btn.warn{background:linear-gradient(180deg, var(--warn) 0%, #f5b24e 100%); color:#2a1b05}
+  .btn.danger{background:linear-gradient(180deg, var(--danger) 0%, #ff5252 100%)}
+  .btn.sm{padding:6px 10px; font-size:12px}
+  .muted{color:var(--muted); font-size:12px}
+  .hr{height:1px; background:var(--border); margin:12px 0}
+  .table{border:1px solid var(--border); border-radius:12px; overflow:auto; margin-top:10px}
+  .table table{width:100%; border-collapse:collapse; background:#0b1433}
+  .table th,.table td{border-bottom:1px solid var(--border); padding:10px; font-size:12px; text-align:left; vertical-align:top}
+  .table tr:last-child td{border-bottom:none}
+  code{background:#10183b; border:1px solid #1f2a4f; padding:2px 6px; border-radius:6px}
+  .success{color:#74d680}
+  .error{color:#ff6b6b}
+</style>
+</head>
+<body>
+<header>
+  <h1>Upload Center</h1>
+  <div class="sub">Import <strong>JSON</strong> (backup schema) or <strong>CSV</strong> (Tasks / Customers / Leads). Appends into your device’s local storage used by the main app.</div>
+</header>
+
+<div class="container">
+  <!-- ACTIONS -->
+  <div class="card">
+    <div class="inline wrap">
+      <input id="fileInput" type="file" accept=".json,.csv,text/csv,application/json" />
+      <button id="btnParseFile" class="btn secondary">Read File</button>
+      <span class="muted">or</span>
+      <button id="btnParsePaste" class="btn secondary">Parse From Text Below</button>
+      <button id="btnCommit" class="btn ok">Commit to Storage</button>
+      <button id="btnBack" class="btn primary" onclick="location.href='./index.html'">← Back to App</button>
+    </div>
+    <div class="hr"></div>
+    <label for="pasteInput">Paste JSON or CSV (auto-detect):</label>
+    <textarea id="pasteInput" placeholder="Paste JSON or CSV here..."></textarea>
+    <div class="hr"></div>
+    <div class="inline wrap">
+      <span class="muted">Download templates:</span>
+      <button class="btn sm secondary" id="tplTasks">Tasks CSV</button>
+      <button class="btn sm secondary" id="tplCustomers">Customers CSV</button>
+      <button class="btn sm secondary" id="tplLeads">Leads CSV</button>
+      <button class="btn sm secondary" id="tplJSON">Full JSON (empty)</button>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="card">
+    <h3 style="margin:0 0 8px">Preview</h3>
+    <div id="summary" class="muted">Nothing parsed yet.</div>
+    <div id="warnings" class="muted" style="margin-top:6px"></div>
+    <div class="table" id="tblTasksWrap" style="display:none">
+      <table id="tblTasks"><thead></thead><tbody></tbody></table>
+    </div>
+    <div class="table" id="tblCustomersWrap" style="display:none">
+      <table id="tblCustomers"><thead></thead><tbody></tbody></table>
+    </div>
+    <div class="table" id="tblLeadsWrap" style="display:none">
+      <table id="tblLeads"><thead></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- FOOTNOTE -->
+  <div class="card">
+    <div class="muted">
+      <strong>Notes for GitHub Pages → WebIntoApp:</strong>
+      <ul>
+        <li>Data is stored in <code>localStorage</code> on the device. Clearing app storage or reinstalling will remove it.</li>
+        <li>CSV must include headers shown in each template. Unknown columns are ignored.</li>
+        <li>Change the “Back to App” button target if your main page isn’t <code>index.html</code>.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ===== Storage Keys (match your main app) ===== */
+  const LS_CUSTOMERS = "ct_customers_v1";
+  const LS_TASKS     = "ct_tasks_v1";
+  const LS_LEADS     = "ct_leads_v1";
+
+  /* ===== Helpers ===== */
+  const q = sel => document.querySelector(sel);
+  const nowISO = () => new Date().toISOString();
+  const uuid = ()=> ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16));
+  const fmt = x => x==null ? "" : String(x);
+
+  function loadJSON(key, fallback){
+    try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }
+    catch(e){ return fallback; }
+  }
+  function saveJSON(key, value){
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function csvEncode(rows){
+    return rows.map(r => r.map(cell=>{
+      const s = String(cell ?? "");
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }).join(",")).join("\n");
+  }
+
+  // Lightweight CSV parser (handles quotes, commas, newlines)
+  function parseCSV(text){
+    const rows = [];
+    let i=0, cur="", inQ=false, row=[];
+    while(i<text.length){
+      const ch = text[i];
+      if(inQ){
+        if(ch === '"'){
+          if(i+1<text.length && text[i+1] === '"'){ cur += '"'; i+=2; continue; }
+          inQ=false; i++; continue;
+        }
+        cur += ch; i++; continue;
+      }else{
+        if(ch === '"'){ inQ=true; i++; continue; }
+        if(ch === ','){ row.push(cur); cur=""; i++; continue; }
+        if(ch === '\n'){ row.push(cur); cur=""; rows.push(row); row=[]; i++; continue; }
+        if(ch === '\r'){ i++; continue; } // ignore CR
+        cur += ch; i++; continue;
+      }
+    }
+    row.push(cur);
+    rows.push(row);
+    // Trim trailing empty lines
+    while(rows.length && rows[rows.length-1].every(c=>c==="")) rows.pop();
+    return rows;
+  }
+
+  function toHeaderMap(headerRow){
+    const map = {};
+    headerRow.forEach((h, idx)=>{ map[h.trim().toLowerCase()] = idx; });
+    return map;
+  }
+
+  /* ===== Import Pipeline ===== */
+  const STATUS = new Set(["Pending","In Progress","On Hold","Cancelled","Completed"]);
+  const LEAD_STATUS = new Set(["Talked","Interested","Waiting Confirmation","Converted"]);
+
+  let parsed = { customers:[], tasks:[], leads:[] };
+  let warnings = [];
+
+  function resetPreview(){
+    parsed = { customers:[], tasks:[], leads:[] };
+    warnings = [];
+    q("#summary").textContent = "Nothing parsed yet.";
+    q("#warnings").textContent = "";
+    ["Tasks","Customers","Leads"].forEach(kind=>{
+      q("#tbl"+kind+"Wrap").style.display = "none";
+      q("#tbl"+kind+" thead").innerHTML = "";
+      q("#tbl"+kind+" tbody").innerHTML = "";
+    });
+  }
+
+  function showSummary(){
+    const c = parsed.customers.length, t = parsed.tasks.length, l = parsed.leads.length;
+    q("#summary").innerHTML = `
+      Parsed: <strong class="success">${c}</strong> customers,
+      <strong class="success">${t}</strong> tasks,
+      <strong class="success">${l}</strong> leads.
+    `;
+    q("#warnings").innerHTML = warnings.length ? ('⚠ ' + warnings.join('<br>')) : '';
+  }
+
+  function renderTable(kind, items, headers){
+    const wrap = q("#tbl"+kind+"Wrap");
+    const thead = q("#tbl"+kind+" thead");
+    const tbody = q("#tbl"+kind+" tbody");
+    if(!items.length){ wrap.style.display="none"; return; }
+    wrap.style.display = "block";
+    thead.innerHTML = "<tr>" + headers.map(h=>`<th>${h}</th>`).join("") + "</tr>";
+    const maxRows = 200; // preview cap
+    const rows = items.slice(0, maxRows).map(obj=>{
+      return "<tr>" + headers.map(h=> `<td>${fmt(obj[h] ?? obj[h.toLowerCase()] ?? "")}</td>`).join("") + "</tr>";
+    }).join("");
+    tbody.innerHTML = rows + (items.length>maxRows ? `<tr><td colspan="${headers.length}" class="muted">…and ${items.length-maxRows} more</td></tr>` : "");
+  }
+
+  // Parse JSON (backup schema or partial arrays)
+  function parseJSON(text){
+    const data = JSON.parse(text);
+    const customers = Array.isArray(data.customers) ? data.customers : (Array.isArray(data) ? [] : []);
+    const tasks     = Array.isArray(data.tasks) ? data.tasks : [];
+    const leads     = Array.isArray(data.leads) ? data.leads : [];
+
+    // Also support “just an array of X” pastes/files
+    if(Array.isArray(data)){
+      const sample = data[0] || {};
+      if("product" in sample || ("status" in sample && !("customerId" in sample))){
+        parsed.leads = data;
+      }else if("customerId" in sample || "description" in sample){
+        parsed.tasks = data;
+      }else{
+        parsed.customers = data;
+      }
+    }else{
+      parsed.customers = customers;
+      parsed.tasks = tasks;
+      parsed.leads = leads;
+    }
+  }
+
+  // Parse CSV by header
+  function parseCSVByType(text){
+    const rows = parseCSV(text);
+    if(!rows.length) throw new Error("Empty CSV");
+    const header = rows[0].map(h=>h.trim());
+    const map = toHeaderMap(header);
+    const lc = h => h.trim().toLowerCase();
+
+    const hdrs = header.map(lc);
+    const has = k => hdrs.includes(k);
+
+    // Customers CSV
+    if(has("customer name") || has("name")){
+      const arr = [];
+      for(let i=1;i<rows.length;i++){
+        const r = rows[i];
+        const name = r[map["customer name"]] ?? r[map["name"]] ?? "";
+        const numbers = (r[map["mobile numbers"]] || "").split(",").map(s=>s.trim()).filter(Boolean);
+        arr.push({
+          id: r[map["customerid"]] || "",
+          name: name,
+          numbers: numbers,
+          createdAt: r[map["created at"]] || "",
+          updatedAt: r[map["updated at"]] || ""
+        });
+      }
+      parsed.customers = parsed.customers.concat(arr);
+      return "customers";
+    }
+
+    // Leads CSV
+    if(has("product") || (has("status") && !has("task description"))){
+      const arr = [];
+      for(let i=1;i<rows.length;i++){
+        const r = rows[i];
+        arr.push({
+          id: r[map["leadid"]] || "",
+          name: r[map["customer name"]] ?? r[map["name"]] ?? "",
+          numbers: (r[map["mobile numbers"]] || "").split(",").map(s=>s.trim()).filter(Boolean),
+          product: r[map["product"]] || "",
+          status: r[map["status"]] || "Talked",
+          createdAt: r[map["created at"]] || "",
+          updatedAt: r[map["updated at"]] || ""
+        });
+      }
+      parsed.leads = parsed.leads.concat(arr);
+      return "leads";
+    }
+
+    // Tasks CSV (default)
+    const arr = [];
+    for(let i=1;i<rows.length;i++){
+      const r = rows[i];
+      arr.push({
+        id: r[map["taskid"]] || "",
+        customerId: r[map["customerid"]] || "",
+        customerName: r[map["customer name"]] ?? r[map["name"]] ?? "",
+        numbers: (r[map["mobile numbers"]] || "").split(",").map(s=>s.trim()).filter(Boolean),
+        description: r[map["task description"]] || "",
+        dueDate: r[map["due date"]] || "",
+        status: r[map["status"]] || "Pending",
+        createdAt: r[map["created at"]] || "",
+        updatedAt: r[map["updated at"]] || ""
+      });
+    }
+    parsed.tasks = parsed.tasks.concat(arr);
+    return "tasks";
+  }
+
+  /* ===== Commit (append & remap) ===== */
+  function commitParsed(){
+    const customers = loadJSON(LS_CUSTOMERS, []);
+    const tasks     = loadJSON(LS_TASKS, []);
+    const leads     = loadJSON(LS_LEADS, []);
+    const existingCustIds = new Set(customers.map(c=>c.id));
+    const existingTaskIds = new Set(tasks.map(t=>t.id));
+    const existingLeadIds = new Set(leads.map(l=>l.id));
+    const idMap = new Map(); // oldCustId -> newCustId
+
+    let custAdded=0, taskAdded=0, leadAdded=0;
+
+    // Customers
+    for(const c0 of parsed.customers){
+      if(!c0 || typeof c0!=="object") continue;
+      const c = {...c0};
+      if(!c.id) c.id = uuid();
+      if(existingCustIds.has(c.id)){
+        const newId = uuid(); idMap.set(c.id, newId); c.id = newId;
+      }
+      existingCustIds.add(c.id);
+      if(!Array.isArray(c.numbers)) c.numbers = [];
+      c.createdAt = c.createdAt || nowISO();
+      c.updatedAt = c.updatedAt || nowISO();
+      customers.push(c); custAdded++;
+    }
+
+    function ensureCustomerForTask(t){
+      let cid = t.customerId;
+      if(idMap.has(cid)) return idMap.get(cid);
+      if(customers.find(c=>c.id===cid)) return cid;
+      // try by name / numbers
+      const byName = t.customerName && customers.find(c=> (c.name||"")===t.customerName);
+      if(byName) return byName.id;
+      if(t.numbers && t.numbers.length){
+        const flat = new Set(t.numbers.map(s=>s.replace(/[^\d]/g,"")));
+        const byNum = customers.find(c=> (c.numbers||[]).some(n=> flat.has((n||"").replace(/[^\d]/g,""))));
+        if(byNum) return byNum.id;
+      }
+      const placeholder = { id: uuid(), name: t.customerName || "(Imported)", numbers: (t.numbers||[]), createdAt: nowISO(), updatedAt: nowISO() };
+      customers.push(placeholder); return placeholder.id;
+    }
+
+    // Tasks
+    for(const t0 of parsed.tasks){
+      if(!t0 || typeof t0!=="object") continue;
+      const t = {...t0};
+      if(!STATUS.has(t.status||"")) t.status = "Pending";
+      if(!t.id) t.id = uuid();
+      if(existingTaskIds.has(t.id)) t.id = uuid();
+      existingTaskIds.add(t.id);
+      t.createdAt = t.createdAt || nowISO();
+      t.updatedAt = t.updatedAt || nowISO();
+      if(t.customerId){
+        if(idMap.has(t.customerId)) t.customerId = idMap.get(t.customerId);
+        else if(!customers.find(c=>c.id===t.customerId)) t.customerId = ensureCustomerForTask(t);
+      }else{
+        t.customerId = ensureCustomerForTask(t);
+      }
+      tasks.push(t); taskAdded++;
+    }
+
+    // Leads
+    for(const l0 of parsed.leads){
+      if(!l0 || typeof l0!=="object") continue;
+      const l = {...l0};
+      if(!LEAD_STATUS.has(l.status||"")) l.status = "Talked";
+      if(!l.id) l.id = uuid();
+      if(existingLeadIds.has(l.id)) l.id = uuid();
+      existingLeadIds.add(l.id);
+      if(!Array.isArray(l.numbers)) l.numbers = [];
+      l.createdAt = l.createdAt || nowISO();
+      l.updatedAt = l.updatedAt || nowISO();
+      leads.push(l); leadAdded++;
+    }
+
+    saveJSON(LS_CUSTOMERS, customers);
+    saveJSON(LS_TASKS, tasks);
+    saveJSON(LS_LEADS, leads);
+
+    q("#summary").innerHTML = `
+      ✅ Committed to storage. Added:
+      <strong class="success">${custAdded}</strong> customers,
+      <strong class="success">${taskAdded}</strong> tasks,
+      <strong class="success">${leadAdded}</strong> leads.
+    `;
+  }
+
+  /* ===== UI Hooks ===== */
+  q("#btnCommit").addEventListener("click", ()=>{
+    if(!parsed.customers.length && !parsed.tasks.length && !parsed.leads.length){
+      q("#summary").innerHTML = '<span class="error">Nothing to commit. Parse a file or text first.</span>';
+      return;
+    }
+    commitParsed();
+  });
+
+  q("#btnParseFile").addEventListener("click", async ()=>{
+    resetPreview();
+    const f = q("#fileInput").files && q("#fileInput").files[0];
+    if(!f){ q("#summary").textContent = "Choose a file first."; return; }
+    const text = await f.text();
+    try{
+      if((f.type||"").includes("json") || f.name.toLowerCase().endsWith(".json")){
+        parseJSON(text);
+      }else{
+        parseCSVByType(text);
+      }
+      showSummary();
+      renderTable("Tasks", parsed.tasks, ["id","customerId","customerName","numbers","description","dueDate","status","createdAt","updatedAt"]);
+      renderTable("Customers", parsed.customers, ["id","name","numbers","createdAt","updatedAt"]);
+      renderTable("Leads", parsed.leads, ["id","name","numbers","product","status","createdAt","updatedAt"]);
+    }catch(e){
+      q("#summary").innerHTML = `<span class="error">Parse error: ${e.message}</span>`;
+    }
+  });
+
+  q("#btnParsePaste").addEventListener("click", ()=>{
+    resetPreview();
+    const text = q("#pasteInput").value.trim();
+    if(!text){ q("#summary").textContent = "Paste JSON or CSV first."; return; }
+    try{
+      if(text.startsWith("{") || text.startsWith("[")){
+        parseJSON(text);
+      }else{
+        parseCSVByType(text);
+      }
+      showSummary();
+      renderTable("Tasks", parsed.tasks, ["id","customerId","customerName","numbers","description","dueDate","status","createdAt","updatedAt"]);
+      renderTable("Customers", parsed.customers, ["id","name","numbers","createdAt","updatedAt"]);
+      renderTable("Leads", parsed.leads, ["id","name","numbers","product","status","createdAt","updatedAt"]);
+    }catch(e){
+      q("#summary").innerHTML = `<span class="error">Parse error: ${e.message}</span>`;
+    }
+  });
+
+  /* ===== Template Downloads ===== */
+  function download(name, mime, text){
+    const blob = new Blob([text], {type: mime});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  }
+
+  q("#tplTasks").addEventListener("click", ()=>{
+    const rows = [
+      ["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"],
+      ["","","Anita","+91 98765 43210","KYC update","2025-09-25","Pending","",""],
+      ["","","Rahul","9876543211,9123456780","Open savings account","2025-10-01","In Progress","",""]
+    ];
+    download("Tasks_Template.csv","text/csv;charset=utf-8", csvEncode(rows));
+  });
+  q("#tplCustomers").addEventListener("click", ()=>{
+    const rows = [
+      ["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"],
+      ["","Anita","+91 98765 43210","",""],
+      ["","Rahul","9876543211,9123456780","",""]
+    ];
+    download("Customers_Template.csv","text/csv;charset=utf-8", csvEncode(rows));
+  });
+  q("#tplLeads").addEventListener("click", ()=>{
+    const rows = [
+      ["LeadID","Customer Name","Mobile Numbers","Product","Status","Created At","Updated At"],
+      ["","Ravi","9876543211","Savings","Talked","",""],
+      ["","Meera","9123456780","FD","Interested","",""]
+    ];
+    download("Leads_Template.csv","text/csv;charset=utf-8", csvEncode(rows));
+  });
+  q("#tplJSON").addEventListener("click", ()=>{
+    const empty = { version:1, exportedAt:"", customers:[], tasks:[], leads:[] };
+    download("Upload_Template.json","application/json;charset=utf-8", JSON.stringify(empty, null, 2));
+  });
+
+  // Friendly note if storage is empty
+  const curC = loadJSON(LS_CUSTOMERS, []).length;
+  const curT = loadJSON(LS_TASKS, []).length;
+  const curL = loadJSON(LS_LEADS, []).length;
+  if(curC+curT+curL === 0){
+    warnings.push("Your storage looks empty. Committing will create initial records.");
+    showSummary();
+  }
+
+})();
+</script>
+</body>
+</html>
