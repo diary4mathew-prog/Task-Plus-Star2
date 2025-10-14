@@ -27,7 +27,6 @@
     .btn.ok{background:linear-gradient(180deg, var(--accent2) 0%, #3fbf74 100%)}
     .btn.warn{background:linear-gradient(180deg, var(--warn) 0%, #f5b24e 100%); color:#2a1b05}
     .btn.danger{background:linear-gradient(180deg, var(--danger) 0%, #ff5252 100%)}
-    .btn.ghost{background:transparent; border:1px dashed var(--border); color:#cfe1ff}
     .btn.sm{padding:6px 10px; font-size:12px}
     .tabs{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
     .tab{padding:8px 12px; border-radius:10px; background:#121a35; border:1px solid var(--border); color:#cdd7ff; cursor:pointer; font-weight:700}
@@ -62,7 +61,6 @@
     .right{margin-left:auto}
     .small{font-size:12px}
     mark{background:var(--mark); color:#000; padding:0 2px; border-radius:4px}
-
     /* WhatsApp number chips */
     .nums{display:inline-flex; gap:10px; flex-wrap:wrap; align-items:center}
     .num{display:inline-flex; gap:6px; align-items:center}
@@ -70,13 +68,11 @@
     .wa:hover{background:#12204b}
     .wa svg{width:14px; height:14px}
     .wa.disabled{opacity:.4; pointer-events:none}
-
     /* Modals */
     .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:50}
     .modal{width:min(980px,96vw); background:#0e1430; border:1px solid var(--border); border-radius:14px; padding:16px; max-height:92vh; overflow:auto}
     .modal h3{margin:0 0 10px 0}
     .sticky-footer{position:sticky; bottom:0; background:linear-gradient(180deg,#0f1738 0%, #0e1430 100%); border-top:1px solid var(--border); padding-top:10px; margin-top:10px}
-
     /* Toasts */
     #toaster{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:9999}
     .toast{min-width:260px; max-width:420px; padding:10px 12px; border-radius:10px; color:#fff; font-weight:600; box-shadow:0 10px 20px rgba(0,0,0,.25)}
@@ -84,12 +80,10 @@
     .toast.success{background:#2a7a47}
     .toast.error{background:#a33a3a}
     .toast button{background:transparent; border:none; color:#fff; margin-left:8px; cursor:pointer; font-weight:800}
-
     /* Flash */
     @keyframes flash { 0%{box-shadow:0 0 0 0 rgba(91,140,255,.9)} 100%{box-shadow:0 0 0 12px rgba(91,140,255,0)} }
     .flash { position:relative; animation:flash 1s ease-out 0s 1; border-color:#5b8cff !important; background:linear-gradient(180deg,#13204a 0%, #0f1738 100%); }
-
-    /* Tables */
+    /* Delete Center tables */
     .table{border:1px solid var(--border); border-radius:12px; overflow:auto}
     .table table{width:100%; border-collapse:collapse; background:#0b1433}
     .table th,.table td{border-bottom:1px solid var(--border); padding:10px; font-size:12px; text-align:left; vertical-align:top}
@@ -215,7 +209,6 @@
         </div>
       </div>
 
-      <!-- Search results -->
       <div id="taskSearchResults" class="list" style="margin-top:10px; max-height:36vh; overflow:auto; display:none"></div>
 
       <div class="sticky-footer inline wrap">
@@ -232,6 +225,7 @@
   <div id="leadModal" class="modal-backdrop">
     <div class="modal">
       <h3 id="leadModalTitle">Add Lead</h3>
+
       <div class="inline wrap" style="gap:16px">
         <div class="grow">
           <label>Customer Name</label>
@@ -242,6 +236,7 @@
           <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
         </div>
       </div>
+
       <div class="inline wrap" style="gap:16px; margin-top:10px">
         <div class="grow">
           <label>Product</label>
@@ -257,6 +252,15 @@
           </select>
         </div>
       </div>
+
+      <!-- NEW: Lead Description -->
+      <div class="inline wrap" style="gap:16px; margin-top:10px">
+        <div class="grow">
+          <label>Lead Description</label>
+          <textarea id="leadDesc" placeholder="Notes about this lead (context, requirements, follow-ups, etc.)"></textarea>
+        </div>
+      </div>
+
       <div class="sticky-footer inline wrap">
         <div class="inline" style="gap:8px">
           <button id="saveLeadBtn" class="btn ok">Save</button>
@@ -376,47 +380,6 @@
     </div>
   </div>
 
-  <!-- COMPLETION + EMAIL MODAL -->
-  <div id="completeModal" class="modal-backdrop">
-    <div class="modal">
-      <div class="inline wrap">
-        <h3 class="grow">Completion Details & Email</h3>
-        <button id="closeCompleteModal" class="btn secondary sm">Close</button>
-      </div>
-
-      <div class="card" style="margin-top:8px">
-        <div class="inline wrap" style="gap:16px">
-          <div class="grow">
-            <label>How was the task completed?</label>
-            <textarea id="completeNote" placeholder="Add a short note (e.g., documents collected, account opened, confirmation received)…"></textarea>
-          </div>
-          <div style="min-width:280px; flex:1">
-            <label>Recipient Email(s)</label>
-            <input id="completeRecipients" type="text" placeholder="Comma-separated (e.g., name@example.com, other@bank.com)" />
-            <div class="hr"></div>
-            <label>Email Subject</label>
-            <input id="completeSubject" type="text" />
-          </div>
-        </div>
-        <div class="hr"></div>
-        <label>Email Body (preview)</label>
-        <textarea id="completeBody" style="min-height:160px"></textarea>
-        <div class="small muted" style="margin-top:6px">
-          Tip: “Send Email” opens your default email app with this content. You can also “Save Note Only”.
-        </div>
-      </div>
-
-      <div class="sticky-footer inline wrap">
-        <div class="inline" style="gap:8px">
-          <button id="btnSendEmail" class="btn ok">Send Email</button>
-          <button id="btnCopyBody" class="btn secondary">Copy Body</button>
-          <button id="btnSaveOnly" class="btn ghost">Save Note Only</button>
-        </div>
-        <div class="right small muted" id="completeMeta"></div>
-      </div>
-    </div>
-  </div>
-
   <div id="toaster"></div>
 
   <script>
@@ -433,12 +396,6 @@
     const fmtDate = d => d ? new Date(d).toLocaleString() : "";
     const normalizeDigits = s => (s||"").replace(/[^\d]/g,"");
     const escapeHtml = s => String(s??"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] || c));
-    const highlightTerm = (text, term)=>{
-      if(!term) return escapeHtml(text||"");
-      const safe = escapeHtml(text||"");
-      const t = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      return safe.replace(new RegExp(t,"ig"), m=>`<mark>${m}</mark>`);
-    };
     const uuid = ()=> ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16));
 
     const isAndroidWebView = (() => {
@@ -449,7 +406,7 @@
     /* ===== WhatsApp helpers ===== */
     function waDigitsFromRaw(raw){
       let d = normalizeDigits(raw);
-      d = d.replace(/^00+/, '');
+      d = d.replace(/^00+/, ''); // allow 00 international prefix
       return d;
     }
     function waIconSVG(){
@@ -471,34 +428,6 @@
                (link ? `<a class="wa" href="${link}" target="_blank" rel="noopener" title="Chat on WhatsApp" aria-label="WhatsApp">${waIconSVG()}</a>` : icon) +
                `</span>`;
       }).join("") + `</span>`;
-    }
-
-    /* ===== Email helpers ===== */
-    function buildMailto(toArr, subject, body){
-      const to = (toArr||[]).map(s=>s.trim()).filter(Boolean).join(',');
-      const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject||'')}&body=${encodeURIComponent(body||'')}`;
-      return url;
-    }
-    function formatCompletionEmail({custName, numbers, desc, due, note, createdAt, completedAt, taskId}){
-      return [
-        `Dear Sir/Madam,`,
-        ``,
-        `Task Completed: ${desc || '(no description)'}`,
-        ``,
-        `Customer : ${custName || '(unknown)'}`,
-        numbers && numbers.length ? `Mobile(s): ${numbers.join(', ')}` : null,
-        due ? `Due Date : ${due}` : null,
-        ``,
-        `How completed:`,
-        note ? note : '(not provided)',
-        ``,
-        `Created  : ${fmtDate(createdAt)}`,
-        `Completed: ${fmtDate(completedAt)}`,
-        `Task ID  : ${taskId}`,
-        ``,
-        `Regards,`,
-        `— Generated from Customer Tasks & Leads`
-      ].filter(Boolean).join('\n');
     }
 
     /* ===== Toasts ===== */
@@ -623,7 +552,7 @@
     function renderCompleted(){
       elCompletedList.innerHTML = "";
       let pool = tasks.filter(t => t.status === STATUS.COMPLETED);
-      pool.sort((a,b)=> new Date(b.completedAt||b.updatedAt||b.createdAt) - new Date(a.completedAt||a.updatedAt||a.createdAt));
+      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
       if(pool.length===0){
         elCompletedList.innerHTML = `<div class="row"><div class="meta">No completed tasks.</div></div>`;
         return;
@@ -635,7 +564,6 @@
         row.className = "row";
         row.dataset.taskId = t.id;
         row.tabIndex = 0;
-        const noteSeg = t.completionNote ? ` • <em>How:</em> ${escapeHtml(t.completionNote)}` : "";
         row.innerHTML = `
           <div class="meta">
             <div class="inline wrap">
@@ -644,20 +572,11 @@
               <span class="pill p-complete" title="Completed">Completed</span>
               ${t.dueDate ? `<span class="pill p-due" style="margin-left:8px">Was Due: ${t.dueDate}</span>` : ""}
             </div>
-            <div class="muted small" style="margin-top:4px">
-              ${escapeHtml(t.description||"(no description)")} • Created: ${fmtDate(t.createdAt)} • Completed: ${fmtDate(t.completedAt||t.updatedAt)}${noteSeg}
-            </div>
-          </div>
-          <div class="inline">
-            <button class="btn secondary sm" data-email="${t.id}">Email / Save</button>
+            <div class="muted small" style="margin-top:4px">${escapeHtml(t.description||"(no description)")} • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}</div>
           </div>
         `;
         elCompletedList.appendChild(row);
       }
-      // attach email buttons
-      elCompletedList.querySelectorAll('button[data-email]').forEach(b=>{
-        b.addEventListener('click', (e)=>{ e.stopPropagation(); openCompleteModal(b.getAttribute('data-email'), {openForCompleted:true}); });
-      });
     }
 
     /* ===== Leads rendering ===== */
@@ -684,6 +603,7 @@
               ${l.product ? `<span class="pill p-due" style="margin-left:8px">Product: ${escapeHtml(l.product)}</span>` : ""}
             </div>
             <div class="muted small" style="margin-top:4px">Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}</div>
+            ${l.description ? `<div class="muted small" style="margin-top:4px">${escapeHtml(l.description)}</div>` : ""}
           </div>
         `;
         elLeadsList.appendChild(row);
@@ -715,7 +635,6 @@
         render();
       });
     });
-    // More dropdown
     const elMoreBtn = q("#moreBtn");
     const elMoreMenu = q("#moreMenu");
     if (elMoreBtn && elMoreMenu){
@@ -725,7 +644,6 @@
         b.addEventListener("click", ()=>{ activeFilter = b.getAttribute("data-filter"); qAll('.filters .chip[data-filter]').forEach(x=>x.classList.remove("active")); elMoreMenu.style.display = "none"; render(); });
       });
     }
-    // Lead filters
     qAll('.lead-filter').forEach(ch=>{
       ch.addEventListener("click", ()=>{
         qAll('.lead-filter').forEach(x=>x.classList.remove('active'));
@@ -888,48 +806,28 @@
         let newId = editingTaskId;
         if(editingTaskId){
           const t = tasks.find(x=>x.id===editingTaskId);
-          const wasCompleted = t.status === STATUS.COMPLETED;
           t.customerId = customer.id;
           t.description = desc;
           t.dueDate = due;
           t.status = st;
           t.updatedAt = nowISO();
-          saveAll();
-          closeTaskModal();
-          showToast('success','Task saved');
-          // If newly marked completed, open completion flow
-          if (st === STATUS.COMPLETED && !wasCompleted){
-            openCompleteModal(t.id, {openForCompleted:false});
-          } else {
-            if (newId) jumpToTaskInMain(newId);
-          }
         }else{
           newId = uuid();
-          const nt = { id: newId, customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() };
-          tasks.push(nt);
-          saveAll();
-          closeTaskModal();
-          showToast('success','Task saved');
-          if (st === STATUS.COMPLETED){
-            openCompleteModal(newId, {openForCompleted:false});
-          } else {
-            if (newId) jumpToTaskInMain(newId);
-          }
+          tasks.push({ id: newId, customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
         }
+        saveAll();
+        closeTaskModal();
+        showToast('success','Task saved');
+        if (newId) jumpToTaskInMain(newId);
       }catch(e){ console.error('save task', e); showToast('error','Could not save task'); }
     });
     elCancelTaskBtn.addEventListener("click", closeTaskModal);
 
     CT.openAdd = ()=> openTaskModal(null, null);
     CT.editTask = (id)=>{ const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
-
-    // Allow programmatic status change to Completed → open completion flow
     CT.markStatus = (id, st)=>{
       const t = tasks.find(x=>x.id===id); if(!t) return;
-      if (st === STATUS.COMPLETED){
-        openCompleteModal(id, {openForCompleted:false});
-        return;
-      }
+      if (st === STATUS.COMPLETED && !confirm('Mark this task as Completed?')) return;
       t.status=st; t.updatedAt=nowISO(); saveAll();
       showToast('success', st==='Completed'?'Task completed':'Task status changed');
     };
@@ -941,6 +839,7 @@
     const elLeadNumbers = q("#leadNumbers");
     const elLeadProduct = q("#leadProduct");
     const elLeadStatus = q("#leadStatus");
+    const elLeadDesc = q("#leadDesc"); // NEW: description field
     const elSaveLeadBtn = q("#saveLeadBtn");
     const elCancelLeadBtn = q("#cancelLeadBtn");
     const elDeleteLeadBtn = q("#deleteLeadBtn");
@@ -956,6 +855,7 @@
         elLeadNumbers.value = (l?.numbers||[]).join(", ");
         elLeadProduct.value = l?.product || "";
         elLeadStatus.value = l?.status || "Talked";
+        elLeadDesc.value = l?.description || ""; // NEW
         elLeadTimestamps.textContent = `Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}`;
         elDeleteLeadBtn.classList.remove('hidden');
       }else{
@@ -964,6 +864,7 @@
         elLeadNumbers.value = "";
         elLeadProduct.value = "";
         elLeadStatus.value = "Talked";
+        elLeadDesc.value = ""; // NEW
         elLeadTimestamps.textContent = "";
         elDeleteLeadBtn.classList.add('hidden');
       }
@@ -977,13 +878,15 @@
       const numbers = (elLeadNumbers.value||"").split(",").map(s=>s.trim()).filter(Boolean);
       const product = (elLeadProduct.value||"").trim();
       const status = elLeadStatus.value;
+      const description = (elLeadDesc.value||"").trim(); // NEW
       if (!name && numbers.length===0){ showToast('error','Enter name or at least one number'); return; }
       if (editingLeadId){
         const l = leads.find(x=>x.id===editingLeadId);
         if (!l) return;
-        l.name = name; l.numbers = numbers; l.product = product; l.status = status; l.updatedAt = nowISO();
+        l.name = name; l.numbers = numbers; l.product = product; l.status = status; l.description = description; // NEW
+        l.updatedAt = nowISO();
       }else{
-        leads.push({ id: uuid(), name, numbers, product, status, createdAt: nowISO(), updatedAt: nowISO() });
+        leads.push({ id: uuid(), name, numbers, product, status, description, createdAt: nowISO(), updatedAt: nowISO() }); // NEW
       }
       saveAll();
       closeLeadModal();
@@ -1082,8 +985,8 @@
         out = out.filter(t=>{
           if(!t.dueDate) return false;
           const d = new Date(t.dueDate);
-          if(from && d < from) return false;
-          if(to && d > to) return false;
+          if (from && d < from) return false;
+          if (to && d > to) return false;
           return true;
         });
       }
@@ -1155,14 +1058,19 @@
         row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'), 800);
       }
     }
+    function openSearchCenter(){ elSearchCenter.style.display = "flex"; setMode("name"); elSearchInput.value=""; elSearchScope.value="all"; elStatusChips.forEach(c=>c.classList.remove('active')); elDueFrom.value=""; elDueTo.value=""; setTimeout(()=>elSearchInput.focus(),0); }
+    function closeSearchCenter(){ elSearchCenter.style.display = "none"; }
+    const highlightTerm = (text, term)=>{
+      if(!term) return escapeHtml(text||"");
+      const safe = escapeHtml(text||"");
+      const t = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return safe.replace(new RegExp(t,"ig"), m=>`<mark>${m}</mark>`);
+    };
     elPrevMatch.addEventListener("click", ()=>{ if (currentIdx>0){ currentIdx--; updateMatchPointer(); }});
     elNextMatch.addEventListener("click", ()=>{ if (currentIdx<matches.length-1){ currentIdx++; updateMatchPointer(); }});
     elRunSearch.addEventListener("click", performSearch);
     elSearchScope.addEventListener("change", performSearch);
     elSearchCenter.addEventListener("keydown", (e)=>{ if(e.key==="Enter") elRunSearch.click(); if(e.key==="Escape") closeSearchCenter(); if(e.key==="ArrowDown") elNextMatch.click(); if(e.key==="ArrowUp") elPrevMatch.click(); });
-    function openSearchCenter(){ elSearchCenter.style.display = "flex"; setMode("name"); elSearchInput.value=""; elSearchScope.value="all"; elStatusChips.forEach(c=>c.classList.remove('active')); elDueFrom.value=""; elDueTo.value=""; setTimeout(()=>elSearchInput.focus(),0); }
-    function closeSearchCenter(){ elSearchCenter.style.display = "none"; }
-    CT.openSearchCenter = openSearchCenter;
 
     /* ===== Export / Backup / Import ===== */
     function csvFromRows(rows){
@@ -1171,9 +1079,11 @@
         return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
       }).join(",")).join("\n");
     }
+
     async function downloadCSV(filename, rows){
       const csv = csvFromRows(rows);
       const blob = new Blob(["\uFEFF", csv], {type:"text/csv;charset=utf-8"});
+
       try{
         const file = new File([blob], filename, { type: blob.type });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1181,6 +1091,7 @@
           return;
         }
       }catch(e){}
+
       try{
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -1192,11 +1103,13 @@
         setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
         return;
       }catch(e){}
+
       try{
         const hinted = 'data:text/csv;charset=utf-8;name=' + encodeURIComponent(filename) + ',' + encodeURIComponent(csv);
         window.location.href = hinted;
         return;
       }catch(e){}
+
       const html = `
         <!doctype html><meta charset="utf-8">
         <title>${filename}</title>
@@ -1212,27 +1125,30 @@
       window.open(urlViewer, "_blank");
       setTimeout(()=>URL.revokeObjectURL(urlViewer), 20000);
     }
+
     function exportCSV(){
       try{
+        // Customers
         const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
         for(const c of customers){ custRows.push([c.id, c.name||"", (c.numbers||[]).join(", "), c.createdAt||"", c.updatedAt||""]); }
-        const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At","Completed At","Completion Note","Completion Recipients"]];
+
+        // Tasks
+        const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"]];
         for(const t of tasks){
           const c = customers.find(x=>x.id===t.customerId);
-          taskRows.push([
-            t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"",
-            t.description||"", t.dueDate||"", t.status||"",
-            t.createdAt||"", t.updatedAt||"", t.completedAt||"",
-            t.completionNote||"", (t.completionRecipients||[]).join(", ")
-          ]);
+          taskRows.push([ t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"", t.description||"", t.dueDate||"", t.status||"", t.createdAt||"", t.updatedAt||"" ]);
         }
-        const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Created At","Updated At"]];
+
+        // Leads — include Description (NEW)
+        const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Description","Created At","Updated At"]];
         for(const l of leads){
-          leadRows.push([ l.id, l.name||"", (l.numbers||[]).join(", "), l.product||"", l.status||"", l.createdAt||"", l.updatedAt||"" ]);
+          leadRows.push([ l.id, l.name||"", (l.numbers||[]).join(", "), l.product||"", l.status||"", l.description||"", l.createdAt||"", l.updatedAt||"" ]);
         }
+
         downloadCSV("Customers.csv", custRows);
         setTimeout(()=>downloadCSV("Tasks.csv", taskRows), 400);
         setTimeout(()=>downloadCSV("Leads.csv", leadRows), 800);
+
         if (isAndroidWebView){
           showToast('info','If files don’t appear, enable downloads in your wrapper or use Share.', 4500);
         }else{
@@ -1240,6 +1156,7 @@
         }
       }catch(e){ console.error('export', e); showToast('error','Export failed'); }
     }
+
     function backupJSON(){
       const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
       const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
@@ -1278,7 +1195,7 @@
       const existingCustIds = new Set(customers.map(c=>c.id));
       const existingTaskIds = new Set(tasks.map(t=>t.id));
       const existingLeadIds = new Set(leads.map(l=>l.id));
-      const idMap = new Map(); // oldCustId -> newCustId
+      const idMap = new Map(); // oldCustId -> newCustId (if remapped)
 
       // Customers
       let custAdded = 0;
@@ -1331,7 +1248,6 @@
         }else{
           newT.customerId = ensureCustomerForTask(newT);
         }
-        if (!Array.isArray(newT.completionRecipients)) newT.completionRecipients = [];
         tasks.push(newT);
         taskAdded++;
       }
@@ -1348,6 +1264,7 @@
         nl.updatedAt = nl.updatedAt || nowISO();
         if (!Array.isArray(nl.numbers)) nl.numbers = [];
         nl.status = LEAD_STATUS.includes(nl.status) ? nl.status : "Talked";
+        nl.description = typeof nl.description === "string" ? nl.description : ""; // NEW ensure field
         leads.push(nl);
         leadAdded++;
       }
@@ -1525,7 +1442,7 @@
     }
     CT.jumpToTaskInMain = jumpToTaskInMain;
 
-    // Tasks: clicking status pill cycles; clicking WA icons should not open the row.
+    // Tasks click handlers
     elActiveList.addEventListener('click', (e)=>{
       const pill = e.target.closest('.status-pill');
       if (pill){ e.preventDefault(); e.stopPropagation(); cycleStatus(pill.getAttribute('data-id')); return; }
@@ -1538,103 +1455,50 @@
       const row = e.target.closest('.row[data-task-id]');
       if (row){ CT.editTask(row.dataset.taskId); }
     });
+
+    // Leads interactions
+    function cycleLeadStatus(id){
+      const l = leads.find(x=>x.id===id); if(!l) return;
+      const idx = LEAD_STATUS.indexOf(l.status);
+      l.status = LEAD_STATUS[(idx+1) % LEAD_STATUS.length];
+      l.updatedAt = nowISO();
+      saveAll();
+      showToast('success','Lead status: ' + l.status);
+    }
     elLeadsList.addEventListener('click', (e)=>{
       const pill = e.target.closest('.lead-status');
-      if (pill){ e.preventDefault(); e.stopPropagation(); const id=pill.getAttribute('data-id'); const l=leads.find(x=>x.id===id); const idx=LEAD_STATUS.indexOf(l.status); l.status=LEAD_STATUS[(idx+1)%LEAD_STATUS.length]; l.updatedAt=nowISO(); saveAll(); showToast('success','Lead status: '+l.status); return; }
+      if (pill){ e.preventDefault(); e.stopPropagation(); cycleLeadStatus(pill.getAttribute('data-id')); return; }
       if (e.target.closest('a.wa') || e.target.closest('.wa')) return;
       const row = e.target.closest('.row[data-lead-id]');
       if (row){ openLeadModal(row.dataset.leadId); }
     });
-    elActiveList.addEventListener('dblclick', (e)=>{ const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId); });
-    elCompletedList.addEventListener('dblclick', (e)=>{ const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId); });
-    elLeadsList.addEventListener('dblclick', (e)=>{ const row = e.target.closest('.row[data-lead-id]'); if (row) openLeadModal(row.dataset.leadId); });
 
-    /* ===== Completion & Email Modal ===== */
-    const elCompleteModal = q("#completeModal");
-    const elCloseCompleteModal = q("#closeCompleteModal");
-    const elCompleteNote = q("#completeNote");
-    const elCompleteRecipients = q("#completeRecipients");
-    const elCompleteSubject = q("#completeSubject");
-    const elCompleteBody = q("#completeBody");
-    const elCompleteMeta = q("#completeMeta");
-    const elBtnSendEmail = q("#btnSendEmail");
-    const elBtnCopyBody = q("#btnCopyBody");
-    const elBtnSaveOnly = q("#btnSaveOnly");
+    // Double-click to open (desktop)
+    elActiveList.addEventListener('dblclick', (e)=>{
+      const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId);
+    });
+    elCompletedList.addEventListener('dblclick', (e)=>{
+      const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId);
+    });
+    elLeadsList.addEventListener('dblclick', (e)=>{
+      const row = e.target.closest('.row[data-lead-id]'); if (row) openLeadModal(row.dataset.leadId);
+    });
 
-    let completeTaskId = null;
-
-    function openCompleteModal(taskId, {openForCompleted}){
-      completeTaskId = taskId;
-      const t = tasks.find(x=>x.id===taskId);
-      if (!t) return;
-      // Ensure status is Completed when we open from save flow
-      if (!openForCompleted){
-        t.status = STATUS.COMPLETED;
-        t.completedAt = t.completedAt || nowISO();
-        t.updatedAt = nowISO();
-        saveAll();
-      } else {
-        // If already completed earlier, keep timestamps but allow edits
-        if (!t.completedAt) t.completedAt = t.updatedAt || nowISO();
-      }
-      const c = customers.find(x=>x.id===t.customerId);
-      const custName = c?.name || "(unknown)";
-      const nums = c?.numbers || [];
-      elCompleteNote.value = t.completionNote || "";
-      elCompleteRecipients.value = (t.completionRecipients||[]).join(", ");
-      elCompleteSubject.value = t.completionSubject || `Task Completed: ${custName} — ${t.description||''}`.trim();
-      elCompleteBody.value = t.completionBody || formatCompletionEmail({
-        custName, numbers: nums, desc: t.description, due: t.dueDate, note: elCompleteNote.value,
-        createdAt: t.createdAt, completedAt: t.completedAt, taskId: t.id
+    // Keyboard: Enter opens
+    ['#activeList', '#completedList', '#leadsList'].forEach(sel=>{
+      const root = document.querySelector(sel);
+      root.addEventListener('keydown', (e)=>{
+        if (e.key !== 'Enter') return;
+        const trow = e.target.closest('.row[data-task-id]');
+        const lrow = e.target.closest('.row[data-lead-id]');
+        if (trow) CT.editTask(trow.dataset.taskId);
+        if (lrow) openLeadModal(lrow.dataset.leadId);
       });
-      elCompleteMeta.textContent = `Task ID: ${t.id} • Created: ${fmtDate(t.createdAt)} • Completed: ${fmtDate(t.completedAt)}`;
-      elCompleteModal.style.display = "flex";
-      setTimeout(()=>elCompleteNote.focus(),0);
-    }
-    function closeCompleteModal(){ elCompleteModal.style.display = "none"; }
-
-    function persistCompletionFields(){
-      const t = tasks.find(x=>x.id===completeTaskId);
-      if (!t) return;
-      t.completionNote = elCompleteNote.value.trim();
-      t.completionRecipients = elCompleteRecipients.value.split(",").map(s=>s.trim()).filter(Boolean);
-      t.completionSubject = elCompleteSubject.value.trim();
-      t.completionBody = elCompleteBody.value;
-      t.status = STATUS.COMPLETED;
-      t.completedAt = t.completedAt || nowISO();
-      t.updatedAt = nowISO();
-      saveAll();
-    }
-
-    elCloseCompleteModal.addEventListener("click", closeCompleteModal);
-    elBtnSaveOnly.addEventListener("click", ()=>{
-      persistCompletionFields();
-      closeCompleteModal();
-      showToast('success','Completion note saved');
-      CT.switchTab('Completed');
-    });
-    elBtnCopyBody.addEventListener("click", async ()=>{
-      try{
-        await navigator.clipboard.writeText(elCompleteBody.value);
-        showToast('success','Email body copied');
-      }catch(e){ showToast('error','Copy failed'); }
-    });
-    elBtnSendEmail.addEventListener("click", ()=>{
-      persistCompletionFields();
-      const t = tasks.find(x=>x.id===completeTaskId);
-      if (!t) return;
-      const url = buildMailto(t.completionRecipients, t.completionSubject, t.completionBody);
-      // try opening mailto
-      window.location.href = url;
-      showToast('success','Opening email app…');
-      closeCompleteModal();
-      CT.switchTab('Completed');
     });
 
-    // Expose for completed list button
-    CT.openEmailCompose = (taskId)=> openCompleteModal(taskId, {openForCompleted:true});
-
-    /* Public shortcuts already defined above */
+    /* Public shortcuts */
+    CT.openAdd = ()=> openTaskModal(null, null);
+    CT.editTask = id => { const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
     q("#addLeadBtn")?.addEventListener("click", ()=> openLeadModal(null));
 
     /* Initial render */
