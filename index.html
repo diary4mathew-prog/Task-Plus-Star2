@@ -27,6 +27,7 @@
     .btn.ok{background:linear-gradient(180deg, var(--accent2) 0%, #3fbf74 100%)}
     .btn.warn{background:linear-gradient(180deg, var(--warn) 0%, #f5b24e 100%); color:#2a1b05}
     .btn.danger{background:linear-gradient(180deg, var(--danger) 0%, #ff5252 100%)}
+    .btn.ghost{background:transparent; border:1px dashed var(--border); color:#cfe1ff}
     .btn.sm{padding:6px 10px; font-size:12px}
     .tabs{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
     .tab{padding:8px 12px; border-radius:10px; background:#121a35; border:1px solid var(--border); color:#cdd7ff; cursor:pointer; font-weight:700}
@@ -88,7 +89,7 @@
     @keyframes flash { 0%{box-shadow:0 0 0 0 rgba(91,140,255,.9)} 100%{box-shadow:0 0 0 12px rgba(91,140,255,0)} }
     .flash { position:relative; animation:flash 1s ease-out 0s 1; border-color:#5b8cff !important; background:linear-gradient(180deg,#13204a 0%, #0f1738 100%); }
 
-    /* Delete Center tables */
+    /* Tables */
     .table{border:1px solid var(--border); border-radius:12px; overflow:auto}
     .table table{width:100%; border-collapse:collapse; background:#0b1433}
     .table th,.table td{border-bottom:1px solid var(--border); padding:10px; font-size:12px; text-align:left; vertical-align:top}
@@ -214,7 +215,7 @@
         </div>
       </div>
 
-      <!-- Search results are hidden until user types or clicks Search -->
+      <!-- Search results -->
       <div id="taskSearchResults" class="list" style="margin-top:10px; max-height:36vh; overflow:auto; display:none"></div>
 
       <div class="sticky-footer inline wrap">
@@ -231,7 +232,6 @@
   <div id="leadModal" class="modal-backdrop">
     <div class="modal">
       <h3 id="leadModalTitle">Add Lead</h3>
-
       <div class="inline wrap" style="gap:16px">
         <div class="grow">
           <label>Customer Name</label>
@@ -242,7 +242,6 @@
           <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
         </div>
       </div>
-
       <div class="inline wrap" style="gap:16px; margin-top:10px">
         <div class="grow">
           <label>Product</label>
@@ -258,7 +257,6 @@
           </select>
         </div>
       </div>
-
       <div class="sticky-footer inline wrap">
         <div class="inline" style="gap:8px">
           <button id="saveLeadBtn" class="btn ok">Save</button>
@@ -378,6 +376,47 @@
     </div>
   </div>
 
+  <!-- COMPLETION + EMAIL MODAL -->
+  <div id="completeModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="inline wrap">
+        <h3 class="grow">Completion Details & Email</h3>
+        <button id="closeCompleteModal" class="btn secondary sm">Close</button>
+      </div>
+
+      <div class="card" style="margin-top:8px">
+        <div class="inline wrap" style="gap:16px">
+          <div class="grow">
+            <label>How was the task completed?</label>
+            <textarea id="completeNote" placeholder="Add a short note (e.g., documents collected, account opened, confirmation received)…"></textarea>
+          </div>
+          <div style="min-width:280px; flex:1">
+            <label>Recipient Email(s)</label>
+            <input id="completeRecipients" type="text" placeholder="Comma-separated (e.g., name@example.com, other@bank.com)" />
+            <div class="hr"></div>
+            <label>Email Subject</label>
+            <input id="completeSubject" type="text" />
+          </div>
+        </div>
+        <div class="hr"></div>
+        <label>Email Body (preview)</label>
+        <textarea id="completeBody" style="min-height:160px"></textarea>
+        <div class="small muted" style="margin-top:6px">
+          Tip: “Send Email” opens your default email app with this content. You can also “Save Note Only”.
+        </div>
+      </div>
+
+      <div class="sticky-footer inline wrap">
+        <div class="inline" style="gap:8px">
+          <button id="btnSendEmail" class="btn ok">Send Email</button>
+          <button id="btnCopyBody" class="btn secondary">Copy Body</button>
+          <button id="btnSaveOnly" class="btn ghost">Save Note Only</button>
+        </div>
+        <div class="right small muted" id="completeMeta"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="toaster"></div>
 
   <script>
@@ -404,14 +443,13 @@
 
     const isAndroidWebView = (() => {
       const ua = navigator.userAgent || "";
-      // Heuristic: Android WebView includes "; wv" and often lacks "Chrome/" version parity
       return /Android/i.test(ua) && /; wv\)/i.test(ua);
     })();
 
     /* ===== WhatsApp helpers ===== */
     function waDigitsFromRaw(raw){
       let d = normalizeDigits(raw);
-      d = d.replace(/^00+/, ''); // allow 00 international prefix
+      d = d.replace(/^00+/, '');
       return d;
     }
     function waIconSVG(){
@@ -433,6 +471,34 @@
                (link ? `<a class="wa" href="${link}" target="_blank" rel="noopener" title="Chat on WhatsApp" aria-label="WhatsApp">${waIconSVG()}</a>` : icon) +
                `</span>`;
       }).join("") + `</span>`;
+    }
+
+    /* ===== Email helpers ===== */
+    function buildMailto(toArr, subject, body){
+      const to = (toArr||[]).map(s=>s.trim()).filter(Boolean).join(',');
+      const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject||'')}&body=${encodeURIComponent(body||'')}`;
+      return url;
+    }
+    function formatCompletionEmail({custName, numbers, desc, due, note, createdAt, completedAt, taskId}){
+      return [
+        `Dear Sir/Madam,`,
+        ``,
+        `Task Completed: ${desc || '(no description)'}`,
+        ``,
+        `Customer : ${custName || '(unknown)'}`,
+        numbers && numbers.length ? `Mobile(s): ${numbers.join(', ')}` : null,
+        due ? `Due Date : ${due}` : null,
+        ``,
+        `How completed:`,
+        note ? note : '(not provided)',
+        ``,
+        `Created  : ${fmtDate(createdAt)}`,
+        `Completed: ${fmtDate(completedAt)}`,
+        `Task ID  : ${taskId}`,
+        ``,
+        `Regards,`,
+        `— Generated from Customer Tasks & Leads`
+      ].filter(Boolean).join('\n');
     }
 
     /* ===== Toasts ===== */
@@ -557,7 +623,7 @@
     function renderCompleted(){
       elCompletedList.innerHTML = "";
       let pool = tasks.filter(t => t.status === STATUS.COMPLETED);
-      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
+      pool.sort((a,b)=> new Date(b.completedAt||b.updatedAt||b.createdAt) - new Date(a.completedAt||a.updatedAt||a.createdAt));
       if(pool.length===0){
         elCompletedList.innerHTML = `<div class="row"><div class="meta">No completed tasks.</div></div>`;
         return;
@@ -569,6 +635,7 @@
         row.className = "row";
         row.dataset.taskId = t.id;
         row.tabIndex = 0;
+        const noteSeg = t.completionNote ? ` • <em>How:</em> ${escapeHtml(t.completionNote)}` : "";
         row.innerHTML = `
           <div class="meta">
             <div class="inline wrap">
@@ -577,11 +644,20 @@
               <span class="pill p-complete" title="Completed">Completed</span>
               ${t.dueDate ? `<span class="pill p-due" style="margin-left:8px">Was Due: ${t.dueDate}</span>` : ""}
             </div>
-            <div class="muted small" style="margin-top:4px">${escapeHtml(t.description||"(no description)")} • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}</div>
+            <div class="muted small" style="margin-top:4px">
+              ${escapeHtml(t.description||"(no description)")} • Created: ${fmtDate(t.createdAt)} • Completed: ${fmtDate(t.completedAt||t.updatedAt)}${noteSeg}
+            </div>
+          </div>
+          <div class="inline">
+            <button class="btn secondary sm" data-email="${t.id}">Email / Save</button>
           </div>
         `;
         elCompletedList.appendChild(row);
       }
+      // attach email buttons
+      elCompletedList.querySelectorAll('button[data-email]').forEach(b=>{
+        b.addEventListener('click', (e)=>{ e.stopPropagation(); openCompleteModal(b.getAttribute('data-email'), {openForCompleted:true}); });
+      });
     }
 
     /* ===== Leads rendering ===== */
@@ -639,7 +715,7 @@
         render();
       });
     });
-    // More dropdown in Active tab
+    // More dropdown
     const elMoreBtn = q("#moreBtn");
     const elMoreMenu = q("#moreMenu");
     if (elMoreBtn && elMoreMenu){
@@ -812,28 +888,48 @@
         let newId = editingTaskId;
         if(editingTaskId){
           const t = tasks.find(x=>x.id===editingTaskId);
+          const wasCompleted = t.status === STATUS.COMPLETED;
           t.customerId = customer.id;
           t.description = desc;
           t.dueDate = due;
           t.status = st;
           t.updatedAt = nowISO();
+          saveAll();
+          closeTaskModal();
+          showToast('success','Task saved');
+          // If newly marked completed, open completion flow
+          if (st === STATUS.COMPLETED && !wasCompleted){
+            openCompleteModal(t.id, {openForCompleted:false});
+          } else {
+            if (newId) jumpToTaskInMain(newId);
+          }
         }else{
           newId = uuid();
-          tasks.push({ id: newId, customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
+          const nt = { id: newId, customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() };
+          tasks.push(nt);
+          saveAll();
+          closeTaskModal();
+          showToast('success','Task saved');
+          if (st === STATUS.COMPLETED){
+            openCompleteModal(newId, {openForCompleted:false});
+          } else {
+            if (newId) jumpToTaskInMain(newId);
+          }
         }
-        saveAll();
-        closeTaskModal();
-        showToast('success','Task saved');
-        if (newId) jumpToTaskInMain(newId);
       }catch(e){ console.error('save task', e); showToast('error','Could not save task'); }
     });
     elCancelTaskBtn.addEventListener("click", closeTaskModal);
 
     CT.openAdd = ()=> openTaskModal(null, null);
     CT.editTask = (id)=>{ const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
+
+    // Allow programmatic status change to Completed → open completion flow
     CT.markStatus = (id, st)=>{
       const t = tasks.find(x=>x.id===id); if(!t) return;
-      if (st === STATUS.COMPLETED && !confirm('Mark this task as Completed?')) return;
+      if (st === STATUS.COMPLETED){
+        openCompleteModal(id, {openForCompleted:false});
+        return;
+      }
       t.status=st; t.updatedAt=nowISO(); saveAll();
       showToast('success', st==='Completed'?'Task completed':'Task status changed');
     };
@@ -1064,7 +1160,6 @@
     elRunSearch.addEventListener("click", performSearch);
     elSearchScope.addEventListener("change", performSearch);
     elSearchCenter.addEventListener("keydown", (e)=>{ if(e.key==="Enter") elRunSearch.click(); if(e.key==="Escape") closeSearchCenter(); if(e.key==="ArrowDown") elNextMatch.click(); if(e.key==="ArrowUp") elPrevMatch.click(); });
-
     function openSearchCenter(){ elSearchCenter.style.display = "flex"; setMode("name"); elSearchInput.value=""; elSearchScope.value="all"; elStatusChips.forEach(c=>c.classList.remove('active')); elDueFrom.value=""; elDueTo.value=""; setTimeout(()=>elSearchInput.focus(),0); }
     function closeSearchCenter(){ elSearchCenter.style.display = "none"; }
     CT.openSearchCenter = openSearchCenter;
@@ -1076,42 +1171,32 @@
         return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
       }).join(",")).join("\n");
     }
-
-    // WebView-tough save: Share (files) → download link → data URL with filename hint → viewer page
     async function downloadCSV(filename, rows){
       const csv = csvFromRows(rows);
       const blob = new Blob(["\uFEFF", csv], {type:"text/csv;charset=utf-8"});
-
-      // 1) Web Share API with files (best UX on Android; requires HTTPS or localhost)
       try{
         const file = new File([blob], filename, { type: blob.type });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title: filename, text: "CSV export" });
           return;
         }
-      }catch(e){ /* user cancelled or unsupported; continue */ }
-
-      // 2) Standard download (works in desktop/mobile browsers, some WebViews if DownloadListener enabled)
+      }catch(e){}
       try{
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = filename;        // may be ignored by some WebViews
+        a.download = filename;
         a.target = "_blank";
         document.body.appendChild(a);
         a.click();
         setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
         return;
-      }catch(e){ /* continue */ }
-
-      // 3) Data URL with filename hint (some Android variants honor ;name=filename.csv)
+      }catch(e){}
       try{
         const hinted = 'data:text/csv;charset=utf-8;name=' + encodeURIComponent(filename) + ',' + encodeURIComponent(csv);
         window.location.href = hinted;
         return;
-      }catch(e){ /* continue */ }
-
-      // 4) Viewer page fallback: lets user long-press/Share → Save with proper name visible
+      }catch(e){}
       const html = `
         <!doctype html><meta charset="utf-8">
         <title>${filename}</title>
@@ -1127,32 +1212,27 @@
       window.open(urlViewer, "_blank");
       setTimeout(()=>URL.revokeObjectURL(urlViewer), 20000);
     }
-
     function exportCSV(){
       try{
-        // Customers
         const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
         for(const c of customers){ custRows.push([c.id, c.name||"", (c.numbers||[]).join(", "), c.createdAt||"", c.updatedAt||""]); }
-
-        // Tasks
-        const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"]];
+        const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At","Completed At","Completion Note","Completion Recipients"]];
         for(const t of tasks){
           const c = customers.find(x=>x.id===t.customerId);
-          taskRows.push([ t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"", t.description||"", t.dueDate||"", t.status||"", t.createdAt||"", t.updatedAt||"" ]);
+          taskRows.push([
+            t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"",
+            t.description||"", t.dueDate||"", t.status||"",
+            t.createdAt||"", t.updatedAt||"", t.completedAt||"",
+            t.completionNote||"", (t.completionRecipients||[]).join(", ")
+          ]);
         }
-
-        // Leads (added)
         const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Created At","Updated At"]];
         for(const l of leads){
           leadRows.push([ l.id, l.name||"", (l.numbers||[]).join(", "), l.product||"", l.status||"", l.createdAt||"", l.updatedAt||"" ]);
         }
-
-        // Try each file one by one (WebViews may only allow one save per gesture)
         downloadCSV("Customers.csv", custRows);
         setTimeout(()=>downloadCSV("Tasks.csv", taskRows), 400);
         setTimeout(()=>downloadCSV("Leads.csv", leadRows), 800);
-
-        // Heads up if we detect WebView
         if (isAndroidWebView){
           showToast('info','If files don’t appear, enable downloads in your wrapper or use Share.', 4500);
         }else{
@@ -1160,7 +1240,6 @@
         }
       }catch(e){ console.error('export', e); showToast('error','Export failed'); }
     }
-
     function backupJSON(){
       const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
       const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
@@ -1199,7 +1278,7 @@
       const existingCustIds = new Set(customers.map(c=>c.id));
       const existingTaskIds = new Set(tasks.map(t=>t.id));
       const existingLeadIds = new Set(leads.map(l=>l.id));
-      const idMap = new Map(); // oldCustId -> newCustId (if remapped)
+      const idMap = new Map(); // oldCustId -> newCustId
 
       // Customers
       let custAdded = 0;
@@ -1220,7 +1299,6 @@
         custAdded++;
       }
 
-      // Helper to ensure customer for a task
       function ensureCustomerForTask(t){
         let cid = t.customerId;
         if (idMap.has(cid)) return idMap.get(cid);
@@ -1253,6 +1331,7 @@
         }else{
           newT.customerId = ensureCustomerForTask(newT);
         }
+        if (!Array.isArray(newT.completionRecipients)) newT.completionRecipients = [];
         tasks.push(newT);
         taskAdded++;
       }
@@ -1421,7 +1500,6 @@
     }
     CT.cycleStatus = cycleStatus;
 
-    // Jump to a task and highlight
     function jumpToTaskInMain(taskId){
       const t = tasks.find(x=>x.id===taskId);
       if (!t) return;
@@ -1460,50 +1538,103 @@
       const row = e.target.closest('.row[data-task-id]');
       if (row){ CT.editTask(row.dataset.taskId); }
     });
-
-    // Leads: click status pill to cycle, click row to edit, WA icon opens chat
-    function cycleLeadStatus(id){
-      const l = leads.find(x=>x.id===id); if(!l) return;
-      const idx = LEAD_STATUS.indexOf(l.status);
-      l.status = LEAD_STATUS[(idx+1) % LEAD_STATUS.length];
-      l.updatedAt = nowISO();
-      saveAll();
-      showToast('success','Lead status: ' + l.status);
-    }
     elLeadsList.addEventListener('click', (e)=>{
       const pill = e.target.closest('.lead-status');
-      if (pill){ e.preventDefault(); e.stopPropagation(); cycleLeadStatus(pill.getAttribute('data-id')); return; }
+      if (pill){ e.preventDefault(); e.stopPropagation(); const id=pill.getAttribute('data-id'); const l=leads.find(x=>x.id===id); const idx=LEAD_STATUS.indexOf(l.status); l.status=LEAD_STATUS[(idx+1)%LEAD_STATUS.length]; l.updatedAt=nowISO(); saveAll(); showToast('success','Lead status: '+l.status); return; }
       if (e.target.closest('a.wa') || e.target.closest('.wa')) return;
       const row = e.target.closest('.row[data-lead-id]');
       if (row){ openLeadModal(row.dataset.leadId); }
     });
+    elActiveList.addEventListener('dblclick', (e)=>{ const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId); });
+    elCompletedList.addEventListener('dblclick', (e)=>{ const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId); });
+    elLeadsList.addEventListener('dblclick', (e)=>{ const row = e.target.closest('.row[data-lead-id]'); if (row) openLeadModal(row.dataset.leadId); });
 
-    // Double-click opens (desktop)
-    elActiveList.addEventListener('dblclick', (e)=>{
-      const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId);
-    });
-    elCompletedList.addEventListener('dblclick', (e)=>{
-      const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId);
-    });
-    elLeadsList.addEventListener('dblclick', (e)=>{
-      const row = e.target.closest('.row[data-lead-id]'); if (row) openLeadModal(row.dataset.leadId);
-    });
+    /* ===== Completion & Email Modal ===== */
+    const elCompleteModal = q("#completeModal");
+    const elCloseCompleteModal = q("#closeCompleteModal");
+    const elCompleteNote = q("#completeNote");
+    const elCompleteRecipients = q("#completeRecipients");
+    const elCompleteSubject = q("#completeSubject");
+    const elCompleteBody = q("#completeBody");
+    const elCompleteMeta = q("#completeMeta");
+    const elBtnSendEmail = q("#btnSendEmail");
+    const elBtnCopyBody = q("#btnCopyBody");
+    const elBtnSaveOnly = q("#btnSaveOnly");
 
-    // Keyboard: Enter opens
-    ['#activeList', '#completedList', '#leadsList'].forEach(sel=>{
-      const root = document.querySelector(sel);
-      root.addEventListener('keydown', (e)=>{
-        if (e.key !== 'Enter') return;
-        const trow = e.target.closest('.row[data-task-id]');
-        const lrow = e.target.closest('.row[data-lead-id]');
-        if (trow) CT.editTask(trow.dataset.taskId);
-        if (lrow) openLeadModal(lrow.dataset.leadId);
+    let completeTaskId = null;
+
+    function openCompleteModal(taskId, {openForCompleted}){
+      completeTaskId = taskId;
+      const t = tasks.find(x=>x.id===taskId);
+      if (!t) return;
+      // Ensure status is Completed when we open from save flow
+      if (!openForCompleted){
+        t.status = STATUS.COMPLETED;
+        t.completedAt = t.completedAt || nowISO();
+        t.updatedAt = nowISO();
+        saveAll();
+      } else {
+        // If already completed earlier, keep timestamps but allow edits
+        if (!t.completedAt) t.completedAt = t.updatedAt || nowISO();
+      }
+      const c = customers.find(x=>x.id===t.customerId);
+      const custName = c?.name || "(unknown)";
+      const nums = c?.numbers || [];
+      elCompleteNote.value = t.completionNote || "";
+      elCompleteRecipients.value = (t.completionRecipients||[]).join(", ");
+      elCompleteSubject.value = t.completionSubject || `Task Completed: ${custName} — ${t.description||''}`.trim();
+      elCompleteBody.value = t.completionBody || formatCompletionEmail({
+        custName, numbers: nums, desc: t.description, due: t.dueDate, note: elCompleteNote.value,
+        createdAt: t.createdAt, completedAt: t.completedAt, taskId: t.id
       });
+      elCompleteMeta.textContent = `Task ID: ${t.id} • Created: ${fmtDate(t.createdAt)} • Completed: ${fmtDate(t.completedAt)}`;
+      elCompleteModal.style.display = "flex";
+      setTimeout(()=>elCompleteNote.focus(),0);
+    }
+    function closeCompleteModal(){ elCompleteModal.style.display = "none"; }
+
+    function persistCompletionFields(){
+      const t = tasks.find(x=>x.id===completeTaskId);
+      if (!t) return;
+      t.completionNote = elCompleteNote.value.trim();
+      t.completionRecipients = elCompleteRecipients.value.split(",").map(s=>s.trim()).filter(Boolean);
+      t.completionSubject = elCompleteSubject.value.trim();
+      t.completionBody = elCompleteBody.value;
+      t.status = STATUS.COMPLETED;
+      t.completedAt = t.completedAt || nowISO();
+      t.updatedAt = nowISO();
+      saveAll();
+    }
+
+    elCloseCompleteModal.addEventListener("click", closeCompleteModal);
+    elBtnSaveOnly.addEventListener("click", ()=>{
+      persistCompletionFields();
+      closeCompleteModal();
+      showToast('success','Completion note saved');
+      CT.switchTab('Completed');
+    });
+    elBtnCopyBody.addEventListener("click", async ()=>{
+      try{
+        await navigator.clipboard.writeText(elCompleteBody.value);
+        showToast('success','Email body copied');
+      }catch(e){ showToast('error','Copy failed'); }
+    });
+    elBtnSendEmail.addEventListener("click", ()=>{
+      persistCompletionFields();
+      const t = tasks.find(x=>x.id===completeTaskId);
+      if (!t) return;
+      const url = buildMailto(t.completionRecipients, t.completionSubject, t.completionBody);
+      // try opening mailto
+      window.location.href = url;
+      showToast('success','Opening email app…');
+      closeCompleteModal();
+      CT.switchTab('Completed');
     });
 
-    /* Public shortcuts */
-    CT.openAdd = ()=> openTaskModal(null, null);
-    CT.editTask = id => { const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
+    // Expose for completed list button
+    CT.openEmailCompose = (taskId)=> openCompleteModal(taskId, {openForCompleted:true});
+
+    /* Public shortcuts already defined above */
     q("#addLeadBtn")?.addEventListener("click", ()=> openLeadModal(null));
 
     /* Initial render */
