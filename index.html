@@ -1,1509 +1,278 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Customer Tasks & Leads</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    :root{
-      --bg:#0b1020; --panel:#121a35; --panel2:#0f1530; --text:#eaf0ff; --muted:#aab4d6;
-      --border:#1f2a4f; --accent:#5b8cff; --accent2:#74d680; --warn:#ffcc66; --danger:#ff6b6b; --mark:#fff2a8;
-    }
-    *{box-sizing:border-box}
-    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,#0a0f1f 0%, #0e1430 100%); color:var(--text)}
-    header{position:sticky; top:0; z-index:10; padding:16px; border-bottom:1px solid var(--border); background:rgba(13,18,40,.7); backdrop-filter:blur(6px) saturate(140%)}
-    .container{max-width:1100px; margin:18px auto; padding:0 14px}
-    h1{margin:0; font-size:20px}
-    .sub{margin-top:4px; color:var(--muted); font-size:13px}
-    .toolbar{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-    input[type="text"], input[type="date"], textarea, select{
-      width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0b1433; color:#eaf0ff; outline:none;
-    }
-    textarea{min-height:90px}
-    .btn{appearance:none; border:none; border-radius:10px; padding:9px 13px; color:#fff; font-weight:600; cursor:pointer; transition:.15s transform ease, .2s background ease}
-    .btn:hover{transform:translateY(-1px)}
-    .btn.primary{background:linear-gradient(180deg, var(--accent) 0%, #3f69ff 100%)}
-    .btn.secondary{background:#1a2446; border:1px solid var(--border); color:#dfe7ff}
-    .btn.ok{background:linear-gradient(180deg, var(--accent2) 0%, #3fbf74 100%)}
-    .btn.warn{background:linear-gradient(180deg, var(--warn) 0%, #f5b24e 100%); color:#2a1b05}
-    .btn.danger{background:linear-gradient(180deg, var(--danger) 0%, #ff5252 100%)}
-    .btn.sm{padding:6px 10px; font-size:12px}
-    .tabs{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
-    .tab{padding:8px 12px; border-radius:10px; background:#121a35; border:1px solid var(--border); color:#cdd7ff; cursor:pointer; font-weight:700}
-    .tab.active{background:#1b2552}
-    .card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel2) 100%); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
-    .filters{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
-    .chip{padding:7px 12px; background:#121a35; border:1px solid var(--border); border-radius:999px; color:#cfe1ff; font-weight:700; cursor:pointer; font-size:12px; user-select:none}
-    .chip.active{background:#1b2552}
-    .more{position:relative}
-    .dropdown{position:absolute; top:36px; left:0; background:#0e1430; border:1px solid var(--border); border-radius:12px; display:none; min-width:220px; z-index:5}
-    .dropdown button{display:block; width:100%; text-align:left; padding:8px 12px; background:transparent; border:none; color:#dbe4ff; cursor:pointer}
-    .dropdown button:hover{background:#16204a}
-    .list{margin-top:10px; border:1px solid var(--border); border-radius:12px; overflow:hidden}
-    .row{display:flex; gap:12px; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer}
-    .row:last-child{border-bottom:none}
-    .row .meta{flex:1}
-    .muted{color:var(--muted); font-size:12px}
-    .pill{display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:800}
-    .p-pending{background:#20305f; color:#7fb1ff}
-    .p-inprog{background:#4a2b05; color:#ffb067}
-    .p-onhold{background:#2e1f44; color:#c79bff}
-    .p-cancel{background:#313842; color:#9bb0c4}
-    .p-due{background:#372a12; color:#ffd27e}
-    .p-overdue{background:#3a1212; color:#ff9a9a}
-    .p-complete{background:#173726; color:#87e2a5}
-    .status-pill{outline:0}
-    .hidden{display:none}
-    .hr{height:1px; background:var(--border); margin:12px 0}
-    .inline{display:flex; gap:8px; align-items:center}
-    .wrap{flex-wrap:wrap}
-    .grow{flex:1}
-    .right{margin-left:auto}
-    .small{font-size:12px}
-    mark{background:var(--mark); color:#000; padding:0 2px; border-radius:4px}
-    /* WhatsApp number chips */
-    .nums{display:inline-flex; gap:10px; flex-wrap:wrap; align-items:center}
-    .num{display:inline-flex; gap:6px; align-items:center}
-    .wa{display:inline-flex; width:22px; height:22px; border-radius:6px; align-items:center; justify-content:center; border:1px solid var(--border); background:#0b1433; text-decoration:none}
-    .wa:hover{background:#12204b}
-    .wa svg{width:14px; height:14px}
-    .wa.disabled{opacity:.4; pointer-events:none}
-    /* Modals */
-    .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:50}
-    .modal{width:min(980px,96vw); background:#0e1430; border:1px solid var(--border); border-radius:14px; padding:16px; max-height:92vh; overflow:auto}
-    .modal h3{margin:0 0 10px 0}
-    .sticky-footer{position:sticky; bottom:0; background:linear-gradient(180deg,#0f1738 0%, #0e1430 100%); border-top:1px solid var(--border); padding-top:10px; margin-top:10px}
-    /* Toasts */
-    #toaster{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:9999}
-    .toast{min-width:260px; max-width:420px; padding:10px 12px; border-radius:10px; color:#fff; font-weight:600; box-shadow:0 10px 20px rgba(0,0,0,.25)}
-    .toast.info{background:#2b4a9e}
-    .toast.success{background:#2a7a47}
-    .toast.error{background:#a33a3a}
-    .toast button{background:transparent; border:none; color:#fff; margin-left:8px; cursor:pointer; font-weight:800}
-    /* Flash */
-    @keyframes flash { 0%{box-shadow:0 0 0 0 rgba(91,140,255,.9)} 100%{box-shadow:0 0 0 12px rgba(91,140,255,0)} }
-    .flash { position:relative; animation:flash 1s ease-out 0s 1; border-color:#5b8cff !important; background:linear-gradient(180deg,#13204a 0%, #0f1738 100%); }
-    /* Delete Center tables */
-    .table{border:1px solid var(--border); border-radius:12px; overflow:auto}
-    .table table{width:100%; border-collapse:collapse; background:#0b1433}
-    .table th,.table td{border-bottom:1px solid var(--border); padding:10px; font-size:12px; text-align:left; vertical-align:top}
-    .table tr:last-child td{border-bottom:none}
-    .table .muted{font-size:11px}
-    .sticky-top{position:sticky; top:0; background:#0e1430; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:8px; z-index:2}
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Customer Tasks & Leads</h1>
-    <div class="sub">Tap a task row to open; tap its status pill to cycle. WhatsApp icon opens chat.</div>
-    <div class="toolbar">
-      <button class="btn secondary" onclick="window.CT && CT.openSearchCenter()">Search</button>
-      <button class="btn secondary" onclick="window.CT && CT.exportCSV()">Export CSV</button>
-      <button class="btn secondary" onclick="window.CT && CT.backupJSON()">Backup</button>
-      <button class="btn secondary" onclick="window.CT && CT.openImport()">Import JSON</button>
-      <button class="btn warn"      onclick="window.CT && CT.openDeleteCenter()">Delete Center</button>
-      <button class="btn primary"   onclick="window.CT && CT.openAdd()">Add Task</button>
-      <button class="btn secondary" onclick="location.href='uploader.html'">Upload (JSON/CSV)</button>
-      <input id="importFile" type="file" accept="application/json" hidden />
-    </div>
-    <div class="tabs">
-      <div id="tabActive"   class="tab active" onclick="window.CT && CT.switchTab('Active')">Active <span id="countActive" class="small"></span></div>
-      <div id="tabCompleted" class="tab"       onclick="window.CT && CT.switchTab('Completed')">Completed <span id="countCompleted" class="small"></span></div>
-      <div id="tabLeads"     class="tab"       onclick="window.CT && CT.switchTab('Leads')">Leads <span id="countLeads" class="small"></span></div>
-    </div>
-  </header>
+<script>
+/* ========= CSV Targeted Import: Customers / Tasks / Leads ========= */
+(function(){
+  'use strict';
+  // Ensure base app is loaded
+  if (!window.CT || !window.localStorage){
+    console.error('CSV module: CT not found. Include this after the main script.');
+    return;
+  }
 
-  <div class="container">
-    <!-- Tasks: Active -->
-    <div id="activeView">
-      <div class="card">
-        <div class="filters">
-          <button data-filter="Pending" class="chip active">Pending</button>
-          <button data-filter="In Progress" class="chip">In Progress</button>
-          <button data-filter="On Hold" class="chip">On Hold</button>
-          <div class="more">
-            <button id="moreBtn" class="chip">More ▾</button>
-            <div id="moreMenu" class="dropdown">
-              <button data-filter="CoreActive">All (P • IP • OH)</button>
-              <button data-filter="AllActive">All (Active incl. Cancelled)</button>
-              <button data-filter="Cancelled">Cancelled</button>
-            </div>
-          </div>
-          <div class="right muted">Overdue tasks show <span class="pill p-overdue">Overdue</span></div>
-        </div>
-        <div id="activeList" class="list"></div>
-      </div>
-    </div>
+  // Reuse from main app (fail-safe fallbacks)
+  const nowISO = window.nowISO || (()=>new Date().toISOString());
+  const uuid   = window.uuid   || (()=>crypto.randomUUID?.() || Math.random().toString(16).slice(2));
+  const showToast = window.showToast || ((type,msg)=>alert(msg));
+  const normalizeDigits = window.normalizeDigits || (s=>(s||'').replace(/[^\d]/g,''));
 
-    <!-- Tasks: Completed -->
-    <div id="completedView" class="hidden">
-      <div class="card">
-        <div class="filters">
-          <span class="muted">These tasks are archived. Open a row to change status if needed.</span>
-        </div>
-        <div id="completedList" class="list"></div>
-      </div>
-    </div>
-
-    <!-- Leads -->
-    <div id="leadsView" class="hidden">
-      <div class="card">
-        <div class="filters">
-          <button id="addLeadBtn" class="btn primary sm">Add Lead</button>
-          <span class="right"></span>
-          <span class="muted">Filter:</span>
-          <button class="chip lead-filter active" data-leadfilter="All">All</button>
-          <button class="chip lead-filter" data-leadfilter="Talked">Talked</button>
-          <button class="chip lead-filter" data-leadfilter="Interested">Interested</button>
-          <button class="chip lead-filter" data-leadfilter="Waiting Confirmation">Waiting</button>
-          <button class="chip lead-filter" data-leadfilter="Converted">Converted</button>
-        </div>
-        <div id="leadsList" class="list"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Task Modal -->
-  <div id="taskModal" class="modal-backdrop">
-    <div class="modal">
-      <h3 id="taskModalTitle">Add Task</h3>
-
-      <div class="inline wrap" style="gap:8px; margin-bottom:8px">
-        <input id="taskSearch" class="grow" type="text" placeholder="(Optional) Find existing customer by name or digits…"/>
-        <button id="taskSearchBtn" class="btn secondary sm" type="button">Search</button>
-      </div>
-
-      <div class="inline wrap" style="gap:16px">
-        <div class="grow">
-          <label>Customer Name</label>
-          <input id="taskCustomerName" type="text" placeholder="Type name (new or existing)" />
-        </div>
-        <div class="grow">
-          <label>Customer Mobile(s)</label>
-          <input id="taskCustomerMobile" type="text" placeholder="Any number(s), comma-separated for multiple" />
-        </div>
-      </div>
-      <div class="small muted" id="taskCustomerMeta" style="margin-top:6px">
-        Tip: You can skip search and just type a new name + any number(s).
-      </div>
-
-      <div class="hr"></div>
-      <div class="inline wrap" style="gap:16px; margin-top:10px">
-        <div class="grow">
-          <label>Task Description</label>
-          <textarea id="taskDesc" placeholder="What needs to be done?"></textarea>
-        </div>
-        <div style="min-width:240px; flex:1">
-          <label>Due Date</label>
-          <input id="taskDue" type="date" />
-          <div class="hr"></div>
-          <label>Status</label>
-          <select id="taskStatus">
-            <option>Pending</option>
-            <option>In Progress</option>
-            <option>On Hold</option>
-            <option>Cancelled</option>
-            <option>Completed</option>
-          </select>
-          <div class="small muted" style="margin-top:6px">Completed tasks move to the Completed tab.</div>
-        </div>
-      </div>
-
-      <div id="taskSearchResults" class="list" style="margin-top:10px; max-height:36vh; overflow:auto; display:none"></div>
-
-      <div class="sticky-footer inline wrap">
-        <div class="inline" style="gap:8px">
-          <button id="saveTaskBtn" class="btn ok">Save</button>
-          <button id="cancelTaskBtn" class="btn secondary">Cancel</button>
-        </div>
-        <div class="right small muted" id="taskTimestamps"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Lead Modal -->
-  <div id="leadModal" class="modal-backdrop">
-    <div class="modal">
-      <h3 id="leadModalTitle">Add Lead</h3>
-
-      <div class="inline wrap" style="gap:16px">
-        <div class="grow">
-          <label>Customer Name</label>
-          <input id="leadName" type="text" placeholder="Name" />
-        </div>
-        <div class="grow">
-          <label>Customer Mobile(s)</label>
-          <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
-        </div>
-      </div>
-
-      <div class="inline wrap" style="gap:16px; margin-top:10px">
-        <div class="grow">
-          <label>Product</label>
-          <input id="leadProduct" type="text" placeholder="Product name" />
-        </div>
-        <div style="min-width:240px; flex:1">
-          <label>Status</label>
-          <select id="leadStatus">
-            <option>Talked</option>
-            <option>Interested</option>
-            <option>Waiting Confirmation</option>
-            <option>Converted</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- NEW: Lead Description -->
-      <div class="inline wrap" style="gap:16px; margin-top:10px">
-        <div class="grow">
-          <label>Lead Description</label>
-          <textarea id="leadDesc" placeholder="Notes about this lead (context, requirements, follow-ups, etc.)"></textarea>
-        </div>
-      </div>
-
-      <div class="sticky-footer inline wrap">
-        <div class="inline" style="gap:8px">
-          <button id="saveLeadBtn" class="btn ok">Save</button>
-          <button id="cancelLeadBtn" class="btn secondary">Cancel</button>
-        </div>
-        <div class="right inline" style="gap:8px">
-          <button id="deleteLeadBtn" class="btn danger hidden">Delete</button>
-          <div class="small muted" id="leadTimestamps"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- SEARCH CENTER -->
-  <div id="searchCenter" class="modal-backdrop">
-    <div class="modal">
-      <div class="inline wrap">
-        <h3 class="grow">Search Center</h3>
-        <button id="closeSearchCenter" class="btn secondary sm">Close</button>
-      </div>
-      <div class="tabs" style="margin-top:10px">
-        <div id="tabName" class="tab active">Name</div>
-        <div id="tabMobile" class="tab">Mobile</div>
-        <div id="tabTask" class="tab">Task</div>
-      </div>
-      <div class="card" style="margin-top:10px">
-        <div class="inline wrap" style="gap:8px">
-          <div class="grow"><input id="searchInput" type="text" placeholder="Enter value to search…"/></div>
-          <select id="searchScope" class="btn secondary sm" style="padding:6px 10px">
-            <option value="all">Scope: All (Active + Completed)</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-          </select>
-          <button id="runSearch" class="btn secondary sm">Search</button>
-        </div>
-        <div id="taskFilters" class="inline wrap" style="gap:8px; margin-top:10px; display:none">
-          <div class="inline wrap" style="gap:6px">
-            <span class="small muted" style="margin-right:4px">Status:</span>
-            <span class="chip" data-status="Pending">Pending</span>
-            <span class="chip" data-status="In Progress">In Progress</span>
-            <span class="chip" data-status="On Hold">On Hold</span>
-            <span class="chip" data-status="Cancelled">Cancelled</span>
-            <span class="chip" data-status="Completed">Completed</span>
-          </div>
-          <div class="inline wrap" style="gap:6px">
-            <span class="small muted">Due between</span>
-            <input id="dueFrom" type="date" style="width:auto"/>
-            <span class="small muted">and</span>
-            <input id="dueTo" type="date" style="width:auto"/>
-          </div>
-        </div>
-      </div>
-      <div class="inline wrap" style="gap:8px; margin:10px 0 6px">
-        <button id="prevMatch" class="btn secondary sm">◀ Prev</button>
-        <button id="nextMatch" class="btn secondary sm">Next ▶</button>
-        <div class="small muted" id="matchIndex" style="margin-left:8px"></div>
-        <div class="right small muted" id="searchCount"></div>
-      </div>
-      <div id="searchResults" class="list" style="max-height:55vh; overflow:auto"></div>
-    </div>
-  </div>
-
-  <!-- DELETE CENTER -->
-  <div id="deleteCenter" class="modal-backdrop">
-    <div class="modal">
-      <div class="inline wrap">
-        <h3 class="grow">Delete Center</h3>
-        <button id="closeDeleteCenter" class="btn secondary sm">Close</button>
-      </div>
-      <div class="tabs" style="margin-top:10px">
-        <div id="tabDelTasks" class="tab active">Tasks</div>
-        <div id="tabDelCustomers" class="tab">Customers</div>
-      </div>
-
-      <div id="paneDelTasks" class="card" style="margin-top:10px">
-        <div class="sticky-top inline wrap" style="gap:8px">
-          <input id="delTaskQuery" class="grow" type="text" placeholder="Search by name, mobile digits, or task text…" />
-          <select id="delTaskStatus" class="btn secondary sm" style="padding:6px 10px">
-            <option value="">All Statuses</option>
-            <option>Pending</option>
-            <option>In Progress</option>
-            <option>On Hold</option>
-            <option>Cancelled</option>
-            <option>Completed</option>
-          </select>
-          <button id="btnDelTaskSelectAll" class="btn secondary sm">Select All</button>
-          <button id="btnDelTaskClear" class="btn secondary sm">Clear</button>
-          <button id="btnDelTaskDelete" class="btn danger sm">Delete Selected</button>
-        </div>
-        <div class="table" style="max-height:55vh; overflow:auto">
-          <table id="tblDelTasks">
-            <thead><tr>
-              <th></th><th>Customer</th><th>Numbers</th><th>Task</th><th>Status</th><th>Due</th>
-            </tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div id="paneDelCustomers" class="card hidden" style="margin-top:10px">
-        <div class="sticky-top inline wrap" style="gap:8px">
-          <input id="delCustQuery" class="grow" type="text" placeholder="Search customer name or digits…" />
-          <button id="btnDelCustSelectAll" class="btn secondary sm">Select All (eligible)</button>
-          <button id="btnDelCustClear" class="btn secondary sm">Clear</button>
-          <button id="btnDelCustDelete" class="btn danger sm">Delete Selected</button>
-        </div>
-        <div class="table" style="max-height:55vh; overflow:auto">
-          <table id="tblDelCustomers">
-            <thead><tr>
-              <th></th><th>Customer</th><th>Numbers</th><th class="small">Tasks linked</th>
-            </tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <div class="small muted" style="margin-top:6px">Only customers with <strong>0 tasks</strong> can be deleted. Delete/transfer their tasks first.</div>
-      </div>
-    </div>
-  </div>
-
-  <div id="toaster"></div>
-
-  <script>
-  (function(){
-    'use strict';
-    if (window.CT && window.CT.__loaded) { console.warn('CT already loaded; reinitializing safely'); }
-    const CT = window.CT = window.CT || {};
-    CT.__loaded = true;
-
-    /* ===== Utils ===== */
-    const q = sel => document.querySelector(sel);
-    const qAll = sel => Array.from(document.querySelectorAll(sel));
-    const nowISO = () => new Date().toISOString();
-    const fmtDate = d => d ? new Date(d).toLocaleString() : "";
-    const normalizeDigits = s => (s||"").replace(/[^\d]/g,"");
-    const escapeHtml = s => String(s??"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] || c));
-    const uuid = ()=> ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16));
-
-    const isAndroidWebView = (() => {
-      const ua = navigator.userAgent || "";
-      return /Android/i.test(ua) && /; wv\)/i.test(ua);
-    })();
-
-    /* ===== WhatsApp helpers ===== */
-    function waDigitsFromRaw(raw){
-      let d = normalizeDigits(raw);
-      d = d.replace(/^00+/, ''); // allow 00 international prefix
-      return d;
-    }
-    function waIconSVG(){
-      return `
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 2a9 9 0 0 0-7.64 13.64L3 22l6.6-1.36A9 9 0 1 0 12 2z" fill="#1fa855"/>
-          <path d="M10.8 7.5c-.2-.5-.4-.5-.7-.5h-.5c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4 0 1.4 1.1 2.7 1.2 2.9.2.3 2.2 3.4 5.3 4.6.7.3 1.3.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.8-.8 2-1.6.2-.8.2-1.5.1-1.6-.1-.1-.2-.2-.5-.3l-1.9-.9c-.2-.1-.4-.1-.6.1-.2.3-.8.9-.9 1-.2.1-.3.2-.6.1-.3-.1-1.3-.5-2.5-1.6a9.3 9.3 0 0 1-1.7-2.1c-.2-.3 0-.5.1-.6l.4-.4c.1-.1.2-.3.3-.5 0-.2 0-.4 0-.5l-.9-2z" fill="#fff"/>
-        </svg>
-      `.trim();
-    }
-    function renderNumsWithWA(arr){
-      const nums = (arr||[]).filter(Boolean);
-      if (!nums.length) return `<span class="muted">(no numbers)</span>`;
-      return `<span class="nums">` + nums.map(n=>{
-        const d = waDigitsFromRaw(n);
-        const link = d ? `https://wa.me/${d}` : null;
-        const icon = `<span class="wa ${link?'':'disabled'}" title="${link?'Chat on WhatsApp':'No digits'}" aria-label="WhatsApp">${waIconSVG()}</span>`;
-        return `<span class="num"><span class="num-text">${escapeHtml(n)}</span>` +
-               (link ? `<a class="wa" href="${link}" target="_blank" rel="noopener" title="Chat on WhatsApp" aria-label="WhatsApp">${waIconSVG()}</a>` : icon) +
-               `</span>`;
-      }).join("") + `</span>`;
-    }
-
-    /* ===== Toasts ===== */
-    const elToaster = q('#toaster');
-    function showToast(type, msg, ms=3000){
-      try{
-        if(!elToaster){ alert(msg); return; }
-        const el = document.createElement('div');
-        el.className = `toast ${type}`;
-        el.innerHTML = `<span>${escapeHtml(msg)}</span><button onclick="this.parentElement.remove()">✕</button>`;
-        elToaster.appendChild(el);
-        setTimeout(()=>{ el.remove(); }, ms);
-      }catch(e){ console.error('Toast error', e); }
-    }
-
-    /* ===== Persistence ===== */
-    const LS_CUSTOMERS = "ct_customers_v1";
-    const LS_TASKS = "ct_tasks_v1";
-    const LS_LEADS = "ct_leads_v1";
-    let customers = loadJSON(LS_CUSTOMERS, []);
-    let tasks = loadJSON(LS_TASKS, []);
-    let leads = loadJSON(LS_LEADS, []);
-    function loadJSON(key, fallback){
-      try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }
-      catch(e){ console.warn('loadJSON', e); return fallback; }
-    }
-    function saveAll(){
-      try{
-        localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
-        localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
-        localStorage.setItem(LS_LEADS, JSON.stringify(leads));
-        render();
-      }catch(e){ console.error('saveAll', e); }
-    }
-
-    /* ===== Constants & State ===== */
-    const STATUS = {
-      PENDING: "Pending",
-      INPROG: "In Progress",
-      ONHOLD: "On Hold",
-      CANCELLED: "Cancelled",
-      COMPLETED: "Completed",
-    };
-    const LEAD_STATUS = ["Talked","Interested","Waiting Confirmation","Converted"];
-    let activeTab = "Active";
-    let activeFilter = STATUS.PENDING;
-    let leadFilter = "All";
-
-    /* ===== DOM Refs ===== */
-    const elActiveView = q("#activeView");
-    const elCompletedView = q("#completedView");
-    const elLeadsView = q("#leadsView");
-    const elActiveList = q("#activeList");
-    const elCompletedList = q("#completedList");
-    const elLeadsList = q("#leadsList");
-
-    /* ===== Rendering ===== */
-    function isOverdue(t){
-      if(!t.dueDate || t.status===STATUS.COMPLETED) return false;
-      const today = new Date(); today.setHours(0,0,0,0);
-      const due = new Date(t.dueDate); due.setHours(0,0,0,0);
-      return due < today;
-    }
-    function pillClass(status){
-      switch(status){
-        case STATUS.PENDING: return "p-pending";
-        case STATUS.INPROG: return "p-inprog";
-        case STATUS.ONHOLD: return "p-onhold";
-        case STATUS.CANCELLED: return "p-cancel";
-        case STATUS.COMPLETED: return "p-complete";
-        default: return "p-pending";
-      }
-    }
-    function render(){
-      try{
-        q("#countActive").textContent = `(${tasks.filter(t=>t.status!==STATUS.COMPLETED).length})`;
-        q("#countCompleted").textContent = `(${tasks.filter(t=>t.status===STATUS.COMPLETED).length})`;
-        q("#countLeads").textContent = `(${leads.length})`;
-        elActiveView.classList.toggle("hidden", activeTab!=="Active");
-        elCompletedView.classList.toggle("hidden", activeTab!=="Completed");
-        elLeadsView.classList.toggle("hidden", activeTab!=="Leads");
-        if(activeTab==="Active") renderActive();
-        else if(activeTab==="Completed") renderCompleted();
-        else renderLeads();
-      }catch(e){ console.error('render', e); }
-    }
-    function renderActive(){
-      elActiveList.innerHTML = "";
-      let pool = tasks.filter(t => t.status !== STATUS.COMPLETED);
-      if([STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD, STATUS.CANCELLED].includes(activeFilter)){
-        pool = pool.filter(t => t.status === activeFilter);
-      } else if (activeFilter === "CoreActive") {
-        pool = pool.filter(t => [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD].includes(t.status));
-      }
-      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      if(pool.length===0){
-        elActiveList.innerHTML = `<div class="row"><div class="meta">No active tasks.</div><button class="btn primary sm" onclick="CT.openAdd()">Add Task</button></div>`;
-        return;
-      }
-      for(const t of pool){
-        const c = customers.find(c=>c.id===t.customerId);
-        const name = c ? (c.name||"Unknown") : "(missing)";
-        const overdue = isOverdue(t);
-        const row = document.createElement("div");
-        row.className = "row";
-        row.dataset.taskId = t.id;
-        row.tabIndex = 0;
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap">
-              <strong>${escapeHtml(name)}</strong>
-              <span class="muted">— ${renderNumsWithWA(c ? c.numbers : [])}</span>
-              <span class="pill ${pillClass(t.status)} status-pill" data-id="${t.id}" title="Tap to cycle status">${t.status}</span>
-              ${t.dueDate ? `<span class="pill ${overdue? 'p-overdue':'p-due'}" style="margin-left:8px">${overdue? 'Overdue:':'Due:'} ${t.dueDate}</span>` : ""}
-            </div>
-            <div class="muted small" style="margin-top:4px">${escapeHtml(t.description||"(no description)")} • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}</div>
-          </div>
-        `;
-        elActiveList.appendChild(row);
-      }
-    }
-    function renderCompleted(){
-      elCompletedList.innerHTML = "";
-      let pool = tasks.filter(t => t.status === STATUS.COMPLETED);
-      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      if(pool.length===0){
-        elCompletedList.innerHTML = `<div class="row"><div class="meta">No completed tasks.</div></div>`;
-        return;
-      }
-      for(const t of pool){
-        const c = customers.find(c=>c.id===t.customerId);
-        const name = c ? (c.name||"Unknown") : "(missing)";
-        const row = document.createElement("div");
-        row.className = "row";
-        row.dataset.taskId = t.id;
-        row.tabIndex = 0;
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap">
-              <strong>${escapeHtml(name)}</strong>
-              <span class="muted">— ${renderNumsWithWA(c ? c.numbers : [])}</span>
-              <span class="pill p-complete" title="Completed">Completed</span>
-              ${t.dueDate ? `<span class="pill p-due" style="margin-left:8px">Was Due: ${t.dueDate}</span>` : ""}
-            </div>
-            <div class="muted small" style="margin-top:4px">${escapeHtml(t.description||"(no description)")} • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}</div>
-          </div>
-        `;
-        elCompletedList.appendChild(row);
-      }
-    }
-
-    /* ===== Leads rendering ===== */
-    function renderLeads(){
-      elLeadsList.innerHTML = "";
-      let pool = leads.slice();
-      if (leadFilter!=="All") pool = pool.filter(l=>l.status===leadFilter);
-      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      if (pool.length===0){
-        elLeadsList.innerHTML = `<div class="row"><div class="meta">No leads${leadFilter!=="All"?" in "+leadFilter:""}.</div><button class="btn primary sm" onclick="CT.openLeadAdd()">Add Lead</button></div>`;
-        return;
-      }
-      for(const l of pool){
-        const row = document.createElement("div");
-        row.className = "row";
-        row.dataset.leadId = l.id;
-        row.tabIndex = 0;
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap">
-              <strong>${escapeHtml(l.name||"(unnamed)")}</strong>
-              <span class="muted">— ${renderNumsWithWA(l.numbers||[])}</span>
-              <span class="pill ${leadPillClass(l.status)} lead-status" data-id="${l.id}" title="Tap to cycle status">${l.status}</span>
-              ${l.product ? `<span class="pill p-due" style="margin-left:8px">Product: ${escapeHtml(l.product)}</span>` : ""}
-            </div>
-            <div class="muted small" style="margin-top:4px">Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}</div>
-            ${l.description ? `<div class="muted small" style="margin-top:4px">${escapeHtml(l.description)}</div>` : ""}
-          </div>
-        `;
-        elLeadsList.appendChild(row);
-      }
-    }
-    function leadPillClass(s){
-      switch(s){
-        case "Talked": return "p-pending";
-        case "Interested": return "p-inprog";
-        case "Waiting Confirmation": return "p-onhold";
-        case "Converted": return "p-complete";
-        default: return "p-pending";
-      }
-    }
-
-    /* ===== Tabs & Filters ===== */
-    CT.switchTab = function(which){
-      activeTab = which;
-      q("#tabActive").classList.toggle("active", which==="Active");
-      q("#tabCompleted").classList.toggle("active", which==="Completed");
-      q("#tabLeads").classList.toggle("active", which==="Leads");
-      render();
-    };
-    qAll('.filters .chip[data-filter]').forEach(ch=>{
-      ch.addEventListener("click", ()=>{
-        qAll('.filters .chip[data-filter]').forEach(x=>x.classList.remove("active"));
-        ch.classList.add("active");
-        activeFilter = ch.getAttribute("data-filter");
-        render();
-      });
-    });
-    const elMoreBtn = q("#moreBtn");
-    const elMoreMenu = q("#moreMenu");
-    if (elMoreBtn && elMoreMenu){
-      elMoreBtn.addEventListener("click", ()=>{ elMoreMenu.style.display = elMoreMenu.style.display === "block" ? "none" : "block"; });
-      document.addEventListener("click", (e)=>{ if(!elMoreBtn.contains(e.target) && !elMoreMenu.contains(e.target)) elMoreMenu.style.display = "none"; });
-      qAll('#moreMenu button[data-filter]').forEach(b=>{
-        b.addEventListener("click", ()=>{ activeFilter = b.getAttribute("data-filter"); qAll('.filters .chip[data-filter]').forEach(x=>x.classList.remove("active")); elMoreMenu.style.display = "none"; render(); });
-      });
-    }
-    qAll('.lead-filter').forEach(ch=>{
-      ch.addEventListener("click", ()=>{
-        qAll('.lead-filter').forEach(x=>x.classList.remove('active'));
-        ch.classList.add('active');
-        leadFilter = ch.getAttribute('data-leadfilter');
-        renderLeads();
-      });
-    });
-
-    /* ===== Task Modal ===== */
-    const elTaskModal = q("#taskModal");
-    const elTaskModalTitle = q("#taskModalTitle");
-    const elTaskSearch = q("#taskSearch");
-    const elTaskSearchBtn = q("#taskSearchBtn");
-    const elTaskSearchResults = q("#taskSearchResults");
-    const elTaskCustomerName = q("#taskCustomerName");
-    const elTaskCustomerMobile = q("#taskCustomerMobile");
-    const elTaskCustomerMeta = q("#taskCustomerMeta");
-    const elTaskDesc = q("#taskDesc");
-    const elTaskDue = q("#taskDue");
-    const elTaskStatus = q("#taskStatus");
-    const elSaveTaskBtn = q("#saveTaskBtn");
-    const elCancelTaskBtn = q("#cancelTaskBtn");
-    const elTaskTimestamps = q("#taskTimestamps");
-
-    let editingTaskId = null;
-    let editingTaskCustomerId = null;
-
-    function openTaskModal(customerId=null, taskId=null){
-      editingTaskId = taskId;
-      editingTaskCustomerId = customerId;
-      elTaskSearch.value = "";
-      hideTaskSearchResults();
-
-      if(taskId){
-        const t = tasks.find(x=>x.id===taskId);
-        const c = customers.find(x=>x.id===t.customerId);
-        elTaskModalTitle.textContent = "Edit Task";
-        elTaskCustomerName.value = c?.name || "";
-        elTaskCustomerMobile.value = (c?.numbers || []).join(", ");
-        elTaskCustomerMeta.textContent = c ? `Existing customer • Created: ${fmtDate(c.createdAt)} • Updated: ${fmtDate(c.updatedAt)}` : "";
-        elTaskDesc.value = t.description || "";
-        elTaskDue.value = t.dueDate || "";
-        elTaskStatus.value = t.status || STATUS.PENDING;
-        elTaskTimestamps.textContent = `Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}`;
-      }else{
-        elTaskModalTitle.textContent = "Add Task";
-        elTaskCustomerName.value = "";
-        elTaskCustomerMobile.value = "";
-        elTaskCustomerMeta.textContent = "Tip: Type name + any number(s). Use search only if you want to link an existing customer.";
-        elTaskDesc.value = "";
-        elTaskDue.value = "";
-        elTaskStatus.value = STATUS.PENDING;
-        elTaskTimestamps.textContent = "";
-      }
-      elTaskModal.style.display = "flex";
-      setTimeout(()=>elTaskCustomerName.focus(), 0);
-    }
-    function closeTaskModal(){ elTaskModal.style.display = "none"; }
-    function hideTaskSearchResults(){
-      elTaskSearchResults.style.display = "none";
-      elTaskSearchResults.innerHTML = "";
-    }
-
-    function renderTaskSearchResults(force=false){
-      const raw = (elTaskSearch.value || "");
-      const term = raw.trim().toLowerCase();
-      const digitTerm = normalizeDigits(raw);
-      if (!force && term.length<2 && digitTerm.length<2){
-        hideTaskSearchResults();
-        return;
-      }
-      let cs = customers.slice();
-      if (term || digitTerm) {
-        cs = cs.filter(c=>{
-          const name = (c.name || "").toLowerCase();
-          const nums = (c.numbers || []);
-          const numbersJoined = nums.join(" ").toLowerCase();
-          const numbersDigits = nums.map(n=> normalizeDigits(n||"")).join(" ");
-          const textHit = term && name.includes(term) || term && numbersJoined.includes(term);
-          const digitHit = digitTerm && numbersDigits.includes(digitTerm);
-          return textHit || digitHit;
-        });
-      }
-      cs.sort((a,b)=>{
-        const at = +new Date(a.updatedAt || a.createdAt || 0);
-        const bt = +new Date(b.updatedAt || b.createdAt || 0);
-        if (bt !== at) return bt - at;
-        return (a.name||"").localeCompare(b.name||"");
-      });
-      elTaskSearchResults.style.display = "block";
-      elTaskSearchResults.innerHTML = "";
-      if (cs.length === 0) {
-        const row = document.createElement("div");
-        row.className = "row";
-        row.innerHTML = `<div class="meta">No customer found.</div>`;
-        elTaskSearchResults.appendChild(row);
-        return;
-      }
-      for (const c of cs) {
-        const row = document.createElement("div");
-        row.className = "row";
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap"><strong>${escapeHtml(c.name||"Unknown")}</strong></div>
-            <div class="muted small"> ${renderNumsWithWA(c.numbers||[])} </div>
-            <div class="muted small">Created: ${fmtDate(c.createdAt)} • Updated: ${fmtDate(c.updatedAt)}</div>
-          </div>
-          <div class="inline">
-            <button class="btn ok sm" data-use="${c.id}">Use</button>
-          </div>
-        `;
-        elTaskSearchResults.appendChild(row);
-      }
-      elTaskSearchResults.querySelectorAll("button[data-use]").forEach(b=>{
-        b.addEventListener("click", ()=>{
-          const id = b.getAttribute("data-use");
-          const c = customers.find(x=>x.id===id);
-          if(!c) return;
-          editingTaskCustomerId = id;
-          elTaskCustomerName.value = c.name || "";
-          elTaskCustomerMobile.value = (c.numbers||[]).join(", ");
-          elTaskCustomerMeta.textContent = `Selected existing • Created: ${fmtDate(c.createdAt)} • Updated: ${fmtDate(c.updatedAt)}`;
-          showToast('success','Customer selected');
-          hideTaskSearchResults();
-        });
-      });
-    }
-    elTaskSearch.addEventListener("input", ()=>renderTaskSearchResults(false));
-    elTaskSearchBtn.addEventListener("click", ()=>renderTaskSearchResults(true));
-    elTaskSearch.addEventListener("keydown", (e)=>{ if (e.key === "Enter") renderTaskSearchResults(true); });
-
-    elSaveTaskBtn.addEventListener("click", ()=>{
-      try{
-        const name = (elTaskCustomerName.value||"").trim();
-        const numbersRaw = (elTaskCustomerMobile.value||"").split(",").map(s=>s.trim()).filter(Boolean);
-        const desc = elTaskDesc.value.trim();
-        const due = elTaskDue.value || "";
-        const st = elTaskStatus.value;
-        if (!name && numbersRaw.length===0){ showToast('error','Enter name or at least one number'); return; }
-        let customer = null;
-        if(editingTaskCustomerId){
-          customer = customers.find(c=>c.id===editingTaskCustomerId) || null;
+  // Storage references (live arrays from main app)
+  let customers = window.localStorage ? JSON.parse(localStorage.getItem('ct_customers_v1')||'[]') : [];
+  let tasks     = window.localStorage ? JSON.parse(localStorage.getItem('ct_tasks_v1')||'[]')     : [];
+  let leads     = window.localStorage ? JSON.parse(localStorage.getItem('ct_leads_v1')||'[]')     : [];
+  const saveAll = window.saveAll || function(){
+    try{
+      localStorage.setItem('ct_customers_v1', JSON.stringify(customers));
+      localStorage.setItem('ct_tasks_v1', JSON.stringify(tasks));
+      localStorage.setItem('ct_leads_v1', JSON.stringify(leads));
+      if (window.CT && typeof CT === 'object' && typeof CT.__loaded !== 'undefined'){
+        // Re-sync live references from main app if present
+        customers = JSON.parse(localStorage.getItem('ct_customers_v1')||'[]');
+        tasks     = JSON.parse(localStorage.getItem('ct_tasks_v1')||'[]');
+        leads     = JSON.parse(localStorage.getItem('ct_leads_v1')||'[]');
+        // Trigger UI render via main script if available
+        if (typeof window.dispatchEvent === 'function'){
+          // no-op; main script already calls render on saveAll()
         }
-        if(!customer && name){
-          customer = customers.find(c=> (c.name||"") === name) || null;
-        }
-        if(!customer && numbersRaw.length){
-          const flat = numbersRaw.map(n=>normalizeDigits(n));
-          customer = customers.find(c => (c.numbers||[]).some(m => flat.includes(normalizeDigits(m)))) || null;
-        }
-        if(!customer){
-          customer = { id: uuid(), name, numbers: numbersRaw.slice(), createdAt: nowISO(), updatedAt: nowISO() };
-          customers.push(customer);
-        }else{
-          const exist = new Set((customer.numbers||[]).map(x=>x.trim()).filter(Boolean));
-          for(const n of numbersRaw){ if(n && !exist.has(n)){ customer.numbers.push(n); exist.add(n); } }
-          customer.updatedAt = nowISO();
-        }
-        let newId = editingTaskId;
-        if(editingTaskId){
-          const t = tasks.find(x=>x.id===editingTaskId);
-          t.customerId = customer.id;
-          t.description = desc;
-          t.dueDate = due;
-          t.status = st;
-          t.updatedAt = nowISO();
-        }else{
-          newId = uuid();
-          tasks.push({ id: newId, customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
-        }
-        saveAll();
-        closeTaskModal();
-        showToast('success','Task saved');
-        if (newId) jumpToTaskInMain(newId);
-      }catch(e){ console.error('save task', e); showToast('error','Could not save task'); }
-    });
-    elCancelTaskBtn.addEventListener("click", closeTaskModal);
-
-    CT.openAdd = ()=> openTaskModal(null, null);
-    CT.editTask = (id)=>{ const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
-    CT.markStatus = (id, st)=>{
-      const t = tasks.find(x=>x.id===id); if(!t) return;
-      if (st === STATUS.COMPLETED && !confirm('Mark this task as Completed?')) return;
-      t.status=st; t.updatedAt=nowISO(); saveAll();
-      showToast('success', st==='Completed'?'Task completed':'Task status changed');
-    };
-
-    /* ===== Leads Modal ===== */
-    const elLeadModal = q("#leadModal");
-    const elLeadModalTitle = q("#leadModalTitle");
-    const elLeadName = q("#leadName");
-    const elLeadNumbers = q("#leadNumbers");
-    const elLeadProduct = q("#leadProduct");
-    const elLeadStatus = q("#leadStatus");
-    const elLeadDesc = q("#leadDesc"); // NEW: description field
-    const elSaveLeadBtn = q("#saveLeadBtn");
-    const elCancelLeadBtn = q("#cancelLeadBtn");
-    const elDeleteLeadBtn = q("#deleteLeadBtn");
-    const elLeadTimestamps = q("#leadTimestamps");
-    let editingLeadId = null;
-
-    function openLeadModal(leadId=null){
-      editingLeadId = leadId;
-      if (leadId){
-        const l = leads.find(x=>x.id===leadId);
-        elLeadModalTitle.textContent = "Edit Lead";
-        elLeadName.value = l?.name || "";
-        elLeadNumbers.value = (l?.numbers||[]).join(", ");
-        elLeadProduct.value = l?.product || "";
-        elLeadStatus.value = l?.status || "Talked";
-        elLeadDesc.value = l?.description || ""; // NEW
-        elLeadTimestamps.textContent = `Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}`;
-        elDeleteLeadBtn.classList.remove('hidden');
-      }else{
-        elLeadModalTitle.textContent = "Add Lead";
-        elLeadName.value = "";
-        elLeadNumbers.value = "";
-        elLeadProduct.value = "";
-        elLeadStatus.value = "Talked";
-        elLeadDesc.value = ""; // NEW
-        elLeadTimestamps.textContent = "";
-        elDeleteLeadBtn.classList.add('hidden');
       }
-      elLeadModal.style.display = "flex";
-      setTimeout(()=>elLeadName.focus(), 0);
-    }
-    function closeLeadModal(){ elLeadModal.style.display = "none"; }
+    }catch(e){ console.error('CSV module saveAll', e); }
+  };
 
-    elSaveLeadBtn.addEventListener("click", ()=>{
-      const name = (elLeadName.value||"").trim();
-      const numbers = (elLeadNumbers.value||"").split(",").map(s=>s.trim()).filter(Boolean);
-      const product = (elLeadProduct.value||"").trim();
-      const status = elLeadStatus.value;
-      const description = (elLeadDesc.value||"").trim(); // NEW
-      if (!name && numbers.length===0){ showToast('error','Enter name or at least one number'); return; }
-      if (editingLeadId){
-        const l = leads.find(x=>x.id===editingLeadId);
-        if (!l) return;
-        l.name = name; l.numbers = numbers; l.product = product; l.status = status; l.description = description; // NEW
-        l.updatedAt = nowISO();
-      }else{
-        leads.push({ id: uuid(), name, numbers, product, status, description, createdAt: nowISO(), updatedAt: nowISO() }); // NEW
-      }
-      saveAll();
-      closeLeadModal();
-      showToast('success','Lead saved');
-    });
-    elCancelLeadBtn.addEventListener("click", closeLeadModal);
-    elDeleteLeadBtn.addEventListener("click", ()=>{
-      if (!editingLeadId) return;
-      if (!confirm('Delete this lead? This cannot be undone.')) return;
-      const idx = leads.findIndex(x=>x.id===editingLeadId);
-      if (idx!==-1) leads.splice(idx,1);
-      saveAll();
-      closeLeadModal();
-      showToast('success','Lead deleted');
-    });
+  // ---- UI: inject dropdown + button + hidden input into the toolbar ----
+  const toolbar = document.querySelector('.toolbar');
+  if (toolbar){
+    const sel = document.createElement('select');
+    sel.id = 'csvTarget';
+    sel.className = 'btn secondary';
+    sel.style.padding = '9px 10px';
+    sel.innerHTML = `
+      <option value="customers">Upload CSV → Customers</option>
+      <option value="tasks">Upload CSV → Tasks</option>
+      <option value="leads">Upload CSV → Leads</option>`;
+    const btn = document.createElement('button');
+    btn.id = 'btnCsvUpload';
+    btn.className = 'btn secondary';
+    btn.textContent = 'Choose CSV';
+    const fi = document.createElement('input');
+    fi.id = 'csvFile';
+    fi.type = 'file';
+    fi.accept = '.csv,text/csv';
+    fi.hidden = true;
+    btn.addEventListener('click', ()=> fi.click());
+    toolbar.appendChild(sel);
+    toolbar.appendChild(btn);
+    toolbar.appendChild(fi);
 
-    CT.openLeadAdd = ()=> openLeadModal(null);
-
-    /* ===== Search Center ===== */
-    const elSearchCenter = q("#searchCenter");
-    const elCloseSearchCenter = q("#closeSearchCenter");
-    const elTabName = q("#tabName");
-    const elTabMobile = q("#tabMobile");
-    const elTabTask = q("#tabTask");
-    const elSearchInput = q("#searchInput");
-    const elSearchScope = q("#searchScope");
-    const elRunSearch = q("#runSearch");
-    const elTaskFilters = q("#taskFilters");
-    const elStatusChips = elTaskFilters.querySelectorAll('.chip[data-status]');
-    const elDueFrom = q("#dueFrom");
-    const elDueTo = q("#dueTo");
-    const elPrevMatch = q("#prevMatch");
-    const elNextMatch = q("#nextMatch");
-    const elMatchIndex = q("#matchIndex");
-    const elSearchCount = q("#searchCount");
-    const elSearchResults = q("#searchResults");
-
-    let searchMode = "name";
-    let matches = [];
-    let currentIdx = -1;
-
-    function setMode(mode){
-      searchMode = mode;
-      [elTabName, elTabMobile, elTabTask].forEach(t => t.classList.remove("active"));
-      if(mode==="name") elTabName.classList.add("active");
-      if(mode==="mobile") elTabMobile.classList.add("active");
-      if(mode==="task") elTabTask.classList.add("active");
-      elTaskFilters.style.display = (mode==="task") ? "flex" : "none";
-      elSearchInput.placeholder = mode==="name" ? "Type part of customer name…" : mode==="mobile" ? "Type any digits (e.g., last 4)…" : "Type part of task description…";
-      elSearchResults.innerHTML = ""; elSearchCount.textContent = ""; elMatchIndex.textContent = ""; currentIdx = -1; matches = [];
-    }
-    elTabName.addEventListener("click", ()=>setMode("name"));
-    elTabMobile.addEventListener("click", ()=>setMode("mobile"));
-    elTabTask.addEventListener("click", ()=>setMode("task"));
-
-    elStatusChips.forEach(ch=> ch.addEventListener("click", ()=> ch.classList.toggle("active")));
-
-    function performSearch(){
-      const raw = elSearchInput.value || "";
-      const term = raw.trim().toLowerCase();
-      const digits = normalizeDigits(raw);
-      if(!term && searchMode!=="mobile"){ return showNoInput(); }
-      if(!digits && searchMode==="mobile"){ return showNoInput(); }
-      let pool = tasks.slice();
-      if (elSearchScope.value === "active") pool = pool.filter(t=>t.status!==STATUS.COMPLETED);
-      if (elSearchScope.value === "completed") pool = pool.filter(t=>t.status===STATUS.COMPLETED);
-      if (searchMode==="name"){ matches = nameSearch(pool, term); }
-      else if (searchMode==="mobile"){ matches = mobileSearch(pool, digits); }
-      else { matches = taskSearch(pool, term); }
-      matches.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      renderSearchResults(raw);
-      currentIdx = matches.length ? 0 : -1;
-      updateMatchPointer();
-    }
-    function showNoInput(){
-      elSearchResults.innerHTML = `<div class="row"><div class="meta">Enter a value to search.</div></div>`;
-      elSearchCount.textContent = "0 matches"; elMatchIndex.textContent = ""; matches = []; currentIdx = -1;
-    }
-    function nameSearch(taskPool, term){
-      const setIds = new Set(customers.filter(c => (c.name||"").toLowerCase().includes(term)).map(c => c.id));
-      return taskPool.filter(t => setIds.has(t.customerId));
-    }
-    function mobileSearch(taskPool, digits){
-      const setIds = new Set(
-        customers.filter(c => (c.numbers||[]).some(num => normalizeDigits(num).includes(digits))).map(c => c.id)
-      );
-      return taskPool.filter(t => setIds.has(t.customerId));
-    }
-    function taskSearch(taskPool, term){
-      let out = taskPool.filter(t => (t.description||"").toLowerCase().includes(term));
-      const activeStatuses = Array.from(elStatusChips).filter(c=>c.classList.contains("active")).map(c=>c.getAttribute("data-status"));
-      if (activeStatuses.length){ out = out.filter(t => activeStatuses.includes(t.status)); }
-      const from = elDueFrom.value ? new Date(elDueFrom.value) : null;
-      const to = elDueTo.value ? new Date(elDueTo.value) : null;
-      if (from || to){
-        out = out.filter(t=>{
-          if(!t.dueDate) return false;
-          const d = new Date(t.dueDate);
-          if (from && d < from) return false;
-          if (to && d > to) return false;
-          return true;
-        });
-      }
-      return out;
-    }
-    function renderSearchResults(rawTerm){
-      const el = elSearchResults;
-      el.innerHTML = "";
-      elSearchCount.textContent = `${matches.length} match${matches.length===1?"":"es"}`;
-      if (!matches.length){
-        el.innerHTML = `<div class="row"><div class="meta">No results. Try a shorter term or change scope/filters.</div><div><button class="btn primary sm" onclick="CT.openAdd()">Add Task</button></div></div>`;
-        return;
-      }
-      for (let i=0; i<matches.length; i++){
-        const t = matches[i];
-        const c = customers.find(x=>x.id===t.customerId);
-        const name = c ? (c.name||"Unknown") : "(missing)";
-        const numsArr = c ? (c.numbers||[]) : [];
-        const overdue = isOverdue(t);
-        let nameHtml = escapeHtml(name);
-        let taskHtml = escapeHtml(t.description||"(no description)");
-        if (searchMode==="name" && rawTerm){ nameHtml = highlightTerm(name, rawTerm); }
-        if (searchMode==="task" && rawTerm){ taskHtml = highlightTerm(t.description||"", rawTerm); }
-        const row = document.createElement("div");
-        row.className = "row";
-        row.dataset.taskId = t.id;
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap">
-              <strong>#${i+1}</strong>
-              <strong style="margin-left:6px">${nameHtml}</strong>
-              <span class="muted">— ${renderNumsWithWA(numsArr)}</span>
-              <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
-              ${t.dueDate ? `<span class="pill ${overdue? 'p-overdue':'p-due'}" style="margin-left:8px">${overdue? 'Overdue:':'Due:'} ${t.dueDate}</span>` : ""}
-            </div>
-            <div class="muted small" style="margin-top:4px">${taskHtml} • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}</div>
-          </div>
-          <div class="inline">
-            <button class="btn secondary sm" data-open="${t.id}">Open/Edit</button>
-            <button class="btn ok sm" data-goto="${t.id}">Go to</button>
-          </div>
-        `;
-        el.appendChild(row);
-      }
-      el.querySelectorAll("button[data-open]").forEach(b=>{
-        b.addEventListener("click", ()=>{
-          const id = b.getAttribute("data-open");
-          const t = matches.find(x=>x.id===id) || tasks.find(x=>x.id===id);
-          if (!t) return;
-          closeSearchCenter();
-          openTaskModal(t.customerId, t.id);
-        });
-      });
-      el.querySelectorAll("button[data-goto]").forEach(b=>{
-        b.addEventListener("click", ()=> jumpToTaskInMain(b.getAttribute("data-goto")) );
-      });
-    }
-    function updateMatchPointer(){
-      if (currentIdx<0 || currentIdx>=matches.length){
-        elMatchIndex.textContent = ""; elPrevMatch.disabled = true; elNextMatch.disabled = true; return;
-      }
-      elMatchIndex.textContent = `Showing ${currentIdx+1} of ${matches.length}`;
-      elPrevMatch.disabled = (currentIdx<=0); elNextMatch.disabled = (currentIdx>=matches.length-1);
-      const id = matches[currentIdx].id;
-      const row = elSearchResults.querySelector(`.row[data-task-id="${id}"]`);
-      if (row){
-        row.scrollIntoView({block:'nearest'});
-        elSearchResults.querySelectorAll('.row').forEach(r=>r.classList.remove('flash'));
-        row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'), 800);
-      }
-    }
-    function openSearchCenter(){ elSearchCenter.style.display = "flex"; setMode("name"); elSearchInput.value=""; elSearchScope.value="all"; elStatusChips.forEach(c=>c.classList.remove('active')); elDueFrom.value=""; elDueTo.value=""; setTimeout(()=>elSearchInput.focus(),0); }
-    function closeSearchCenter(){ elSearchCenter.style.display = "none"; }
-    const highlightTerm = (text, term)=>{
-      if(!term) return escapeHtml(text||"");
-      const safe = escapeHtml(text||"");
-      const t = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      return safe.replace(new RegExp(t,"ig"), m=>`<mark>${m}</mark>`);
-    };
-    elPrevMatch.addEventListener("click", ()=>{ if (currentIdx>0){ currentIdx--; updateMatchPointer(); }});
-    elNextMatch.addEventListener("click", ()=>{ if (currentIdx<matches.length-1){ currentIdx++; updateMatchPointer(); }});
-    elRunSearch.addEventListener("click", performSearch);
-    elSearchScope.addEventListener("change", performSearch);
-    elSearchCenter.addEventListener("keydown", (e)=>{ if(e.key==="Enter") elRunSearch.click(); if(e.key==="Escape") closeSearchCenter(); if(e.key==="ArrowDown") elNextMatch.click(); if(e.key==="ArrowUp") elPrevMatch.click(); });
-
-    /* ===== Export / Backup / Import ===== */
-    function csvFromRows(rows){
-      return rows.map(r => r.map(cell => {
-        const s = String(cell ?? "");
-        return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
-      }).join(",")).join("\n");
-    }
-
-    async function downloadCSV(filename, rows){
-      const csv = csvFromRows(rows);
-      const blob = new Blob(["\uFEFF", csv], {type:"text/csv;charset=utf-8"});
-
-      try{
-        const file = new File([blob], filename, { type: blob.type });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: filename, text: "CSV export" });
-          return;
-        }
-      }catch(e){}
-
-      try{
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
-        return;
-      }catch(e){}
-
-      try{
-        const hinted = 'data:text/csv;charset=utf-8;name=' + encodeURIComponent(filename) + ',' + encodeURIComponent(csv);
-        window.location.href = hinted;
-        return;
-      }catch(e){}
-
-      const html = `
-        <!doctype html><meta charset="utf-8">
-        <title>${filename}</title>
-        <style>body{font-family:system-ui,Segoe UI,Roboto,Arial; padding:16px; background:#0e1430; color:#eaf0ff}
-        .box{white-space:pre; overflow:auto; border:1px solid #334; padding:12px; border-radius:8px; background:#0b1433}
-        .muted{color:#aab4d6; font-size:12px; margin:10px 0 6px}</style>
-        <h3>${filename}</h3>
-        <div class="muted">Tip: Use Share or the ⋮ menu → "Open in browser" / "Save" to keep as CSV.</div>
-        <div class="box">${escapeHtml(csv)}</div>
-      `;
-      const blobHtml = new Blob([html], {type:"text/html;charset=utf-8"});
-      const urlViewer = URL.createObjectURL(blobHtml);
-      window.open(urlViewer, "_blank");
-      setTimeout(()=>URL.revokeObjectURL(urlViewer), 20000);
-    }
-
-    function exportCSV(){
-      try{
-        // Customers
-        const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
-        for(const c of customers){ custRows.push([c.id, c.name||"", (c.numbers||[]).join(", "), c.createdAt||"", c.updatedAt||""]); }
-
-        // Tasks
-        const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"]];
-        for(const t of tasks){
-          const c = customers.find(x=>x.id===t.customerId);
-          taskRows.push([ t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"", t.description||"", t.dueDate||"", t.status||"", t.createdAt||"", t.updatedAt||"" ]);
-        }
-
-        // Leads — include Description (NEW)
-        const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Description","Created At","Updated At"]];
-        for(const l of leads){
-          leadRows.push([ l.id, l.name||"", (l.numbers||[]).join(", "), l.product||"", l.status||"", l.description||"", l.createdAt||"", l.updatedAt||"" ]);
-        }
-
-        downloadCSV("Customers.csv", custRows);
-        setTimeout(()=>downloadCSV("Tasks.csv", taskRows), 400);
-        setTimeout(()=>downloadCSV("Leads.csv", leadRows), 800);
-
-        if (isAndroidWebView){
-          showToast('info','If files don’t appear, enable downloads in your wrapper or use Share.', 4500);
-        }else{
-          showToast('success','Export started');
-        }
-      }catch(e){ console.error('export', e); showToast('error','Export failed'); }
-    }
-
-    function backupJSON(){
-      const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
-      const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'customer_tasks_backup.json'; a.click();
-      setTimeout(()=>URL.revokeObjectURL(url), 1000);
-      showToast('success','Backup JSON downloaded');
-    }
-    CT.exportCSV = exportCSV;
-    CT.backupJSON = backupJSON;
-
-    const elImport = q("#importFile");
-    CT.openImport = ()=> elImport.click();
-    elImport.addEventListener("change", async (e)=>{
+    fi.addEventListener('change', async (e)=>{
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       try{
         const text = await file.text();
-        const data = JSON.parse(text);
-        const added = importDataAppend(data);
-        saveAll();
-        showToast('success', `Imported ${added.cust} customers, ${added.task} tasks, ${added.lead} leads`);
+        const rows = parseCSV(text);
+        if (!rows.length){ showToast('error','CSV appears empty'); e.target.value = ''; return; }
+        const target = sel.value || 'customers';
+        if (target === 'customers') importCSV_Customers(rows);
+        else if (target === 'tasks') importCSV_Tasks(rows);
+        else importCSV_Leads(rows);
       }catch(err){
-        console.error('import', err);
-        showToast('error','Import failed: invalid JSON');
+        console.error('CSV read error', err);
+        showToast('error','Failed to read CSV');
       }finally{
-        e.target.value = "";
+        e.target.value = '';
       }
     });
+  }else{
+    console.warn('CSV module: .toolbar not found — UI not injected.');
+  }
 
-    function importDataAppend(payload){
-      const arrC = Array.isArray(payload.customers) ? payload.customers : [];
-      const arrT = Array.isArray(payload.tasks) ? payload.tasks : [];
-      const arrL = Array.isArray(payload.leads) ? payload.leads : [];
-      const existingCustIds = new Set(customers.map(c=>c.id));
-      const existingTaskIds = new Set(tasks.map(t=>t.id));
-      const existingLeadIds = new Set(leads.map(l=>l.id));
-      const idMap = new Map(); // oldCustId -> newCustId (if remapped)
-
-      // Customers
-      let custAdded = 0;
-      for (const c of arrC){
-        if (!c || typeof c !== 'object') continue;
-        let newC = {...c};
-        if (!newC.id) newC.id = uuid();
-        if (existingCustIds.has(newC.id)){
-          const newId = uuid();
-          idMap.set(c.id, newId);
-          newC.id = newId;
-        }
-        existingCustIds.add(newC.id);
-        newC.createdAt = newC.createdAt || nowISO();
-        newC.updatedAt = newC.updatedAt || nowISO();
-        if (!Array.isArray(newC.numbers)) newC.numbers = [];
-        customers.push(newC);
-        custAdded++;
+  // ---- CSV parser (quotes, commas, CRLF) ----
+  function parseCSV(text){
+    const rows = [];
+    let cur = '', row = [], inQuotes = false;
+    for (let i=0; i<text.length; i++){
+      const c = text[i], n = text[i+1];
+      if (inQuotes){
+        if (c === '"' && n === '"'){ cur += '"'; i++; }
+        else if (c === '"'){ inQuotes = false; }
+        else { cur += c; }
+      }else{
+        if (c === '"'){ inQuotes = true; }
+        else if (c === ','){ row.push(cur); cur = ''; }
+        else if (c === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; }
+        else if (c === '\r'){ /* ignore CR; rely on \n */ }
+        else { cur += c; }
       }
+    }
+    row.push(cur); rows.push(row);
+    // Trim trailing blank row
+    if (rows.length && rows[rows.length-1].every(x => String(x||'').trim() === '')) rows.pop();
+    return rows;
+  }
+  function headerMap(headerRow){
+    const map = {};
+    headerRow.forEach((h,i)=>{ map[String(h||'').trim().toLowerCase()] = i; });
+    return map;
+  }
+  function getCell(row, hmap, aliases){
+    for (const a of aliases){
+      const idx = hmap[a.toLowerCase()];
+      if (idx != null) return String(row[idx] ?? '').trim();
+    }
+    return '';
+  }
+  const splitNumbers = raw => (raw||'').split(',').map(s=>s.trim()).filter(Boolean);
 
-      function ensureCustomerForTask(t){
-        let cid = t.customerId;
-        if (idMap.has(cid)) return idMap.get(cid);
-        if (customers.find(c=>c.id===cid)) return cid;
-        const placeholder = {
-          id: uuid(),
-          name: t.customerName || "(Imported)",
-          numbers: [],
+  // ---- Customer matching / creation ----
+  function findOrCreateCustomer({id, name, numbers}){
+    let c = null;
+    if (id) c = customers.find(x=>x.id===id) || null;
+    if (!c && name) c = customers.find(x=>(x.name||'')===name) || null;
+    if (!c && numbers && numbers.length){
+      const flat = new Set(numbers);
+      c = customers.find(x => (x.numbers||[]).some(m=> flat.has(m))) || null;
+    }
+    if (!c){
+      c = { id: id||uuid(), name: name||'(Unnamed)', numbers: Array.isArray(numbers)?numbers:[], createdAt: nowISO(), updatedAt: nowISO() };
+      customers.push(c);
+      return { customer:c, created:true };
+    }else{
+      // merge numbers
+      const exist = new Set((c.numbers||[]).map(x=>x.trim()).filter(Boolean));
+      for (const n of (numbers||[])){ if(n && !exist.has(n)){ c.numbers.push(n); exist.add(n); } }
+      c.updatedAt = nowISO();
+      return { customer:c, created:false };
+    }
+  }
+
+  // ---- Status normalizers ----
+  const TASK_STATUS = ['Pending','In Progress','On Hold','Cancelled','Completed'];
+  function normTaskStatus(s){
+    const x = String(s||'').toLowerCase();
+    if (x.startsWith('pend')) return 'Pending';
+    if (x.startsWith('in prog') || x==='ip') return 'In Progress';
+    if (x.startsWith('on hol')) return 'On Hold';
+    if (x.startsWith('cancel')) return 'Cancelled';
+    if (x.startsWith('compl') || x==='done') return 'Completed';
+    return 'Pending';
+  }
+  const LEAD_STATUS = ['Talked','Interested','Waiting Confirmation','Converted'];
+  function normLeadStatus(s){
+    const x = String(s||'').toLowerCase();
+    if (x.startsWith('talk')) return 'Talked';
+    if (x.startsWith('inter')) return 'Interested';
+    if (x.startsWith('wait')) return 'Waiting Confirmation';
+    if (x.startsWith('conv')) return 'Converted';
+    return 'Talked';
+  }
+
+  // ---- Importers ----
+  function importCSV_Customers(rows){
+    const headers = rows[0]; const data = rows.slice(1);
+    const h = headerMap(headers);
+    let added=0, updated=0;
+    for (const r of data){
+      if (!r || r.every(x => !String(x||'').trim())) continue;
+      const id   = getCell(r,h,['customerid','id']);
+      const name = getCell(r,h,['customer name','name']);
+      const nums = splitNumbers(getCell(r,h,['mobile numbers','numbers','mobiles','phone','phones']));
+      const res = findOrCreateCustomer({id,name,numbers:nums});
+      if (res.created) added++; else updated++;
+    }
+    saveAll();
+    showToast('success', `Customers CSV imported • Added ${added}, Updated ${updated}`);
+  }
+
+  function importCSV_Tasks(rows){
+    const headers = rows[0]; const data = rows.slice(1);
+    const h = headerMap(headers);
+    // Expected (flexible): TaskID, CustomerID, Customer Name, Mobile Numbers, Task Description, Due Date, Status
+    let added=0, updated=0, createdCustomers=0;
+    for (const r of data){
+      if (!r || r.every(x => !String(x||'').trim())) continue;
+
+      const taskId = getCell(r,h,['taskid','id']);
+      const custId = getCell(r,h,['customerid','cust id']);
+      const name   = getCell(r,h,['customer name','name']);
+      const nums   = splitNumbers(getCell(r,h,['mobile numbers','numbers','mobiles','phone','phones']));
+      const desc   = getCell(r,h,['task description','description','task']);
+      const due    = getCell(r,h,['due date','due']);
+      const stRaw  = getCell(r,h,['status']);
+      const status = normTaskStatus(stRaw);
+
+      const {customer, created} = findOrCreateCustomer({id:custId, name, numbers:nums});
+      if (created) createdCustomers++;
+
+      // Upsert by TaskID if present, else create new
+      let t = taskId ? tasks.find(x=>x.id===taskId) : null;
+      if (!t){
+        tasks.push({
+          id: taskId || uuid(),
+          customerId: customer.id,
+          description: desc || '',
+          dueDate: due || '',
+          status,
           createdAt: nowISO(),
           updatedAt: nowISO()
-        };
-        customers.push(placeholder);
-        return placeholder.id;
-      }
-
-      // Tasks
-      let taskAdded = 0;
-      for (const t of arrT){
-        if (!t || typeof t !== 'object') continue;
-        let newT = {...t};
-        if (!newT.id) newT.id = uuid();
-        if (existingTaskIds.has(newT.id)) newT.id = uuid();
-        existingTaskIds.add(newT.id);
-        newT.createdAt = newT.createdAt || nowISO();
-        newT.updatedAt = newT.updatedAt || nowISO();
-        newT.status = newT.status || STATUS.PENDING;
-        if (newT.customerId){
-          if (idMap.has(newT.customerId)) newT.customerId = idMap.get(newT.customerId);
-          else if (!customers.find(c=>c.id===newT.customerId)) newT.customerId = ensureCustomerForTask(newT);
-        }else{
-          newT.customerId = ensureCustomerForTask(newT);
-        }
-        tasks.push(newT);
-        taskAdded++;
-      }
-
-      // Leads
-      let leadAdded = 0;
-      for (const l of arrL){
-        if (!l || typeof l !== 'object') continue;
-        let nl = {...l};
-        if (!nl.id) nl.id = uuid();
-        if (existingLeadIds.has(nl.id)) nl.id = uuid();
-        existingLeadIds.add(nl.id);
-        nl.createdAt = nl.createdAt || nowISO();
-        nl.updatedAt = nl.updatedAt || nowISO();
-        if (!Array.isArray(nl.numbers)) nl.numbers = [];
-        nl.status = LEAD_STATUS.includes(nl.status) ? nl.status : "Talked";
-        nl.description = typeof nl.description === "string" ? nl.description : ""; // NEW ensure field
-        leads.push(nl);
-        leadAdded++;
-      }
-
-      return {cust:custAdded, task:taskAdded, lead:leadAdded};
-    }
-
-    /* ===== Delete Center ===== */
-    const elDeleteCenter = q("#deleteCenter");
-    const elCloseDeleteCenter = q("#closeDeleteCenter");
-    const elTabDelTasks = q("#tabDelTasks");
-    const elTabDelCustomers = q("#tabDelCustomers");
-    const elPaneDelTasks = q("#paneDelTasks");
-    const elPaneDelCustomers = q("#paneDelCustomers");
-
-    const elDelTaskQuery = q("#delTaskQuery");
-    const elDelTaskStatus = q("#delTaskStatus");
-    const elTblDelTasks = q("#tblDelTasks tbody");
-
-    const elDelCustQuery = q("#delCustQuery");
-    const elTblDelCustomers = q("#tblDelCustomers tbody");
-
-    CT.openDeleteCenter = function(){
-      elDeleteCenter.style.display = "flex";
-      switchDelPane('tasks');
-      renderDelTasks();
-      renderDelCustomers();
-      setTimeout(()=>elDelTaskQuery.focus(),0);
-    };
-    elCloseDeleteCenter.addEventListener("click", ()=> elDeleteCenter.style.display = "none");
-
-    function switchDelPane(which){
-      [elTabDelTasks, elTabDelCustomers].forEach(t=>t.classList.remove('active'));
-      [elPaneDelTasks, elPaneDelCustomers].forEach(p=>p.classList.add('hidden'));
-      if (which==='tasks'){ elTabDelTasks.classList.add('active'); elPaneDelTasks.classList.remove('hidden'); }
-      else { elTabDelCustomers.classList.add('active'); elPaneDelCustomers.classList.remove('hidden'); }
-    }
-    elTabDelTasks.addEventListener("click", ()=> switchDelPane('tasks'));
-    elTabDelCustomers.addEventListener("click", ()=> switchDelPane('customers'));
-
-    function renderDelTasks(){
-      const qText = (elDelTaskQuery.value||"").toLowerCase().trim();
-      const qDigits = normalizeDigits(elDelTaskQuery.value||"");
-      const st = elDelTaskStatus.value;
-      let pool = tasks.slice();
-      if (st) pool = pool.filter(t=>t.status===st);
-      if (qText || qDigits){
-        pool = pool.filter(t=>{
-          const c = customers.find(x=>x.id===t.customerId);
-          const name = (c?.name||"").toLowerCase();
-          const nums = (c?.numbers||[]).join(" ").toLowerCase();
-          const hasText = name.includes(qText) || (t.description||"").toLowerCase().includes(qText) || nums.includes(qText);
-          const hasDigits = qDigits && (c?.numbers||[]).some(n=> normalizeDigits(n).includes(qDigits));
-          return hasText || hasDigits;
         });
-      }
-      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      elTblDelTasks.innerHTML = "";
-      for (const t of pool){
-        const c = customers.find(x=>x.id===t.customerId);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><input type="checkbox" class="tskChk" data-id="${t.id}"></td>
-          <td><strong>${escapeHtml(c?.name||"(missing)")}</strong></td>
-          <td>${renderNumsWithWA(c?c.numbers:[])}</td>
-          <td><div>${escapeHtml(t.description||"(no description)")}</div>
-              <div class="muted">Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}</div></td>
-          <td>${t.status}</td>
-          <td>${t.dueDate||""}</td>
-        `;
-        elTblDelTasks.appendChild(tr);
+        added++;
+      }else{
+        t.customerId = customer.id;
+        t.description = desc || t.description || '';
+        t.dueDate = due || t.dueDate || '';
+        t.status = status || t.status || 'Pending';
+        t.updatedAt = nowISO();
+        updated++;
       }
     }
-    function renderDelCustomers(){
-      const qText = (elDelCustQuery.value||"").toLowerCase().trim();
-      const qDigits = normalizeDigits(elDelCustQuery.value||"");
-      const counts = new Map();
-      for (const t of tasks){ counts.set(t.customerId, (counts.get(t.customerId)||0)+1); }
-      const pool = customers
-        .filter(c=>{
-          if (!qText && !qDigits) return true;
-          const name = (c.name||"").toLowerCase();
-          const nums = (c.numbers||[]).join(" ").toLowerCase();
-          const hasText = name.includes(qText) || nums.includes(qText);
-          const hasDigits = qDigits && (c.numbers||[]).some(n=> normalizeDigits(n).includes(qDigits));
-          return hasText || hasDigits;
-        })
-        .sort((a,b)=> (a.name||"").localeCompare(b.name||""));
-      elTblDelCustomers.innerHTML = "";
-      for (const c of pool){
-        const cnt = counts.get(c.id)||0;
-        const eligible = cnt===0;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><input type="checkbox" class="custChk" data-id="${c.id}" ${eligible?'':'disabled'}></td>
-          <td><strong>${escapeHtml(c.name||"(unnamed)")}</strong><div class="muted">Created: ${fmtDate(c.createdAt)} • Updated: ${fmtDate(c.updatedAt)}</div></td>
-          <td>${renderNumsWithWA(c.numbers||[])}</td>
-          <td>${cnt}</td>
-        `;
-        elTblDelCustomers.appendChild(tr);
+    saveAll();
+    showToast('success', `Tasks CSV imported • Added ${added}, Updated ${updated}${createdCustomers?` • New customers ${createdCustomers}`:''}`);
+  }
+
+  function importCSV_Leads(rows){
+    const headers = rows[0]; const data = rows.slice(1);
+    const h = headerMap(headers);
+    // Expected (flexible): LeadID, Customer Name, Mobile Numbers, Product, Status, Description
+    let added=0, updated=0;
+    const leadById = new Map(leads.map(l=>[l.id,l]));
+
+    for (const r of data){
+      if (!r || r.every(x => !String(x||'').trim())) continue;
+
+      const leadId = getCell(r,h,['leadid','id']);
+      const name   = getCell(r,h,['customer name','name']);
+      const nums   = splitNumbers(getCell(r,h,['mobile numbers','numbers','mobiles','phone','phones']));
+      const prod   = getCell(r,h,['product']);
+      const stRaw  = getCell(r,h,['status']);
+      const desc   = getCell(r,h,['description','lead description','notes']);
+      const status = normLeadStatus(stRaw);
+
+      if (leadId && leadById.has(leadId)){
+        const l = leadById.get(leadId);
+        l.name = name || l.name || '(unnamed)';
+        if (!Array.isArray(l.numbers)) l.numbers = [];
+        // merge numbers
+        const exist = new Set(l.numbers.map(x=>x.trim()).filter(Boolean));
+        for (const n of nums){ if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); } }
+        l.product = prod || l.product || '';
+        l.status = status || l.status || 'Talked';
+        l.description = (typeof desc==='string'?desc:'') || l.description || '';
+        l.updatedAt = nowISO();
+        updated++;
+      }else{
+        leads.push({
+          id: leadId || uuid(),
+          name: name || '(unnamed)',
+          numbers: nums,
+          product: prod || '',
+          status,
+          description: (typeof desc==='string'?desc:''),
+          createdAt: nowISO(),
+          updatedAt: nowISO()
+        });
+        added++;
       }
     }
+    saveAll();
+    showToast('success', `Leads CSV imported • Added ${added}, Updated ${updated}`);
+  }
 
-    q("#btnDelTaskSelectAll")?.addEventListener("click", ()=>{ qAll('#tblDelTasks .tskChk').forEach(ch=> ch.checked = true); });
-    q("#btnDelTaskClear")?.addEventListener("click", ()=>{ qAll('#tblDelTasks .tskChk').forEach(ch=> ch.checked = false); });
-    q("#btnDelTaskDelete")?.addEventListener("click", ()=>{
-      const ids = qAll('#tblDelTasks .tskChk:checked').map(ch=> ch.getAttribute('data-id'));
-      if (!ids.length) { showToast('info','No tasks selected'); return; }
-      if (!confirm(`Delete ${ids.length} selected task(s)? This cannot be undone.`)) return;
-      for (const id of ids){
-        const idx = tasks.findIndex(t=>t.id===id);
-        if (idx!==-1) tasks.splice(idx,1);
-      }
-      saveAll();
-      renderDelTasks();
-      renderDelCustomers();
-      showToast('success', `Deleted ${ids.length} task(s)`);
-    });
-
-    q("#btnDelCustSelectAll")?.addEventListener("click", ()=>{ qAll('#tblDelCustomers .custChk:not([disabled])').forEach(ch=> ch.checked = true); });
-    q("#btnDelCustClear")?.addEventListener("click", ()=>{ qAll('#tblDelCustomers .custChk').forEach(ch=> ch.checked = false); });
-    q("#btnDelCustDelete")?.addEventListener("click", ()=>{
-      const ids = qAll('#tblDelCustomers .custChk:checked').map(ch=> ch.getAttribute('data-id'));
-      if (!ids.length) { showToast('info','No customers selected'); return; }
-      const taskByCust = new Map();
-      for (const t of tasks){ taskByCust.set(t.customerId, (taskByCust.get(t.customerId)||0)+1); }
-      const eligible = ids.filter(id=> (taskByCust.get(id)||0)===0);
-      if (!eligible.length){ showToast('error','Selected customers are not eligible (have tasks).'); return; }
-      if (!confirm(`Delete ${eligible.length} customer(s)? This cannot be undone.`)) return;
-      let delCount = 0;
-      for (const id of eligible){
-        const idx = customers.findIndex(c=>c.id===id);
-        if (idx!==-1){ customers.splice(idx,1); delCount++; }
-      }
-      saveAll();
-      renderDelCustomers();
-      showToast('success', `Deleted ${delCount} customer(s)`);
-    });
-
-    /* ===== Minimal list interactions ===== */
-    function cycleStatus(id){
-      const t = tasks.find(x=>x.id===id); if(!t) return;
-      const order = [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD, STATUS.CANCELLED];
-      let i = order.indexOf(t.status);
-      if (i === -1) i = 0;
-      t.status = order[(i+1) % order.length];
-      t.updatedAt = nowISO();
-      saveAll();
-      showToast('success', 'Status: ' + t.status);
-    }
-    CT.cycleStatus = cycleStatus;
-
-    function jumpToTaskInMain(taskId){
-      const t = tasks.find(x=>x.id===taskId);
-      if (!t) return;
-      if (t.status === STATUS.COMPLETED){
-        activeTab = "Completed";
-      } else {
-        activeTab = "Active";
-        const map = {
-          [STATUS.PENDING]: "Pending",
-          [STATUS.INPROG]: "In Progress",
-          [STATUS.ONHOLD]: "On Hold",
-          [STATUS.CANCELLED]: "Cancelled"
-        };
-        activeFilter = map[t.status] || "CoreActive";
-      }
-      render();
-      const container = (t.status === STATUS.COMPLETED) ? elCompletedList : elActiveList;
-      const row = container.querySelector(`.row[data-task-id="${taskId}"]`);
-      if (row){
-        row.scrollIntoView({behavior:'smooth', block:'center'});
-        row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'), 1200);
-      }
-    }
-    CT.jumpToTaskInMain = jumpToTaskInMain;
-
-    // Tasks click handlers
-    elActiveList.addEventListener('click', (e)=>{
-      const pill = e.target.closest('.status-pill');
-      if (pill){ e.preventDefault(); e.stopPropagation(); cycleStatus(pill.getAttribute('data-id')); return; }
-      if (e.target.closest('a.wa') || e.target.closest('.wa')) return;
-      const row = e.target.closest('.row[data-task-id]');
-      if (row){ CT.editTask(row.dataset.taskId); }
-    });
-    elCompletedList.addEventListener('click', (e)=>{
-      if (e.target.closest('a.wa') || e.target.closest('.wa')) return;
-      const row = e.target.closest('.row[data-task-id]');
-      if (row){ CT.editTask(row.dataset.taskId); }
-    });
-
-    // Leads interactions
-    function cycleLeadStatus(id){
-      const l = leads.find(x=>x.id===id); if(!l) return;
-      const idx = LEAD_STATUS.indexOf(l.status);
-      l.status = LEAD_STATUS[(idx+1) % LEAD_STATUS.length];
-      l.updatedAt = nowISO();
-      saveAll();
-      showToast('success','Lead status: ' + l.status);
-    }
-    elLeadsList.addEventListener('click', (e)=>{
-      const pill = e.target.closest('.lead-status');
-      if (pill){ e.preventDefault(); e.stopPropagation(); cycleLeadStatus(pill.getAttribute('data-id')); return; }
-      if (e.target.closest('a.wa') || e.target.closest('.wa')) return;
-      const row = e.target.closest('.row[data-lead-id]');
-      if (row){ openLeadModal(row.dataset.leadId); }
-    });
-
-    // Double-click to open (desktop)
-    elActiveList.addEventListener('dblclick', (e)=>{
-      const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId);
-    });
-    elCompletedList.addEventListener('dblclick', (e)=>{
-      const row = e.target.closest('.row[data-task-id]'); if (row) CT.editTask(row.dataset.taskId);
-    });
-    elLeadsList.addEventListener('dblclick', (e)=>{
-      const row = e.target.closest('.row[data-lead-id]'); if (row) openLeadModal(row.dataset.leadId);
-    });
-
-    // Keyboard: Enter opens
-    ['#activeList', '#completedList', '#leadsList'].forEach(sel=>{
-      const root = document.querySelector(sel);
-      root.addEventListener('keydown', (e)=>{
-        if (e.key !== 'Enter') return;
-        const trow = e.target.closest('.row[data-task-id]');
-        const lrow = e.target.closest('.row[data-lead-id]');
-        if (trow) CT.editTask(trow.dataset.taskId);
-        if (lrow) openLeadModal(lrow.dataset.leadId);
-      });
-    });
-
-    /* Public shortcuts */
-    CT.openAdd = ()=> openTaskModal(null, null);
-    CT.editTask = id => { const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
-    q("#addLeadBtn")?.addEventListener("click", ()=> openLeadModal(null));
-
-    /* Initial render */
-    render();
-  })();
-  </script>
-</body>
-</html>
+})();
+</script>
