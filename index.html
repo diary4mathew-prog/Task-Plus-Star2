@@ -648,7 +648,7 @@
 
     /* ===== Due Soon (auto + custom snooze) ===== */
     const DUE_WINDOW_DAYS = 3;
-    const CHECK_INTERVAL_MS = 60_000;
+    const CHECK_INTERVAL_MS = 300_000;
     function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
     function daysFromToday(dateStr){
       if (!dateStr) return null;
@@ -1007,7 +1007,7 @@
       }catch(e){ console.error('autoDueSoonCheck', e); }
     }
     autoDueSoonCheck();
-    setInterval(autoDueSoonCheck, 60_000);
+    setInterval(autoDueSoonCheck, 300_000);
 
     /* ===== COMPLETE MODAL logic ===== */
     const elCompleteModal = q('#completeModal');
