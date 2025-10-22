@@ -1,42 +1,55 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Customer Tasks & Leads (CSV + Due Soon & Snooze)</title>
+  <title>Customer Tasks & Leads — Phase 1 Features</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- JSZip for ZIP creation (Backup ZIP). If CDN blocked, zip fallback auto-downloads the 4 files separately. -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <style>
+    /* ===== THEME ===== */
     :root{
       --bg:#0b1020; --panel:#121a35; --panel2:#0f1530; --text:#eaf0ff; --muted:#aab4d6;
       --border:#1f2a4f; --accent:#5b8cff; --accent2:#74d680; --warn:#ffcc66; --danger:#ff6b6b; --mark:#fff2a8;
+      --row-hover:#101a3a;
+      --btn-ghost:#1a2446;
+    }
+    [data-theme="light"]{
+      --bg:#f5f7ff; --panel:#ffffff; --panel2:#f3f6ff; --text:#0c1533; --muted:#4a5577;
+      --border:#d8def0; --accent:#375dfb; --accent2:#2fbf71; --warn:#f6b84e; --danger:#ef4b4b; --mark:#fff2a8;
+      --row-hover:#eef2ff;
+      --btn-ghost:#eef2ff;
     }
     *{box-sizing:border-box}
-    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,#0a0f1f 0%, #0e1430 100%); color:var(--text)}
+    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,var(--bg) 0%, var(--panel2) 200%); color:var(--text)}
     header{position:sticky; top:0; z-index:10; padding:16px; border-bottom:1px solid var(--border); background:rgba(13,18,40,.7); backdrop-filter:blur(6px) saturate(140%)}
+    [data-theme="light"] header{background:rgba(255,255,255,.8)}
     .container{max-width:1100px; margin:18px auto; padding:0 14px}
     h1{margin:0; font-size:20px}
     .sub{margin-top:4px; color:var(--muted); font-size:13px}
     .toolbar{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-    input[type="text"], input[type="date"], textarea, select{
-      width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0b1433; color:#eaf0ff; outline:none;
+    input[type="text"], input[type="date"], input[type="datetime-local"], textarea, select{
+      width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:color-mix(in oklab, var(--panel) 85%, black 5%); color:var(--text); outline:none;
     }
     textarea{min-height:90px}
     .btn{appearance:none; border:none; border-radius:10px; padding:9px 13px; color:#fff; font-weight:600; cursor:pointer; transition:.15s transform ease, .2s background ease}
     .btn:hover{transform:translateY(-1px)}
     .btn.primary{background:linear-gradient(180deg, var(--accent) 0%, #3f69ff 100%)}
-    .btn.secondary{background:#1a2446; border:1px solid var(--border); color:#dfe7ff}
+    .btn.secondary{background:var(--btn-ghost); border:1px solid var(--border); color:inherit}
     .btn.ok{background:linear-gradient(180deg, var(--accent2) 0%, #3fbf74 100%)}
     .btn.warn{background:linear-gradient(180deg, var(--warn) 0%, #f5b24e 100%); color:#2a1b05}
     .btn.danger{background:linear-gradient(180deg, var(--danger) 0%, #ff5252 100%)}
     .btn.sm{padding:6px 10px; font-size:12px}
     .tabs{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
-    .tab{padding:8px 12px; border-radius:10px; background:#121a35; border:1px solid var(--border); color:#cdd7ff; cursor:pointer; font-weight:700}
-    .tab.active{background:#1b2552}
-    .card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel2) 100%); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .tab{padding:8px 12px; border-radius:10px; background:var(--panel); border:1px solid var(--border); color:inherit; cursor:pointer; font-weight:700}
+    .tab.active{outline:2px solid color-mix(in oklab, var(--accent) 50%, transparent)}
+    .card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel2) 100%); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.15)}
     .filters{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
-    .chip{padding:7px 12px; background:#121a35; border:1px solid var(--border); border-radius:999px; color:#cfe1ff; font-weight:700; cursor:pointer; font-size:12px; user-select:none}
-    .chip.active{background:#1b2552}
+    .chip{padding:7px 12px; background:var(--panel); border:1px solid var(--border); border-radius:999px; color:inherit; font-weight:700; cursor:pointer; font-size:12px; user-select:none}
+    .chip.active{outline:2px solid color-mix(in oklab, var(--accent) 50%, transparent)}
     .list{margin-top:10px; border:1px solid var(--border); border-radius:12px; overflow:hidden}
-    .row{display:flex; gap:12px; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer}
+    .row{display:flex; gap:12px; align-items:flex-start; padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer}
+    .row:hover{background:var(--row-hover)}
     .row:last-child{border-bottom:none}
     .row .meta{flex:1}
     .muted{color:var(--muted); font-size:12px}
@@ -56,6 +69,10 @@
     .right{margin-left:auto}
     .small{font-size:12px}
     mark{background:var(--mark); color:#000; padding:0 2px; border-radius:4px}
+    /* Quick actions */
+    .actions{display:flex; gap:6px; margin-top:6px}
+    .iconbtn{appearance:none; border:1px solid var(--border); background:var(--panel); color:inherit; border-radius:8px; padding:6px 8px; cursor:pointer; font-size:12px}
+    .iconbtn:hover{transform:translateY(-1px)}
     /* Toasts */
     #toaster{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:9999}
     .toast{min-width:260px; max-width:420px; padding:10px 12px; border-radius:10px; color:#fff; font-weight:600; box-shadow:0 10px 20px rgba(0,0,0,.25)}
@@ -63,20 +80,29 @@
     .toast.success{background:#2a7a47}
     .toast.error{background:#a33a3a}
     .toast button{background:transparent; border:none; color:#fff; margin-left:8px; cursor:pointer; font-weight:800}
+    /* Flash */
     @keyframes flash { 0%{box-shadow:0 0 0 0 rgba(91,140,255,.9)} 100%{box-shadow:0 0 0 12px rgba(91,140,255,0)} }
-    .flash { position:relative; animation:flash 1s ease-out 0s 1; border-color:#5b8cff !important; background:linear-gradient(180deg,#13204a 0%, #0f1738 100%); }
+    .flash { position:relative; animation:flash 1s ease-out 0s 1; border-color:#5b8cff !important; background:linear-gradient(180deg, color-mix(in oklab, var(--panel) 95%, #5b8cff 5%) 0%, var(--panel2) 100%); }
+    /* Modals */
+    .backdrop{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:60}
+    .modal{width:min(980px,96vw); max-height:92vh; overflow:auto}
   </style>
 </head>
 <body>
   <header>
-    <h1>Customer Tasks & Leads</h1>
-    <div class="sub">Tap a task row to open; tap its status pill to cycle.</div>
+    <div class="inline wrap">
+      <div class="grow">
+        <h1 style="margin:0;">Customer Tasks & Leads</h1>
+        <div class="sub">Quick actions on each row • Snooze with custom times • Share/Zip • Light/Dark</div>
+      </div>
+      <button id="btnTheme" class="btn secondary sm" title="Toggle theme (X)">🌗 Theme</button>
+    </div>
     <div class="toolbar">
-      <button class="btn secondary" onclick="window.CT && CT.exportCSV()">Export CSV</button>
-      <button class="btn secondary" onclick="window.CT && CT.backupJSON()">Backup</button>
-      <button class="btn primary"   onclick="window.CT && CT.openAdd()">Add Task</button>
-
-      <!-- CSV Target + Upload -->
+      <button class="btn secondary" id="btnShareCSVs" title="Share Customers/Tasks/Leads CSVs (E)">Share CSVs</button>
+      <button class="btn secondary" id="btnBackupZip" title="Create & Share Full Backup ZIP (B)">Backup ZIP</button>
+      <button class="btn secondary" id="btnShareAll" title="Share Backup ZIP + CSVs (A)">Share All</button>
+      <button class="btn primary"   id="btnAddTask" title="New Task (N)">Add Task</button>
+      <button class="btn secondary" id="btnDueSoon" title="Due Soon / Overdue (D)">Due Soon <span id="dueSoonCount" class="small" style="margin-left:6px; opacity:.8"></span></button>
       <select id="csvTarget" class="btn secondary" style="padding:9px 10px">
         <option value="customers">Upload CSV → Customers</option>
         <option value="tasks">Upload CSV → Tasks</option>
@@ -84,21 +110,16 @@
       </select>
       <button class="btn secondary" id="btnCsvUpload">Choose CSV</button>
       <input id="csvFile" type="file" accept=".csv,text/csv" hidden />
-
-      <!-- Due Soon -->
-      <button class="btn secondary" id="btnDueSoon">
-        Due Soon <span id="dueSoonCount" class="small" style="margin-left:6px; opacity:.8"></span>
-      </button>
     </div>
     <div class="tabs">
-      <div id="tabActive"   class="tab active" onclick="window.CT && CT.switchTab('Active')">Active <span id="countActive" class="small"></span></div>
-      <div id="tabCompleted" class="tab"       onclick="window.CT && CT.switchTab('Completed')">Completed <span id="countCompleted" class="small"></span></div>
-      <div id="tabLeads"     class="tab"       onclick="window.CT && CT.switchTab('Leads')">Leads <span id="countLeads" class="small"></span></div>
+      <div id="tabActive"   class="tab active">Active <span id="countActive" class="small"></span></div>
+      <div id="tabCompleted" class="tab">Completed <span id="countCompleted" class="small"></span></div>
+      <div id="tabLeads"     class="tab">Leads <span id="countLeads" class="small"></span></div>
     </div>
   </header>
 
   <div class="container">
-    <!-- Tasks: Active -->
+    <!-- Active -->
     <div id="activeView">
       <div class="card">
         <div class="filters">
@@ -112,12 +133,10 @@
       </div>
     </div>
 
-    <!-- Tasks: Completed -->
+    <!-- Completed -->
     <div id="completedView" class="hidden">
       <div class="card">
-        <div class="filters">
-          <span class="muted">These tasks are archived. Open a row to change status if needed.</span>
-        </div>
+        <div class="filters"><span class="muted">Archived. Open a row to update if needed.</span></div>
         <div id="completedList" class="list"></div>
       </div>
     </div>
@@ -141,10 +160,9 @@
   </div>
 
   <!-- Task Modal -->
-  <div id="taskModal" class="hidden" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:50">
-    <div class="card" style="width:min(980px,96vw); max-height:92vh; overflow:auto">
+  <div id="taskModal" class="backdrop">
+    <div class="card modal">
       <h3 id="taskModalTitle" style="margin:0 0 10px 0">Add Task</h3>
-
       <div class="inline wrap" style="gap:16px">
         <div class="grow">
           <label>Customer Name</label>
@@ -156,9 +174,8 @@
         </div>
       </div>
       <div class="small muted" id="taskCustomerMeta" style="margin-top:6px">
-        Tip: Type a new name + any number(s). A new customer will be created if needed.
+        Tip: Type a name + any number(s). A new customer is created if needed.
       </div>
-
       <div class="hr"></div>
       <div class="inline wrap" style="gap:16px; margin-top:10px">
         <div class="grow">
@@ -180,22 +197,18 @@
           <div class="small muted" style="margin-top:6px">Completed tasks move to the Completed tab.</div>
         </div>
       </div>
-
-      <div class="inline wrap sticky-footer" style="gap:8px; margin-top:10px; position:sticky; bottom:0; background:linear-gradient(180deg,#0f1738 0%, #0e1430 100%); border-top:1px solid var(--border); padding-top:10px">
-        <div class="inline" style="gap:8px">
-          <button id="saveTaskBtn" class="btn ok">Save</button>
-          <button id="cancelTaskBtn" class="btn secondary">Cancel</button>
-        </div>
+      <div class="inline wrap" style="gap:8px; margin-top:10px">
+        <button id="saveTaskBtn" class="btn ok">Save</button>
+        <button id="cancelTaskBtn" class="btn secondary">Cancel</button>
         <div class="right small muted" id="taskTimestamps"></div>
       </div>
     </div>
   </div>
 
   <!-- Lead Modal -->
-  <div id="leadModal" class="hidden" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:50">
-    <div class="card" style="width:min(980px,96vw); max-height:92vh; overflow:auto">
+  <div id="leadModal" class="backdrop">
+    <div class="card modal">
       <h3 id="leadModalTitle" style="margin:0 0 10px 0">Add Lead</h3>
-
       <div class="inline wrap" style="gap:16px">
         <div class="grow">
           <label>Customer Name</label>
@@ -206,7 +219,6 @@
           <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
         </div>
       </div>
-
       <div class="inline wrap" style="gap:16px; margin-top:10px">
         <div class="grow">
           <label>Product</label>
@@ -222,42 +234,44 @@
           </select>
         </div>
       </div>
-
       <div class="inline wrap" style="gap:16px; margin-top:10px">
         <div class="grow">
           <label>Lead Description</label>
           <textarea id="leadDesc" placeholder="Notes about this lead (context, requirements, follow-ups, etc.)"></textarea>
         </div>
       </div>
-
-      <div class="inline wrap sticky-footer" style="gap:8px; margin-top:10px; position:sticky; bottom:0; background:linear-gradient(180deg,#0f1738 0%, #0e1430 100%); border-top:1px solid var(--border); padding-top:10px">
-        <div class="inline" style="gap:8px">
-          <button id="saveLeadBtn" class="btn ok">Save</button>
-          <button id="cancelLeadBtn" class="btn secondary">Cancel</button>
-        </div>
-        <div class="right inline" style="gap:8px">
-          <button id="deleteLeadBtn" class="btn danger hidden">Delete</button>
-          <div class="small muted" id="leadTimestamps"></div>
-        </div>
+      <div class="inline wrap" style="gap:8px; margin-top:10px">
+        <button id="saveLeadBtn" class="btn ok">Save</button>
+        <button id="cancelLeadBtn" class="btn secondary">Cancel</button>
+        <button id="deleteLeadBtn" class="btn danger hidden">Delete</button>
+        <div class="right small muted" id="leadTimestamps"></div>
       </div>
     </div>
   </div>
 
   <!-- DUE SOON CENTER -->
-  <div id="dueSoonModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:60">
-    <div class="card" style="width:min(980px,96vw); max-height:92vh; overflow:auto">
+  <div id="dueSoonModal" class="backdrop">
+    <div class="card modal">
       <div class="inline wrap" style="gap:8px">
         <h3 class="grow" style="margin:0">Due Soon & Overdue</h3>
         <div class="inline" style="gap:6px">
-          <button id="btnSnooze1h" class="btn secondary sm" title="Mute auto-popup for 1 hour">Snooze 1h</button>
-          <button id="btnSnooze1d" class="btn secondary sm" title="Mute auto-popup for 1 day">Snooze 1d</button>
-          <button id="btnSnooze3d" class="btn secondary sm" title="Mute auto-popup for 3 days">Snooze 3d</button>
+          <button id="btnSnooze2h" class="btn secondary sm" title="Snooze auto-popup 2h">Snooze 2h</button>
+          <button id="btnSnooze6h" class="btn secondary sm" title="Snooze auto-popup 6h">Snooze 6h</button>
+          <button id="btnSnooze1d" class="btn secondary sm" title="Snooze auto-popup 1 day">Snooze 1d</button>
+          <button id="btnSnooze3d" class="btn secondary sm" title="Snooze auto-popup 3 days">Snooze 3d</button>
           <button id="btnDueSoonClose" class="btn secondary sm">Close</button>
         </div>
       </div>
       <div class="muted small" style="margin-top:6px">
-        Showing tasks that are <strong>Pending / In Progress / On Hold</strong> with a due date
-        that is <strong>overdue</strong> or within the next <strong>3 days</strong>. Snoozed tasks are hidden until their snooze ends.
+        Showing <strong>Pending / In Progress / On Hold</strong> tasks with due date
+        <strong>overdue</strong> or within the next <strong>3 days</strong>. Snoozed tasks are hidden until their snooze ends.
+      </div>
+      <div class="hr"></div>
+      <div class="inline wrap" style="gap:8px">
+        <div class="muted small">Per-task quick snooze:</div>
+        <div class="muted small">1d/3d/Today or pick date/time below</div>
+        <input id="customSnoozeDT" type="datetime-local" />
+        <button id="applyCustomSnooze" class="btn secondary sm" title="Apply to selected task (from list)">Apply</button>
       </div>
       <div id="dueSoonList" class="list" style="margin-top:10px; max-height:70vh; overflow:auto"></div>
     </div>
@@ -268,6 +282,18 @@
   <script>
   (function(){
     'use strict';
+    /* ========= Shortcuts (documented)
+       N — New Task
+       D — Open Due Soon
+       G / H — Go to Active / Completed tabs (←/→ also cycles tabs)
+       L — Leads tab
+       X — Toggle theme
+       E — Share CSVs
+       B — Backup ZIP
+       A — Share All (ZIP + CSVs)
+    ========= */
+
+    /* ===== App Namespace ===== */
     const CT = window.CT = window.CT || {};
     CT.__loaded = true;
 
@@ -279,17 +305,32 @@
     const escapeHtml = s => String(s??"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] || c));
     const uuid = ()=> ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16));
 
+    /* ===== Theme ===== */
+    const LS_THEME = 'ct_theme';
+    function applyTheme(t){ document.documentElement.setAttribute('data-theme', t); localStorage.setItem(LS_THEME, t); }
+    (function initTheme(){
+      const saved = localStorage.getItem(LS_THEME);
+      if (saved) applyTheme(saved);
+      else {
+        const prefers = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        applyTheme(prefers);
+      }
+    })();
+    q('#btnTheme')?.addEventListener('click', ()=>{
+      const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+      applyTheme(cur==='dark'?'light':'dark');
+    });
+
     /* ===== Toasts ===== */
     const elToaster = q('#toaster');
     function showToast(type, msg, ms=3000){
       try{
-        if(!elToaster){ alert(msg); return; }
         const el = document.createElement('div');
         el.className = `toast ${type}`;
         el.innerHTML = `<span>${escapeHtml(msg)}</span><button onclick="this.parentElement.remove()">✕</button>`;
         elToaster.appendChild(el);
         setTimeout(()=>{ el.remove(); }, ms);
-      }catch(e){ console.error('Toast error', e); }
+      }catch(e){ alert(msg); }
     }
 
     /* ===== Persistence ===== */
@@ -302,43 +343,25 @@
     let tasks = loadJSON(LS_TASKS, []);
     let leads = loadJSON(LS_LEADS, []);
     let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {}); // { taskId: timestamp_ms }
-
-    function loadJSON(key, fallback){
-      try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }
-      catch(e){ console.warn('loadJSON', e); return fallback; }
-    }
+    function loadJSON(key, fallback){ try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }catch{ return fallback; } }
     function saveAll(){
-      try{
-        localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
-        localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
-        localStorage.setItem(LS_LEADS, JSON.stringify(leads));
-        localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-        render();
-        refreshDueSoonBadge();
-      }catch(e){ console.error('saveAll', e); }
+      localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
+      localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
+      localStorage.setItem(LS_LEADS, JSON.stringify(leads));
+      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+      render();
+      refreshDueSoonBadge();
     }
 
     /* ===== State ===== */
-    const STATUS = {
-      PENDING: "Pending",
-      INPROG: "In Progress",
-      ONHOLD: "On Hold",
-      CANCELLED: "Cancelled",
-      COMPLETED: "Completed",
-    };
+    const STATUS = { PENDING: "Pending", INPROG: "In Progress", ONHOLD: "On Hold", CANCELLED: "Cancelled", COMPLETED: "Completed" };
     const LEAD_STATUS = ["Talked","Interested","Waiting Confirmation","Converted"];
     let activeTab = "Active";
     let activeFilter = STATUS.PENDING;
     let leadFilter = "All";
+    let selectedTaskForCustomSnooze = null;
 
-    /* ===== DOM refs ===== */
-    const elActiveView = q("#activeView");
-    const elCompletedView = q("#completedView");
-    const elLeadsView = q("#leadsView");
-    const elActiveList = q("#activeList");
-    const elCompletedList = q("#completedList");
-    const elLeadsList = q("#leadsList");
-
+    /* ===== Helpers ===== */
     function isOverdue(t){
       if(!t.dueDate || t.status===STATUS.COMPLETED) return false;
       const today = new Date(); today.setHours(0,0,0,0);
@@ -355,19 +378,38 @@
         default: return "p-pending";
       }
     }
+    function leadPillClass(s){ return s==="Converted"?"p-complete": s==="Waiting Confirmation"?"p-onhold": s==="Interested"?"p-inprog":"p-pending"; }
+
+    /* ===== Rendering ===== */
+    const elActiveView = q("#activeView"), elCompletedView = q("#completedView"), elLeadsView = q("#leadsView");
+    const elActiveList = q("#activeList"), elCompletedList = q("#completedList"), elLeadsList = q("#leadsList");
+
     function render(){
-      try{
-        q("#countActive").textContent = `(${tasks.filter(t=>t.status!==STATUS.COMPLETED).length})`;
-        q("#countCompleted").textContent = `(${tasks.filter(t=>t.status===STATUS.COMPLETED).length})`;
-        q("#countLeads").textContent = `(${leads.length})`;
-        elActiveView.classList.toggle("hidden", activeTab!=="Active");
-        elCompletedView.classList.toggle("hidden", activeTab!=="Completed");
-        elLeadsView.classList.toggle("hidden", activeTab!=="Leads");
-        if(activeTab==="Active") renderActive();
-        else if(activeTab==="Completed") renderCompleted();
-        else renderLeads();
-      }catch(e){ console.error('render', e); }
+      q("#countActive").textContent = `(${tasks.filter(t=>t.status!==STATUS.COMPLETED).length})`;
+      q("#countCompleted").textContent = `(${tasks.filter(t=>t.status===STATUS.COMPLETED).length})`;
+      q("#countLeads").textContent = `(${leads.length})`;
+      elActiveView.classList.toggle("hidden", activeTab!=="Active");
+      elCompletedView.classList.toggle("hidden", activeTab!=="Completed");
+      elLeadsView.classList.toggle("hidden", activeTab!=="Leads");
+      if(activeTab==="Active") renderActive();
+      else if(activeTab==="Completed") renderCompleted();
+      else renderLeads();
     }
+
+    function quickActionsHTML(t, c){
+      const wa = c && (c.numbers||[])[0] ? `https://wa.me/${(c.numbers[0]||'').replace(/[^\d]/g,'')}` : '';
+      return `
+        <div class="actions" data-actions="${t.id}">
+          <button class="iconbtn" data-act="edit" title="Edit">✏️ Edit</button>
+          ${t.status!==STATUS.COMPLETED ? `<button class="iconbtn" data-act="complete" title="Mark Complete">✅ Done</button>` : ``}
+          <button class="iconbtn" data-act="snooze1d" title="Snooze 1 day">😴 1d</button>
+          <button class="iconbtn" data-act="snooze3d" title="Snooze 3 days">😴 3d</button>
+          <button class="iconbtn" data-act="snoozeToday" title="Snooze Today">😴 Today</button>
+          ${wa ? `<a class="iconbtn" data-act="wa" href="${wa}" target="_blank" rel="noopener" title="WhatsApp">🟢 WA</a>` : `<button class="iconbtn" disabled title="No number">WA</button>`}
+        </div>
+      `;
+    }
+
     function renderActive(){
       elActiveList.innerHTML = "";
       let pool = tasks.filter(t => t.status !== STATUS.COMPLETED);
@@ -391,10 +433,11 @@
           <div class="meta">
             <div class="inline wrap">
               <strong>${escapeHtml(name)}</strong>
-              <span class="pill ${pillClass(t.status)} status-pill" data-id="${t.id}" title="Tap to cycle status" style="margin-left:8px">${t.status}</span>
+              <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
               ${t.dueDate ? `<span class="pill ${overdue? 'p-overdue':'p-due'}" style="margin-left:8px">${overdue? 'Overdue:':'Due:'} ${t.dueDate}</span>` : ""}
             </div>
             <div class="muted small" style="margin-top:4px">${escapeHtml(t.description||"(no description)")} • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}</div>
+            ${quickActionsHTML(t, c)}
           </div>
         `;
         elActiveList.appendChild(row);
@@ -419,10 +462,11 @@
           <div class="meta">
             <div class="inline wrap">
               <strong>${escapeHtml(name)}</strong>
-              <span class="pill p-complete" title="Completed" style="margin-left:8px">Completed</span>
+              <span class="pill p-complete" style="margin-left:8px">Completed</span>
               ${t.dueDate ? `<span class="pill p-due" style="margin-left:8px">Was Due: ${t.dueDate}</span>` : ""}
             </div>
             <div class="muted small" style="margin-top:4px">${escapeHtml(t.description||"(no description)")} • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}</div>
+            ${quickActionsHTML(t, c)}
           </div>
         `;
         elCompletedList.appendChild(row);
@@ -446,7 +490,7 @@
           <div class="meta">
             <div class="inline wrap">
               <strong>${escapeHtml(l.name||"(unnamed)")}</strong>
-              <span class="pill ${leadPillClass(l.status)} lead-status" data-id="${l.id}" title="Tap to cycle status" style="margin-left:8px">${l.status}</span>
+              <span class="pill ${leadPillClass(l.status)}" style="margin-left:8px">${l.status}</span>
               ${l.product ? `<span class="pill p-due" style="margin-left:8px">Product: ${escapeHtml(l.product)}</span>` : ""}
             </div>
             <div class="muted small" style="margin-top:4px">Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}</div>
@@ -456,24 +500,19 @@
         elLeadsList.appendChild(row);
       }
     }
-    function leadPillClass(s){
-      switch(s){
-        case "Talked": return "p-pending";
-        case "Interested": return "p-inprog";
-        case "Waiting Confirmation": return "p-onhold";
-        case "Converted": return "p-complete";
-        default: return "p-pending";
-      }
-    }
 
     /* ===== Tabs & Filters ===== */
-    CT.switchTab = function(which){
+    function setTab(which){
       activeTab = which;
       q("#tabActive").classList.toggle("active", which==="Active");
       q("#tabCompleted").classList.toggle("active", which==="Completed");
       q("#tabLeads").classList.toggle("active", which==="Leads");
       render();
-    };
+    }
+    q("#tabActive").addEventListener('click', ()=> setTab('Active'));
+    q("#tabCompleted").addEventListener('click', ()=> setTab('Completed'));
+    q("#tabLeads").addEventListener('click', ()=> setTab('Leads'));
+
     qAll('.filters .chip[data-filter]').forEach(ch=>{
       ch.addEventListener("click", ()=>{
         qAll('.filters .chip[data-filter]').forEach(x=>x.classList.remove("active"));
@@ -482,6 +521,7 @@
         render();
       });
     });
+
     qAll('.lead-filter').forEach(ch=>{
       ch.addEventListener("click", ()=>{
         qAll('.lead-filter').forEach(x=>x.classList.remove('active'));
@@ -503,14 +543,11 @@
     const elSaveTaskBtn = q("#saveTaskBtn");
     const elCancelTaskBtn = q("#cancelTaskBtn");
     const elTaskTimestamps = q("#taskTimestamps");
-
     let editingTaskId = null;
     let editingTaskCustomerId = null;
 
     function openTaskModal(customerId=null, taskId=null){
-      editingTaskId = taskId;
-      editingTaskCustomerId = customerId;
-
+      editingTaskId = taskId; editingTaskCustomerId = customerId;
       if(taskId){
         const t = tasks.find(x=>x.id===taskId);
         const c = customers.find(x=>x.id===t.customerId);
@@ -532,8 +569,7 @@
         elTaskStatus.value = STATUS.PENDING;
         elTaskTimestamps.textContent = "";
       }
-      elTaskModal.style.display = "flex";
-      setTimeout(()=>elTaskCustomerName.focus(), 0);
+      elTaskModal.style.display = "flex"; setTimeout(()=>elTaskCustomerName.focus(), 0);
     }
     function closeTaskModal(){ elTaskModal.style.display = "none"; }
 
@@ -545,13 +581,10 @@
         const due = elTaskDue.value || "";
         const st = elTaskStatus.value;
         if (!name && numbersRaw.length===0){ showToast('error','Enter name or at least one number'); return; }
+
         let customer = null;
-        if(editingTaskCustomerId){
-          customer = customers.find(c=>c.id===editingTaskCustomerId) || null;
-        }
-        if(!customer && name){
-          customer = customers.find(c=> (c.name||"") === name) || null;
-        }
+        if(editingTaskCustomerId){ customer = customers.find(c=>c.id===editingTaskCustomerId) || null; }
+        if(!customer && name){ customer = customers.find(c=> (c.name||"") === name) || null; }
         if(!customer && numbersRaw.length){
           const flat = new Set(numbersRaw);
           customer = customers.find(c => (c.numbers||[]).some(m => flat.has(m))) || null;
@@ -564,25 +597,17 @@
           for(const n of numbersRaw){ if(n && !exist.has(n)){ customer.numbers.push(n); exist.add(n); } }
           customer.updatedAt = nowISO();
         }
-        let newId = editingTaskId;
         if(editingTaskId){
           const t = tasks.find(x=>x.id===editingTaskId);
-          t.customerId = customer.id;
-          t.description = desc;
-          t.dueDate = due;
-          t.status = st;
-          t.updatedAt = nowISO();
+          t.customerId = customer.id; t.description = desc; t.dueDate = due; t.status = st; t.updatedAt = nowISO();
         }else{
-          newId = uuid();
-          tasks.push({ id: newId, customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
+          tasks.push({ id: uuid(), customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
         }
-        saveAll();
-        closeTaskModal();
-        showToast('success','Task saved');
+        saveAll(); closeTaskModal(); showToast('success','Task saved');
       }catch(e){ console.error('save task', e); showToast('error','Could not save task'); }
     });
     elCancelTaskBtn.addEventListener("click", closeTaskModal);
-
+    q('#btnAddTask').addEventListener('click', ()=> openTaskModal(null, null));
     CT.openAdd = ()=> openTaskModal(null, null);
     CT.editTask = (id)=>{ const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
 
@@ -605,27 +630,21 @@
       if (leadId){
         const l = leads.find(x=>x.id===leadId);
         elLeadModalTitle.textContent = "Edit Lead";
-        elLeadName.value = l?.name || "";
-        elLeadNumbers.value = (l?.numbers||[]).join(", ");
-        elLeadProduct.value = l?.product || "";
-        elLeadStatus.value = l?.status || "Talked";
+        elLeadName.value = l?.name || ""; elLeadNumbers.value = (l?.numbers||[]).join(", ");
+        elLeadProduct.value = l?.product || ""; elLeadStatus.value = l?.status || "Talked";
         elLeadDesc.value = l?.description || "";
         elLeadTimestamps.textContent = `Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}`;
         elDeleteLeadBtn.classList.remove('hidden');
       }else{
         elLeadModalTitle.textContent = "Add Lead";
-        elLeadName.value = "";
-        elLeadNumbers.value = "";
-        elLeadProduct.value = "";
-        elLeadStatus.value = "Talked";
-        elLeadDesc.value = "";
-        elLeadTimestamps.textContent = "";
+        elLeadName.value = ""; elLeadNumbers.value = ""; elLeadProduct.value = "";
+        elLeadStatus.value = "Talked"; elLeadDesc.value = ""; elLeadTimestamps.textContent = "";
         elDeleteLeadBtn.classList.add('hidden');
       }
-      elLeadModal.style.display = "flex";
-      setTimeout(()=>elLeadName.focus(), 0);
+      elLeadModal.style.display = "flex"; setTimeout(()=>elLeadName.focus(), 0);
     }
     function closeLeadModal(){ elLeadModal.style.display = "none"; }
+    q("#addLeadBtn")?.addEventListener("click", ()=> openLeadModal(null));
 
     elSaveLeadBtn.addEventListener("click", ()=>{
       const name = (elLeadName.value||"").trim();
@@ -635,134 +654,276 @@
       const description = (elLeadDesc.value||"").trim();
       if (!name && numbers.length===0){ showToast('error','Enter name or at least one number'); return; }
       if (editingLeadId){
-        const l = leads.find(x=>x.id===editingLeadId);
-        if (!l) return;
-        l.name = name; l.numbers = numbers; l.product = product; l.status = status; l.description = description;
-        l.updatedAt = nowISO();
+        const l = leads.find(x=>x.id===editingLeadId); if (!l) return;
+        l.name = name; l.numbers = numbers; l.product = product; l.status = status; l.description = description; l.updatedAt = nowISO();
       }else{
         leads.push({ id: uuid(), name, numbers, product, status, description, createdAt: nowISO(), updatedAt: nowISO() });
       }
-      saveAll();
-      closeLeadModal();
-      showToast('success','Lead saved');
+      saveAll(); closeLeadModal(); showToast('success','Lead saved');
     });
     elCancelLeadBtn.addEventListener("click", closeLeadModal);
     elDeleteLeadBtn.addEventListener("click", ()=>{
       if (!editingLeadId) return;
       if (!confirm('Delete this lead? This cannot be undone.')) return;
-      const idx = leads.findIndex(x=>x.id===editingLeadId);
-      if (idx!==-1) leads.splice(idx,1);
-      saveAll();
-      closeLeadModal();
-      showToast('success','Lead deleted');
+      const idx = leads.findIndex(x=>x.id===editingLeadId); if (idx!==-1) leads.splice(idx,1);
+      saveAll(); closeLeadModal(); showToast('success','Lead deleted');
     });
 
-    CT.openLeadAdd = ()=> openLeadModal(null);
-
-    /* ===== Row interactions ===== */
-    function cycleStatus(id){
+    /* ===== Quick Actions — row buttons ===== */
+    function completeTask(id){
       const t = tasks.find(x=>x.id===id); if(!t) return;
-      const order = [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD, STATUS.CANCELLED];
-      let i = order.indexOf(t.status);
-      if (i === -1) i = 0;
-      t.status = order[(i+1) % order.length];
-      t.updatedAt = nowISO();
-      saveAll();
-      showToast('success', 'Status: ' + t.status);
+      t.status = STATUS.COMPLETED; t.updatedAt = nowISO(); saveAll(); showToast('success','Task completed');
     }
-    function cycleLeadStatus(id){
-      const l = leads.find(x=>x.id===id); if(!l) return;
-      const idx = LEAD_STATUS.indexOf(l.status);
-      l.status = LEAD_STATUS[(idx+1) % LEAD_STATUS.length];
-      l.updatedAt = nowISO();
-      saveAll();
-      showToast('success','Lead status: ' + l.status);
+    function snoozeTask(taskId, ms){
+      taskSnoozes[taskId] = Date.now() + ms;
+      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+      refreshDueSoonBadge(); renderDueSoonModal();
+    }
+    function snoozeTaskToday(taskId){
+      const end = new Date(); end.setHours(23,59,59,999);
+      taskSnoozes[taskId] = +end;
+      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+      refreshDueSoonBadge(); renderDueSoonModal();
+    }
+    elActiveList.addEventListener('click', handleRowActions);
+    elCompletedList.addEventListener('click', handleRowActions);
+    function handleRowActions(e){
+      const actionHost = e.target.closest('.actions');
+      if (!actionHost) {
+        const row = e.target.closest('.row[data-task-id]');
+        if (row) CT.editTask(row.dataset.taskId);
+        return;
+      }
+      e.stopPropagation();
+      const taskId = actionHost.getAttribute('data-actions');
+      const actBtn = e.target.closest('[data-act]');
+      if (!actBtn) return;
+      const act = actBtn.getAttribute('data-act');
+      selectedTaskForCustomSnooze = taskId; // for custom date-time apply
+      if (act==='edit') CT.editTask(taskId);
+      else if (act==='complete') completeTask(taskId);
+      else if (act==='snooze1d') snoozeTask(taskId, 24*60*60*1000);
+      else if (act==='snooze3d') snoozeTask(taskId, 3*24*60*60*1000);
+      else if (act==='snoozeToday') snoozeTaskToday(taskId);
     }
 
-    q("#activeList").addEventListener('click', (e)=>{
-      const pill = e.target.closest('.status-pill');
-      if (pill){ e.preventDefault(); e.stopPropagation(); cycleStatus(pill.getAttribute('data-id')); return; }
-      const row = e.target.closest('.row[data-task-id]');
-      if (row){ CT.editTask(row.dataset.taskId); }
-    });
-    q("#completedList").addEventListener('click', (e)=>{
-      const row = e.target.closest('.row[data-task-id]');
-      if (row){ CT.editTask(row.dataset.taskId); }
-    });
-    q("#leadsList").addEventListener('click', (e)=>{
-      const pill = e.target.closest('.lead-status');
-      if (pill){ e.preventDefault(); e.stopPropagation(); cycleLeadStatus(pill.getAttribute('data-id')); return; }
-      const row = e.target.closest('.row[data-lead-id]');
-      if (row){ openLeadModal(row.dataset.leadId); }
-    });
-    q("#addLeadBtn")?.addEventListener("click", ()=> CT.openLeadAdd());
+    /* ===== Due Soon (auto + custom snooze) ===== */
+    const DUE_WINDOW_DAYS = 3;
+    const CHECK_INTERVAL_MS = 60_000;
 
-    ['#activeList', '#completedList', '#leadsList'].forEach(sel=>{
-      const root = document.querySelector(sel);
-      root.addEventListener('keydown', (e)=>{
-        if (e.key !== 'Enter') return;
-        const trow = e.target.closest('.row[data-task-id]');
-        const lrow = e.target.closest('.row[data-lead-id]');
-        if (trow) CT.editTask(trow.dataset.taskId);
-        if (lrow) openLeadModal(lrow.dataset.leadId);
+    function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+    function daysFromToday(dateStr){
+      if (!dateStr) return null;
+      const today = startOfDay(new Date());
+      const due = startOfDay(new Date(dateStr));
+      const diffMs = due - today;
+      return Math.round(diffMs / (24*60*60*1000));
+    }
+    function actionableStatus(s){ return [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD].includes(s); }
+    function cleanupExpiredSnoozes(){
+      const now = Date.now(); let changed = false;
+      for (const [tid, ts] of Object.entries(taskSnoozes)){ if (!ts || ts <= now){ delete taskSnoozes[tid]; changed = true; } }
+      if (changed) localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+    }
+    function isTaskSnoozed(id){ const ts = taskSnoozes[id]; return ts && ts > Date.now(); }
+    function collectDueSoon(){
+      cleanupExpiredSnoozes();
+      const out = [];
+      for (const t of tasks){
+        if (!actionableStatus(t.status)) continue;
+        if (!t.dueDate) continue;
+        if (isTaskSnoozed(t.id)) continue;
+        const k = daysFromToday(t.dueDate);
+        if (k===null) continue;
+        if (k <= DUE_WINDOW_DAYS){
+          const c = customers.find(x=>x.id===t.customerId);
+          out.push({ task: t, customer: c||null, days: k });
+        }
+      }
+      out.sort((a,b)=> (a.days===b.days) ? (new Date(a.task.dueDate) - new Date(b.task.dueDate)) : (a.days - b.days));
+      return out;
+    }
+    function dueLabel(k){ if (k < 0) return `Overdue by ${Math.abs(k)} day${Math.abs(k)===1?'':'s'}`; if (k === 0) return 'Due Today'; return `Due in ${k} day${k===1?'':'s'}`; }
+    function pillDueClass(k){ return k<0 ? 'p-overdue' : 'p-due'; }
+    function refreshDueSoonBadge(){ const el = q('#dueSoonCount'); if (el) el.textContent = (collectDueSoon().length || '') && `(${collectDueSoon().length})`; }
+
+    function renderDueSoonModal(){
+      const container = q('#dueSoonList'); container.innerHTML = '';
+      const items = collectDueSoon();
+      if (!items.length){ container.innerHTML = `<div class="row"><div class="meta">No overdue or due-soon tasks 🎉</div></div>`; return; }
+      for (const {task:t, customer:c, days:k} of items){
+        const name = c ? (c.name||'Unknown') : '(missing)';
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.dataset.taskId = t.id;
+        row.innerHTML = `
+          <div class="meta">
+            <div class="inline wrap">
+              <strong>${escapeHtml(name)}</strong>
+              <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
+              <span class="pill ${pillDueClass(k)}" style="margin-left:8px">${dueLabel(k)} • ${t.dueDate||''}</span>
+            </div>
+            <div class="muted small" style="margin-top:4px">
+              ${escapeHtml(t.description||'(no description)')}
+              • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}
+            </div>
+            <div class="actions" data-actions="${t.id}" style="margin-top:8px">
+              <button class="iconbtn" data-act="edit">✏️ Edit</button>
+              <button class="iconbtn" data-act="complete">✅ Done</button>
+              <button class="iconbtn" data-act="snooze1d">😴 1d</button>
+              <button class="iconbtn" data-act="snooze3d">😴 3d</button>
+              <button class="iconbtn" data-act="snoozeToday">😴 Today</button>
+              <button class="iconbtn" data-act="choose">📅 Choose…</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(row);
+      }
+      container.querySelectorAll('[data-act="choose"]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          selectedTaskForCustomSnooze = btn.closest('.actions').getAttribute('data-actions');
+          q('#customSnoozeDT').focus();
+        });
       });
+      // Reuse row actions handler
+      container.addEventListener('click', handleRowActions);
+    }
+    function openDueSoonModal(){ renderDueSoonModal(); q('#dueSoonModal').style.display = 'flex'; }
+    function closeDueSoonModal(){ q('#dueSoonModal').style.display = 'none'; }
+    q('#btnDueSoon')?.addEventListener('click', openDueSoonModal);
+    q('#btnDueSoonClose')?.addEventListener('click', closeDueSoonModal);
+
+    // Global snooze for auto-popup (not per-task)
+    q('#btnSnooze2h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+2*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 2h'); });
+    q('#btnSnooze6h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+6*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 6h'); });
+    q('#btnSnooze1d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+24*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 1 day'); });
+    q('#btnSnooze3d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+3*24*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 3 days'); });
+
+    q('#applyCustomSnooze')?.addEventListener('click', ()=>{
+      const dt = q('#customSnoozeDT').value;
+      if (!selectedTaskForCustomSnooze){ showToast('error','Pick a task (click any snooze button first)'); return; }
+      if (!dt){ showToast('error','Pick a date & time'); return; }
+      const ts = +new Date(dt);
+      if (ts <= Date.now()){ showToast('error','Choose a time in the future'); return; }
+      taskSnoozes[selectedTaskForCustomSnooze] = ts;
+      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+      refreshDueSoonBadge(); renderDueSoonModal(); showToast('success','Custom snooze set');
     });
 
-    /* ===== Export / Backup ===== */
+    function getGlobalSnoozeUntil(){ const v = localStorage.getItem(LS_SNOOZE_GLOBAL); return v ? parseInt(v,10) : 0; }
+    function autoDueSoonCheck(){
+      try{
+        refreshDueSoonBadge();
+        const items = collectDueSoon(); if (!items.length) return;
+        const snoozeUntil = getGlobalSnoozeUntil(); if (Date.now() < snoozeUntil) return;
+        const isOpen = q('#dueSoonModal').style.display === 'flex';
+        if (!isOpen){ openDueSoonModal(); showToast('info','You have overdue / due-soon tasks'); }
+      }catch(e){ console.error('autoDueSoonCheck', e); }
+    }
+    autoDueSoonCheck();
+    setInterval(autoDueSoonCheck, CHECK_INTERVAL_MS);
+
+    /* ===== CSV Export + Share ===== */
     function csvFromRows(rows){
       return rows.map(r => r.map(cell => {
         const s = String(cell ?? "");
         return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
       }).join(",")).join("\n");
     }
-    async function downloadCSV(filename, rows){
-      const csv = csvFromRows(rows);
-      const blob = new Blob(["\uFEFF", csv], {type:"text/csv;charset=utf-8"});
+    function makeCSVFiles(){
+      // Customers
+      const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
+      for(const c of customers){ custRows.push([c.id, c.name||"", (c.numbers||[]).join(", "), c.createdAt||"", c.updatedAt||""]); }
+      const cust = "\uFEFF" + csvFromRows(custRows);
+      // Tasks
+      const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"]];
+      for(const t of tasks){
+        const c = customers.find(x=>x.id===t.customerId);
+        taskRows.push([ t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"", t.description||"", t.dueDate||"", t.status||"", t.createdAt||"", t.updatedAt||"" ]);
+      }
+      const task = "\uFEFF" + csvFromRows(taskRows);
+      // Leads
+      const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Description","Created At","Updated At"]];
+      for(const l of leads){
+        leadRows.push([ l.id, l.name||"", (l.numbers||[]).join(", "), l.product||"", l.status||"", l.description||"", l.createdAt||"", l.updatedAt||"" ]);
+      }
+      const lead = "\uFEFF" + csvFromRows(leadRows);
+      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+      const f1 = new File([cust], `Customers_${ts}.csv`, {type:"text/csv"});
+      const f2 = new File([task], `Tasks_${ts}.csv`, {type:"text/csv"});
+      const f3 = new File([lead], `Leads_${ts}.csv`, {type:"text/csv"});
+      return [f1,f2,f3];
+    }
+    async function shareFilesOrDownload(files, title, text){
+      if (navigator.canShare && navigator.canShare({ files })){
+        try{ await navigator.share({ files, title, text }); showToast('success','Shared'); return true; }catch(e){ /* canceled */ }
+      }
+      try{ const msg = encodeURIComponent(text || title || 'Files'); window.open(`https://wa.me/?text=${msg}`, '_blank'); }catch{}
+      for (const f of files){ const url = URL.createObjectURL(f); const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1500); }
+      showToast('info','Files downloaded — attach in WhatsApp');
+      return false;
+    }
+    async function shareCSVs(){ const files = makeCSVFiles(); await shareFilesOrDownload(files, 'Customer Tasks CSVs', 'Customers.csv, Tasks.csv, Leads.csv'); }
+    q('#btnShareCSVs')?.addEventListener('click', shareCSVs);
+
+    /* ===== Backup ZIP (JSON + CSVs) ===== */
+    function makeBackupJSON(){
+      const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
+      return JSON.stringify(payload, null, 2);
+    }
+    async function makeBackupZipBlob(){
+      if (!window.JSZip){ return null; }
+      const zip = new JSZip();
+      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+      // JSON
+      zip.file(`backup_${ts}.json`, makeBackupJSON());
+      // CSVs
+      const [cF,tF,lF] = makeCSVFiles();
+      const asText = f => new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsText(f); });
+      const [cTxt,tTxt,lTxt] = await Promise.all([asText(cF),asText(tF),asText(lF)]);
+      zip.file(`Customers_${ts}.csv`, cTxt);
+      zip.file(`Tasks_${ts}.csv`, tTxt);
+      zip.file(`Leads_${ts}.csv`, lTxt);
+      const blob = await zip.generateAsync({type:'blob'});
+      return { blob, filename:`CustomerTasks_FullBackup_${ts}.zip` };
+    }
+    async function backupZipShare(){
       try{
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = filename; a.target = "_blank";
-        document.body.appendChild(a); a.click();
-        setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
+        const pack = await makeBackupZipBlob();
+        if (pack){
+          const file = new File([pack.blob], pack.filename, {type:'application/zip'});
+          if (navigator.canShare && navigator.canShare({files:[file]})){
+            await navigator.share({ files:[file], title:'Full Backup ZIP', text:'Backup JSON + 3 CSVs' });
+            showToast('success','Shared ZIP'); return;
+          }
+          // Download ZIP
+          const url = URL.createObjectURL(pack.blob); const a = document.createElement('a'); a.href=url; a.download=pack.filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+          showToast('success','Backup ZIP downloaded');
+        }else{
+          // Fallback if JSZip unavailable: download the four files separately
+          const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+          const json = new Blob([makeBackupJSON()], {type:'application/json'});
+          const jf = new File([json], `backup_${ts}.json`, {type:'application/json'});
+          const csvs = makeCSVFiles();
+          await shareFilesOrDownload([jf, ...csvs], 'Backup (no ZIP)', 'Backup JSON + CSVs');
+        }
       }catch(e){
-        console.error('download csv', e);
+        console.error(e); showToast('error','Backup ZIP failed');
       }
     }
-    function exportCSV(){
-      try{
-        const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
-        for(const c of customers){ custRows.push([c.id, c.name||"", (c.numbers||[]).join(", "), c.createdAt||"", c.updatedAt||""]); }
+    q('#btnBackupZip')?.addEventListener('click', backupZipShare);
 
-        const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"]];
-        for(const t of tasks){
-          const c = customers.find(x=>x.id===t.customerId);
-          taskRows.push([ t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"", t.description||"", t.dueDate||"", t.status||"", t.createdAt||"", t.updatedAt||"" ]);
-        }
-
-        const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Description","Created At","Updated At"]];
-        for(const l of leads){
-          leadRows.push([ l.id, l.name||"", (l.numbers||[]).join(", "), l.product||"", l.status||"", l.description||"", l.createdAt||"", l.updatedAt||"" ]);
-        }
-
-        downloadCSV("Customers.csv", custRows);
-        setTimeout(()=>downloadCSV("Tasks.csv", taskRows), 400);
-        setTimeout(()=>downloadCSV("Leads.csv", leadRows), 800);
-        showToast('success','Export started');
-      }catch(e){ console.error('export', e); showToast('error','Export failed'); }
+    // Share All = ZIP + CSVs (best effort)
+    async function shareAll(){
+      const pack = await makeBackupZipBlob();
+      const files = [];
+      if (pack){ files.push(new File([pack.blob], pack.filename, {type:'application/zip'})); }
+      files.push(...makeCSVFiles());
+      await shareFilesOrDownload(files, 'Customer Tasks — Full Share', 'Backup ZIP + Customers/Tasks/Leads CSVs');
     }
-    function backupJSON(){
-      const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
-      const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'customer_tasks_backup.json'; a.click();
-      setTimeout(()=>URL.revokeObjectURL(url), 1000);
-      showToast('success','Backup JSON downloaded');
-    }
-    CT.exportCSV = exportCSV;
-    CT.backupJSON = backupJSON;
+    q('#btnShareAll')?.addEventListener('click', shareAll);
 
-    /* ===== CSV Import (Customers / Tasks / Leads) ===== */
+    /* ===== CSV Import (Customers / Tasks / Leads) — basic (Preview/Mapping in Phase 2) ===== */
     function parseCSV(text){
       const rows = [];
       let cur = '', row = [], inQuotes = false;
@@ -784,20 +945,9 @@
       if (rows.length && rows[rows.length-1].every(x => String(x||'').trim()==='')) rows.pop();
       return rows;
     }
-    function headerMap(headerRow){
-      const map = {};
-      headerRow.forEach((h,i)=> map[String(h||'').trim().toLowerCase()] = i);
-      return map;
-    }
-    function getCell(row, hmap, aliases){
-      for (const a of aliases){
-        const idx = hmap[a.toLowerCase()];
-        if (idx != null) return String(row[idx] ?? '').trim();
-      }
-      return '';
-    }
+    function headerMap(headerRow){ const map={}; headerRow.forEach((h,i)=> map[String(h||'').trim().toLowerCase()] = i); return map; }
+    function getCell(row, hmap, aliases){ for (const a of aliases){ const idx = hmap[a.toLowerCase()]; if (idx != null) return String(row[idx] ?? '').trim(); } return ''; }
     const splitNumbers = raw => (raw||'').split(',').map(s=>s.trim()).filter(Boolean);
-
     function findOrCreateCustomer({id, name, numbers}){
       let c = null;
       if (id) c = customers.find(x=>x.id===id) || null;
@@ -834,10 +984,8 @@
       if (x.startsWith('conv')) return 'Converted';
       return 'Talked';
     }
-
     function importCSV_Customers(rows){
-      const headers = rows[0]; const data = rows.slice(1);
-      const h = headerMap(headers);
+      const headers = rows[0]; const data = rows.slice(1); const h = headerMap(headers);
       let added=0, updated=0;
       for (const r of data){
         if (!r || r.every(x => !String(x||'').trim())) continue;
@@ -847,16 +995,13 @@
         const res = findOrCreateCustomer({id,name,numbers:nums});
         if (res.created) added++; else updated++;
       }
-      saveAll();
-      showToast('success', `Customers CSV imported • Added ${added}, Updated ${updated}`);
+      saveAll(); showToast('success', `Customers CSV imported • Added ${added}, Updated ${updated}`);
     }
     function importCSV_Tasks(rows){
-      const headers = rows[0]; const data = rows.slice(1);
-      const h = headerMap(headers);
+      const headers = rows[0]; const data = rows.slice(1); const h = headerMap(headers);
       let added=0, updated=0, createdCustomers=0;
       for (const r of data){
         if (!r || r.every(x => !String(x||'').trim())) continue;
-
         const taskId = getCell(r,h,['taskid','id']);
         const custId = getCell(r,h,['customerid','cust id']);
         const name   = getCell(r,h,['customer name','name']);
@@ -864,276 +1009,74 @@
         const desc   = getCell(r,h,['task description','description','task']);
         const due    = getCell(r,h,['due date','due']);
         const status = normTaskStatus(getCell(r,h,['status']));
-
-        const {customer, created} = findOrCreateCustomer({id:custId, name, numbers:nums});
-        if (created) createdCustomers++;
-
+        const {customer, created} = findOrCreateCustomer({id:custId, name, numbers:nums}); if (created) createdCustomers++;
         let t = taskId ? tasks.find(x=>x.id===taskId) : null;
-        if (!t){
-          tasks.push({ id: taskId||uuid(), customerId: customer.id, description: desc||'', dueDate: due||'', status, createdAt: nowISO(), updatedAt: nowISO() });
-          added++;
-        }else{
-          t.customerId = customer.id;
-          t.description = desc || t.description || '';
-          t.dueDate = due || t.dueDate || '';
-          t.status = status || t.status || 'Pending';
-          t.updatedAt = nowISO();
-          updated++;
-        }
+        if (!t){ tasks.push({ id: taskId||uuid(), customerId: customer.id, description: desc||'', dueDate: due||'', status, createdAt: nowISO(), updatedAt: nowISO() }); added++; }
+        else { t.customerId = customer.id; t.description = desc || t.description || ''; t.dueDate = due || t.dueDate || ''; t.status = status || t.status || 'Pending'; t.updatedAt = nowISO(); updated++; }
       }
-      saveAll();
-      showToast('success', `Tasks CSV imported • Added ${added}, Updated ${updated}${createdCustomers?` • New customers ${createdCustomers}`:''}`);
+      saveAll(); showToast('success', `Tasks CSV imported • Added ${added}, Updated ${updated}${createdCustomers?` • New customers ${createdCustomers}`:''}`);
     }
     function importCSV_Leads(rows){
-      const headers = rows[0]; const data = rows.slice(1);
-      const h = headerMap(headers);
-      let added=0, updated=0;
-      const byId = new Map(leads.map(l=>[l.id,l]));
+      const headers = rows[0]; const data = rows.slice(1); const h = headerMap(headers);
+      let added=0, updated=0; const byId = new Map(leads.map(l=>[l.id,l]));
       for (const r of data){
         if (!r || r.every(x => !String(x||'').trim())) continue;
-
         const leadId = getCell(r,h,['leadid','id']);
         const name   = getCell(r,h,['customer name','name']);
         const nums   = splitNumbers(getCell(r,h,['mobile numbers','numbers','mobiles','phone','phones']));
         const prod   = getCell(r,h,['product']);
         const status = normLeadStatus(getCell(r,h,['status']));
         const desc   = getCell(r,h,['description','lead description','notes']);
-
         if (leadId && byId.has(leadId)){
           const l = byId.get(leadId);
-          l.name = name || l.name || '(unnamed)';
-          if (!Array.isArray(l.numbers)) l.numbers = [];
-          const exist = new Set(l.numbers.map(x=>x.trim()).filter(Boolean));
-          for (const n of nums){ if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); } }
-          l.product = prod || l.product || '';
-          l.status = status || l.status || 'Talked';
-          l.description = (typeof desc==='string'?desc:'') || l.description || '';
-          l.updatedAt = nowISO();
-          updated++;
+          l.name = name || l.name || '(unnamed)'; if (!Array.isArray(l.numbers)) l.numbers = [];
+          const exist = new Set(l.numbers.map(x=>x.trim()).filter(Boolean)); for (const n of nums){ if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); } }
+          l.product = prod || l.product || ''; l.status = status || l.status || 'Talked'; l.description = (typeof desc==='string'?desc:'') || l.description || '';
+          l.updatedAt = nowISO(); updated++;
         }else{
           leads.push({ id: leadId||uuid(), name: name||'(unnamed)', numbers: nums, product: prod||'', status, description: (typeof desc==='string'?desc:''), createdAt: nowISO(), updatedAt: nowISO() });
           added++;
         }
       }
-      saveAll();
-      showToast('success', `Leads CSV imported • Added ${added}, Updated ${updated}`);
+      saveAll(); showToast('success', `Leads CSV imported • Added ${added}, Updated ${updated}`);
     }
-
-    // Wire CSV inputs
     q('#btnCsvUpload')?.addEventListener('click', ()=> q('#csvFile').click());
     q('#csvFile')?.addEventListener('change', async (e)=>{
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
+      const file = e.target.files && e.target.files[0]; if (!file) return;
       try{
-        const text = await file.text();
-        const rows = parseCSV(text);
-        if (!rows.length){ showToast('error','CSV appears empty'); return; }
+        const text = await file.text(); const rows = parseCSV(text); if (!rows.length){ showToast('error','CSV appears empty'); return; }
         const target = (q('#csvTarget')?.value) || 'customers';
         if (target === 'customers') importCSV_Customers(rows);
         else if (target === 'tasks') importCSV_Tasks(rows);
         else importCSV_Leads(rows);
-      }catch(err){
-        console.error('CSV read error', err);
-        showToast('error','Failed to read CSV');
-      }finally{
-        e.target.value = '';
+      }catch(err){ console.error('CSV read error', err); showToast('error','Failed to read CSV'); }
+      finally{ e.target.value = ''; }
+    });
+
+    /* ===== Keyboard Shortcuts ===== */
+    document.addEventListener('keydown', (e)=>{
+      if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      const k = e.key.toLowerCase();
+      if (k==='n'){ e.preventDefault(); CT.openAdd(); }
+      else if (k==='d'){ e.preventDefault(); openDueSoonModal(); }
+      else if (k==='g'){ e.preventDefault(); setTab('Active'); }
+      else if (k==='h'){ e.preventDefault(); setTab('Completed'); }
+      else if (k==='l'){ e.preventDefault(); setTab('Leads'); }
+      else if (k==='x'){ e.preventDefault(); q('#btnTheme').click(); }
+      else if (k==='e'){ e.preventDefault(); q('#btnShareCSVs').click(); }
+      else if (k==='b'){ e.preventDefault(); q('#btnBackupZip').click(); }
+      else if (k==='a'){ e.preventDefault(); q('#btnShareAll').click(); }
+      else if (k==='arrowleft' || k==='arrowright'){
+        e.preventDefault();
+        const order = ['Active','Completed','Leads']; let i = order.indexOf(activeTab);
+        i = (k==='arrowright') ? (i+1)%order.length : (i-1+order.length)%order.length;
+        setTab(order[i]);
       }
     });
 
-    /* ===== Due Soon (Overdue + next 3 days) with global & per-task snooze ===== */
-    const DUE_WINDOW_DAYS = 3;
-    const CHECK_INTERVAL_MS = 60_000;
+    /* ===== Initial Render ===== */
+    render(); refreshDueSoonBadge();
 
-    function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
-    function daysFromToday(dateStr){
-      if (!dateStr) return null;
-      const today = startOfDay(new Date());
-      const due = startOfDay(new Date(dateStr));
-      const diffMs = due - today;
-      return Math.round(diffMs / (24*60*60*1000));
-    }
-    function actionableStatus(s){ return [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD].includes(s); }
-
-    function cleanupExpiredSnoozes(){
-      const now = Date.now();
-      let changed = false;
-      for (const [tid, ts] of Object.entries(taskSnoozes)){
-        if (!ts || ts <= now){ delete taskSnoozes[tid]; changed = true; }
-      }
-      if (changed) localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-    }
-
-    function isTaskSnoozed(id){
-      const ts = taskSnoozes[id];
-      return ts && ts > Date.now();
-    }
-
-    function collectDueSoon(){
-      cleanupExpiredSnoozes();
-      const out = [];
-      for (const t of tasks){
-        if (!actionableStatus(t.status)) continue;
-        if (!t.dueDate) continue;
-        if (isTaskSnoozed(t.id)) continue;
-        const k = daysFromToday(t.dueDate);
-        if (k===null) continue;
-        if (k <= DUE_WINDOW_DAYS){
-          const c = customers.find(x=>x.id===t.customerId);
-          out.push({ task: t, customer: c||null, days: k });
-        }
-      }
-      out.sort((a,b)=>{
-        if (a.days===b.days){
-          return new Date(a.task.dueDate) - new Date(b.task.dueDate);
-        }
-        return a.days - b.days; // overdue first, then sooner
-      });
-      return out;
-    }
-
-    function dueLabel(k){
-      if (k < 0) return `Overdue by ${Math.abs(k)} day${Math.abs(k)===1?'':'s'}`;
-      if (k === 0) return 'Due Today';
-      return `Due in ${k} day${k===1?'':'s'}`;
-    }
-    function pillDueClass(k){
-      if (k < 0) return 'p-overdue';
-      return 'p-due';
-    }
-
-    function refreshDueSoonBadge(){
-      const list = collectDueSoon();
-      const el = q('#dueSoonCount');
-      if (!el) return;
-      el.textContent = list.length ? `(${list.length})` : '';
-    }
-
-    function snoozeGlobal(ms){
-      const until = Date.now() + ms;
-      localStorage.setItem(LS_SNOOZE_GLOBAL, String(until));
-      showToast('success', `Muted Due Soon popups for ${Math.round(ms/3600000)}h`);
-    }
-    function getGlobalSnoozeUntil(){
-      const v = localStorage.getItem(LS_SNOOZE_GLOBAL);
-      return v ? parseInt(v, 10) : 0;
-    }
-    function snoozeTask(taskId, ms){
-      taskSnoozes[taskId] = Date.now() + ms;
-      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-      refreshDueSoonBadge();
-      renderDueSoonModal();
-    }
-    function snoozeTaskToday(taskId){
-      const end = new Date();
-      end.setHours(23,59,59,999);
-      taskSnoozes[taskId] = +end;
-      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-      refreshDueSoonBadge();
-      renderDueSoonModal();
-    }
-
-    function renderDueSoonModal(){
-      const container = q('#dueSoonList');
-      if (!container) return;
-      container.innerHTML = '';
-      const items = collectDueSoon();
-
-      if (!items.length){
-        container.innerHTML = `<div class="row"><div class="meta">No overdue or due-soon tasks 🎉</div></div>`;
-        return;
-      }
-
-      for (const {task:t, customer:c, days:k} of items){
-        const name = c ? (c.name||'Unknown') : '(missing)';
-        const row = document.createElement('div');
-        row.className = 'row';
-        row.dataset.taskId = t.id;
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap">
-              <strong>${escapeHtml(name)}</strong>
-              <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
-              <span class="pill ${pillDueClass(k)}" style="margin-left:8px">${dueLabel(k)} • ${t.dueDate||''}</span>
-            </div>
-            <div class="muted small" style="margin-top:4px">
-              ${escapeHtml(t.description||'(no description)')}
-              • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}
-            </div>
-            <div class="inline wrap" style="gap:6px; margin-top:8px">
-              <button class="btn secondary sm" data-open="${t.id}">Open/Edit</button>
-              <button class="btn secondary sm" data-snooze-day="${t.id}">Snooze 1d</button>
-              <button class="btn secondary sm" data-snooze-3day="${t.id}">Snooze 3d</button>
-              <button class="btn secondary sm" data-snooze-today="${t.id}">Snooze Today</button>
-            </div>
-          </div>
-        `;
-        container.appendChild(row);
-      }
-
-      container.querySelectorAll('button[data-open]').forEach(b=>{
-        b.addEventListener('click', ()=>{
-          const id = b.getAttribute('data-open');
-          q('#dueSoonModal').style.display = 'none';
-          CT.editTask(id);
-        });
-      });
-      container.querySelectorAll('button[data-snooze-day]').forEach(b=>{
-        b.addEventListener('click', ()=> snoozeTask(b.getAttribute('data-snooze-day'), 24*60*60*1000));
-      });
-      container.querySelectorAll('button[data-snooze-3day]').forEach(b=>{
-        b.addEventListener('click', ()=> snoozeTask(b.getAttribute('data-snooze-3day'), 3*24*60*60*1000));
-      });
-      container.querySelectorAll('button[data-snooze-today]').forEach(b=>{
-        b.addEventListener('click', ()=> snoozeTaskToday(b.getAttribute('data-snooze-today')));
-      });
-    }
-
-    function openDueSoonModal(){
-      renderDueSoonModal();
-      const modal = q('#dueSoonModal');
-      if (modal){ modal.style.display = 'flex'; }
-    }
-    function closeDueSoonModal(){
-      const modal = q('#dueSoonModal');
-      if (modal){ modal.style.display = 'none'; }
-    }
-
-    function autoDueSoonCheck(){
-      try{
-        refreshDueSoonBadge();
-        const items = collectDueSoon();
-        if (!items.length) return;
-
-        const snoozeUntil = getGlobalSnoozeUntil();
-        if (Date.now() < snoozeUntil) return;
-
-        const modal = q('#dueSoonModal');
-        const isOpen = modal && modal.style.display === 'flex';
-        if (!isOpen){
-          openDueSoonModal();
-          showToast('info', 'You have overdue / due-soon tasks');
-        }
-      }catch(e){ console.error('autoDueSoonCheck', e); }
-    }
-
-    // Wire Due Soon controls
-    q('#btnDueSoon')?.addEventListener('click', openDueSoonModal);
-    q('#btnDueSoonClose')?.addEventListener('click', closeDueSoonModal);
-    q('#btnSnooze1h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed for 1 hour'); });
-    q('#btnSnooze1d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+24*60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed for 1 day'); });
-    q('#btnSnooze3d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+3*24*60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed for 3 days'); });
-
-    // Initial badge, maybe popup, then periodic checks
-    refreshDueSoonBadge();
-    autoDueSoonCheck();
-    setInterval(autoDueSoonCheck, CHECK_INTERVAL_MS);
-
-    /* ===== Init ===== */
-    document.getElementById('addLeadBtn')?.addEventListener('click', ()=> CT.openLeadAdd());
-    document.getElementById('cancelTaskBtn')?.addEventListener('click', ()=> { q('#taskModal').style.display = 'none'; });
-    document.getElementById('cancelLeadBtn')?.addEventListener('click', ()=> { q('#leadModal').style.display = 'none'; });
-
-    render();
   })();
   </script>
 </body>
