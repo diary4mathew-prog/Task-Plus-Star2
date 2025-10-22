@@ -2,23 +2,19 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Customer Tasks & Leads — Phase 1 Features</title>
+  <title>Customer Tasks & Leads — Complete with Email</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- JSZip for ZIP creation (Backup ZIP). If CDN blocked, zip fallback auto-downloads the 4 files separately. -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <style>
-    /* ===== THEME ===== */
     :root{
       --bg:#0b1020; --panel:#121a35; --panel2:#0f1530; --text:#eaf0ff; --muted:#aab4d6;
       --border:#1f2a4f; --accent:#5b8cff; --accent2:#74d680; --warn:#ffcc66; --danger:#ff6b6b; --mark:#fff2a8;
-      --row-hover:#101a3a;
-      --btn-ghost:#1a2446;
+      --row-hover:#101a3a; --btn-ghost:#1a2446;
     }
     [data-theme="light"]{
       --bg:#f5f7ff; --panel:#ffffff; --panel2:#f3f6ff; --text:#0c1533; --muted:#4a5577;
       --border:#d8def0; --accent:#375dfb; --accent2:#2fbf71; --warn:#f6b84e; --danger:#ef4b4b; --mark:#fff2a8;
-      --row-hover:#eef2ff;
-      --btn-ghost:#eef2ff;
+      --row-hover:#eef2ff; --btn-ghost:#eef2ff;
     }
     *{box-sizing:border-box}
     body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,var(--bg) 0%, var(--panel2) 200%); color:var(--text)}
@@ -69,21 +65,17 @@
     .right{margin-left:auto}
     .small{font-size:12px}
     mark{background:var(--mark); color:#000; padding:0 2px; border-radius:4px}
-    /* Quick actions */
     .actions{display:flex; gap:6px; margin-top:6px}
     .iconbtn{appearance:none; border:1px solid var(--border); background:var(--panel); color:inherit; border-radius:8px; padding:6px 8px; cursor:pointer; font-size:12px}
     .iconbtn:hover{transform:translateY(-1px)}
-    /* Toasts */
     #toaster{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:9999}
     .toast{min-width:260px; max-width:420px; padding:10px 12px; border-radius:10px; color:#fff; font-weight:600; box-shadow:0 10px 20px rgba(0,0,0,.25)}
     .toast.info{background:#2b4a9e}
     .toast.success{background:#2a7a47}
     .toast.error{background:#a33a3a}
     .toast button{background:transparent; border:none; color:#fff; margin-left:8px; cursor:pointer; font-weight:800}
-    /* Flash */
     @keyframes flash { 0%{box-shadow:0 0 0 0 rgba(91,140,255,.9)} 100%{box-shadow:0 0 0 12px rgba(91,140,255,0)} }
     .flash { position:relative; animation:flash 1s ease-out 0s 1; border-color:#5b8cff !important; background:linear-gradient(180deg, color-mix(in oklab, var(--panel) 95%, #5b8cff 5%) 0%, var(--panel2) 100%); }
-    /* Modals */
     .backdrop{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:60}
     .modal{width:min(980px,96vw); max-height:92vh; overflow:auto}
   </style>
@@ -93,7 +85,7 @@
     <div class="inline wrap">
       <div class="grow">
         <h1 style="margin:0;">Customer Tasks & Leads</h1>
-        <div class="sub">Quick actions on each row • Snooze with custom times • Share/Zip • Light/Dark</div>
+        <div class="sub">Quick actions • Snooze • Share/Zip • Light/Dark • Completion email</div>
       </div>
       <button id="btnTheme" class="btn secondary sm" title="Toggle theme (X)">🌗 Theme</button>
     </div>
@@ -255,10 +247,10 @@
       <div class="inline wrap" style="gap:8px">
         <h3 class="grow" style="margin:0">Due Soon & Overdue</h3>
         <div class="inline" style="gap:6px">
-          <button id="btnSnooze2h" class="btn secondary sm" title="Snooze auto-popup 2h">Snooze 2h</button>
-          <button id="btnSnooze6h" class="btn secondary sm" title="Snooze auto-popup 6h">Snooze 6h</button>
-          <button id="btnSnooze1d" class="btn secondary sm" title="Snooze auto-popup 1 day">Snooze 1d</button>
-          <button id="btnSnooze3d" class="btn secondary sm" title="Snooze auto-popup 3 days">Snooze 3d</button>
+          <button id="btnSnooze2h" class="btn secondary sm">Snooze 2h</button>
+          <button id="btnSnooze6h" class="btn secondary sm">Snooze 6h</button>
+          <button id="btnSnooze1d" class="btn secondary sm">Snooze 1d</button>
+          <button id="btnSnooze3d" class="btn secondary sm">Snooze 3d</button>
           <button id="btnDueSoonClose" class="btn secondary sm">Close</button>
         </div>
       </div>
@@ -268,12 +260,28 @@
       </div>
       <div class="hr"></div>
       <div class="inline wrap" style="gap:8px">
-        <div class="muted small">Per-task quick snooze:</div>
-        <div class="muted small">1d/3d/Today or pick date/time below</div>
+        <div class="muted small">Per-task quick snooze: 1d / 3d / Today or pick date/time below</div>
         <input id="customSnoozeDT" type="datetime-local" />
-        <button id="applyCustomSnooze" class="btn secondary sm" title="Apply to selected task (from list)">Apply</button>
+        <button id="applyCustomSnooze" class="btn secondary sm">Apply</button>
       </div>
       <div id="dueSoonList" class="list" style="margin-top:10px; max-height:70vh; overflow:auto"></div>
+    </div>
+  </div>
+
+  <!-- COMPLETE MODAL (How completed + email option) -->
+  <div id="completeModal" class="backdrop">
+    <div class="card modal">
+      <h3 style="margin:0 0 10px 0">Mark Task as Completed</h3>
+      <div id="completeContext" class="muted small"></div>
+      <div class="hr"></div>
+      <label>How completed? (notes)</label>
+      <textarea id="completeNotes" placeholder="What was done / any remarks?"></textarea>
+      <div class="inline wrap" style="gap:8px; margin-top:10px">
+        <button id="btnCompleteOnly" class="btn ok">Mark Completed</button>
+        <button id="btnCompleteAndEmail" class="btn primary">Mark & Email</button>
+        <button id="btnCompleteCancel" class="btn secondary">Cancel</button>
+        <div class="right small muted" id="completeTimestamps"></div>
+      </div>
     </div>
   </div>
 
@@ -282,22 +290,9 @@
   <script>
   (function(){
     'use strict';
-    /* ========= Shortcuts (documented)
-       N — New Task
-       D — Open Due Soon
-       G / H — Go to Active / Completed tabs (←/→ also cycles tabs)
-       L — Leads tab
-       X — Toggle theme
-       E — Share CSVs
-       B — Backup ZIP
-       A — Share All (ZIP + CSVs)
-    ========= */
 
     /* ===== App Namespace ===== */
     const CT = window.CT = window.CT || {};
-    CT.__loaded = true;
-
-    /* ===== Utils ===== */
     const q = sel => document.querySelector(sel);
     const qAll = sel => Array.from(document.querySelectorAll(sel));
     const nowISO = () => new Date().toISOString();
@@ -342,7 +337,7 @@
     let customers = loadJSON(LS_CUSTOMERS, []);
     let tasks = loadJSON(LS_TASKS, []);
     let leads = loadJSON(LS_LEADS, []);
-    let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {}); // { taskId: timestamp_ms }
+    let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {});
     function loadJSON(key, fallback){ try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }catch{ return fallback; } }
     function saveAll(){
       localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
@@ -611,66 +606,8 @@
     CT.openAdd = ()=> openTaskModal(null, null);
     CT.editTask = (id)=>{ const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
 
-    /* ===== Leads Modal ===== */
-    const elLeadModal = q("#leadModal");
-    const elLeadModalTitle = q("#leadModalTitle");
-    const elLeadName = q("#leadName");
-    const elLeadNumbers = q("#leadNumbers");
-    const elLeadProduct = q("#leadProduct");
-    const elLeadStatus = q("#leadStatus");
-    const elLeadDesc = q("#leadDesc");
-    const elSaveLeadBtn = q("#saveLeadBtn");
-    const elCancelLeadBtn = q("#cancelLeadBtn");
-    const elDeleteLeadBtn = q("#deleteLeadBtn");
-    const elLeadTimestamps = q("#leadTimestamps");
-    let editingLeadId = null;
-
-    function openLeadModal(leadId=null){
-      editingLeadId = leadId;
-      if (leadId){
-        const l = leads.find(x=>x.id===leadId);
-        elLeadModalTitle.textContent = "Edit Lead";
-        elLeadName.value = l?.name || ""; elLeadNumbers.value = (l?.numbers||[]).join(", ");
-        elLeadProduct.value = l?.product || ""; elLeadStatus.value = l?.status || "Talked";
-        elLeadDesc.value = l?.description || "";
-        elLeadTimestamps.textContent = `Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}`;
-        elDeleteLeadBtn.classList.remove('hidden');
-      }else{
-        elLeadModalTitle.textContent = "Add Lead";
-        elLeadName.value = ""; elLeadNumbers.value = ""; elLeadProduct.value = "";
-        elLeadStatus.value = "Talked"; elLeadDesc.value = ""; elLeadTimestamps.textContent = "";
-        elDeleteLeadBtn.classList.add('hidden');
-      }
-      elLeadModal.style.display = "flex"; setTimeout(()=>elLeadName.focus(), 0);
-    }
-    function closeLeadModal(){ elLeadModal.style.display = "none"; }
-    q("#addLeadBtn")?.addEventListener("click", ()=> openLeadModal(null));
-
-    elSaveLeadBtn.addEventListener("click", ()=>{
-      const name = (elLeadName.value||"").trim();
-      const numbers = (elLeadNumbers.value||"").split(",").map(s=>s.trim()).filter(Boolean);
-      const product = (elLeadProduct.value||"").trim();
-      const status = elLeadStatus.value;
-      const description = (elLeadDesc.value||"").trim();
-      if (!name && numbers.length===0){ showToast('error','Enter name or at least one number'); return; }
-      if (editingLeadId){
-        const l = leads.find(x=>x.id===editingLeadId); if (!l) return;
-        l.name = name; l.numbers = numbers; l.product = product; l.status = status; l.description = description; l.updatedAt = nowISO();
-      }else{
-        leads.push({ id: uuid(), name, numbers, product, status, description, createdAt: nowISO(), updatedAt: nowISO() });
-      }
-      saveAll(); closeLeadModal(); showToast('success','Lead saved');
-    });
-    elCancelLeadBtn.addEventListener("click", closeLeadModal);
-    elDeleteLeadBtn.addEventListener("click", ()=>{
-      if (!editingLeadId) return;
-      if (!confirm('Delete this lead? This cannot be undone.')) return;
-      const idx = leads.findIndex(x=>x.id===editingLeadId); if (idx!==-1) leads.splice(idx,1);
-      saveAll(); closeLeadModal(); showToast('success','Lead deleted');
-    });
-
     /* ===== Quick Actions — row buttons ===== */
-    function completeTask(id){
+    function completeTaskStatusOnly(id){
       const t = tasks.find(x=>x.id===id); if(!t) return;
       t.status = STATUS.COMPLETED; t.updatedAt = nowISO(); saveAll(); showToast('success','Task completed');
     }
@@ -685,8 +622,8 @@
       localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
       refreshDueSoonBadge(); renderDueSoonModal();
     }
-    elActiveList.addEventListener('click', handleRowActions);
-    elCompletedList.addEventListener('click', handleRowActions);
+
+    // NEW: intercept "complete" to open the Complete Modal
     function handleRowActions(e){
       const actionHost = e.target.closest('.actions');
       if (!actionHost) {
@@ -699,18 +636,19 @@
       const actBtn = e.target.closest('[data-act]');
       if (!actBtn) return;
       const act = actBtn.getAttribute('data-act');
-      selectedTaskForCustomSnooze = taskId; // for custom date-time apply
+      selectedTaskForCustomSnooze = taskId;
       if (act==='edit') CT.editTask(taskId);
-      else if (act==='complete') completeTask(taskId);
+      else if (act==='complete') openCompleteModal(taskId); // <— open modal instead of immediate
       else if (act==='snooze1d') snoozeTask(taskId, 24*60*60*1000);
       else if (act==='snooze3d') snoozeTask(taskId, 3*24*60*60*1000);
       else if (act==='snoozeToday') snoozeTaskToday(taskId);
     }
+    q("#activeList").addEventListener('click', handleRowActions);
+    q("#completedList").addEventListener('click', handleRowActions);
 
     /* ===== Due Soon (auto + custom snooze) ===== */
     const DUE_WINDOW_DAYS = 3;
     const CHECK_INTERVAL_MS = 60_000;
-
     function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
     function daysFromToday(dateStr){
       if (!dateStr) return null;
@@ -745,10 +683,10 @@
     }
     function dueLabel(k){ if (k < 0) return `Overdue by ${Math.abs(k)} day${Math.abs(k)===1?'':'s'}`; if (k === 0) return 'Due Today'; return `Due in ${k} day${k===1?'':'s'}`; }
     function pillDueClass(k){ return k<0 ? 'p-overdue' : 'p-due'; }
-    function refreshDueSoonBadge(){ const el = q('#dueSoonCount'); if (el) el.textContent = (collectDueSoon().length || '') && `(${collectDueSoon().length})`; }
+    function refreshDueSoonBadge(){ const el = q('#dueSoonCount'); if (!el) return; const n = collectDueSoon().length; el.textContent = n ? `(${n})` : ''; }
 
     function renderDueSoonModal(){
-      const container = q('#dueSoonList'); container.innerHTML = '';
+      const container = q('#dueSoonList'); if (!container) return; container.innerHTML = '';
       const items = collectDueSoon();
       if (!items.length){ container.innerHTML = `<div class="row"><div class="meta">No overdue or due-soon tasks 🎉</div></div>`; return; }
       for (const {task:t, customer:c, days:k} of items){
@@ -785,7 +723,6 @@
           q('#customSnoozeDT').focus();
         });
       });
-      // Reuse row actions handler
       container.addEventListener('click', handleRowActions);
     }
     function openDueSoonModal(){ renderDueSoonModal(); q('#dueSoonModal').style.display = 'flex'; }
@@ -793,7 +730,6 @@
     q('#btnDueSoon')?.addEventListener('click', openDueSoonModal);
     q('#btnDueSoonClose')?.addEventListener('click', closeDueSoonModal);
 
-    // Global snooze for auto-popup (not per-task)
     q('#btnSnooze2h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+2*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 2h'); });
     q('#btnSnooze6h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+6*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 6h'); });
     q('#btnSnooze1d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+24*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 1 day'); });
@@ -815,7 +751,8 @@
       try{
         refreshDueSoonBadge();
         const items = collectDueSoon(); if (!items.length) return;
-        const snoozeUntil = getGlobalSnoozeUntil(); if (Date.now() < snoozeUntil) return;
+        const snoozeUntil = getGlobalSnoOZE_GLOBAL = getGlobalSnoozeUntil();
+        if (Date.now() < snoozeUntil) return;
         const isOpen = q('#dueSoonModal').style.display === 'flex';
         if (!isOpen){ openDueSoonModal(); showToast('info','You have overdue / due-soon tasks'); }
       }catch(e){ console.error('autoDueSoonCheck', e); }
@@ -823,7 +760,7 @@
     autoDueSoonCheck();
     setInterval(autoDueSoonCheck, CHECK_INTERVAL_MS);
 
-    /* ===== CSV Export + Share ===== */
+    /* ===== CSV Export/Backup/Share (unchanged) ===== */
     function csvFromRows(rows){
       return rows.map(r => r.map(cell => {
         const s = String(cell ?? "");
@@ -831,18 +768,15 @@
       }).join(",")).join("\n");
     }
     function makeCSVFiles(){
-      // Customers
       const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
       for(const c of customers){ custRows.push([c.id, c.name||"", (c.numbers||[]).join(", "), c.createdAt||"", c.updatedAt||""]); }
       const cust = "\uFEFF" + csvFromRows(custRows);
-      // Tasks
       const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"]];
       for(const t of tasks){
         const c = customers.find(x=>x.id===t.customerId);
         taskRows.push([ t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"", t.description||"", t.dueDate||"", t.status||"", t.createdAt||"", t.updatedAt||"" ]);
       }
       const task = "\uFEFF" + csvFromRows(taskRows);
-      // Leads
       const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Description","Created At","Updated At"]];
       for(const l of leads){
         leadRows.push([ l.id, l.name||"", (l.numbers||[]).join(", "), l.product||"", l.status||"", l.description||"", l.createdAt||"", l.updatedAt||"" ]);
@@ -858,15 +792,19 @@
       if (navigator.canShare && navigator.canShare({ files })){
         try{ await navigator.share({ files, title, text }); showToast('success','Shared'); return true; }catch(e){ /* canceled */ }
       }
-      try{ const msg = encodeURIComponent(text || title || 'Files'); window.open(`https://wa.me/?text=${msg}`, '_blank'); }catch{}
+      // Fallback: try mailto (cannot attach automatically). Download then open email.
+      try{
+        const names = files.map(f=>f.name).join(', ');
+        const body = encodeURIComponent(`${text || title || 'Files'}\n\n(${names}) have been saved in your Downloads folder. Please attach them manually.\n`);
+        window.location.href = `mailto:?subject=${encodeURIComponent(title||'Files')}&body=${body}`;
+      }catch{}
       for (const f of files){ const url = URL.createObjectURL(f); const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1500); }
-      showToast('info','Files downloaded — attach in WhatsApp');
+      showToast('info','Files downloaded — attach them in your email client.');
       return false;
     }
     async function shareCSVs(){ const files = makeCSVFiles(); await shareFilesOrDownload(files, 'Customer Tasks CSVs', 'Customers.csv, Tasks.csv, Leads.csv'); }
     q('#btnShareCSVs')?.addEventListener('click', shareCSVs);
 
-    /* ===== Backup ZIP (JSON + CSVs) ===== */
     function makeBackupJSON(){
       const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
       return JSON.stringify(payload, null, 2);
@@ -875,9 +813,7 @@
       if (!window.JSZip){ return null; }
       const zip = new JSZip();
       const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-      // JSON
       zip.file(`backup_${ts}.json`, makeBackupJSON());
-      // CSVs
       const [cF,tF,lF] = makeCSVFiles();
       const asText = f => new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsText(f); });
       const [cTxt,tTxt,lTxt] = await Promise.all([asText(cF),asText(tF),asText(lF)]);
@@ -896,11 +832,14 @@
             await navigator.share({ files:[file], title:'Full Backup ZIP', text:'Backup JSON + 3 CSVs' });
             showToast('success','Shared ZIP'); return;
           }
-          // Download ZIP
+          // Download ZIP then open email compose with instructions
           const url = URL.createObjectURL(pack.blob); const a = document.createElement('a'); a.href=url; a.download=pack.filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+          try{
+            const body = encodeURIComponent(`Backup ZIP has been saved to your Downloads folder as ${pack.filename}. Please attach it to this email.`);
+            window.location.href = `mailto:?subject=${encodeURIComponent('Full Backup ZIP')}&body=${body}`;
+          }catch{}
           showToast('success','Backup ZIP downloaded');
         }else{
-          // Fallback if JSZip unavailable: download the four files separately
           const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
           const json = new Blob([makeBackupJSON()], {type:'application/json'});
           const jf = new File([json], `backup_${ts}.json`, {type:'application/json'});
@@ -912,8 +851,6 @@
       }
     }
     q('#btnBackupZip')?.addEventListener('click', backupZipShare);
-
-    // Share All = ZIP + CSVs (best effort)
     async function shareAll(){
       const pack = await makeBackupZipBlob();
       const files = [];
@@ -923,10 +860,21 @@
     }
     q('#btnShareAll')?.addEventListener('click', shareAll);
 
-    /* ===== CSV Import (Customers / Tasks / Leads) — basic (Preview/Mapping in Phase 2) ===== */
+    /* ===== CSV Import (basic) ===== */
+    q('#btnCsvUpload')?.addEventListener('click', ()=> q('#csvFile').click());
+    q('#csvFile')?.addEventListener('change', async (e)=>{
+      const file = e.target.files && e.target.files[0]; if (!file) return;
+      try{
+        const text = await file.text(); const rows = parseCSV(text); if (!rows.length){ showToast('error','CSV appears empty'); return; }
+        const target = (q('#csvTarget')?.value) || 'customers';
+        if (target === 'customers') importCSV_Customers(rows);
+        else if (target === 'tasks') importCSV_Tasks(rows);
+        else importCSV_Leads(rows);
+      }catch(err){ console.error('CSV read error', err); showToast('error','Failed to read CSV'); }
+      finally{ e.target.value = ''; }
+    });
     function parseCSV(text){
-      const rows = [];
-      let cur = '', row = [], inQuotes = false;
+      const rows = []; let cur = '', row = [], inQuotes = false;
       for (let i=0; i<text.length; i++){
         const c = text[i], n = text[i+1];
         if (inQuotes){
@@ -945,8 +893,8 @@
       if (rows.length && rows[rows.length-1].every(x => String(x||'').trim()==='')) rows.pop();
       return rows;
     }
-    function headerMap(headerRow){ const map={}; headerRow.forEach((h,i)=> map[String(h||'').trim().toLowerCase()] = i); return map; }
-    function getCell(row, hmap, aliases){ for (const a of aliases){ const idx = hmap[a.toLowerCase()]; if (idx != null) return String(row[idx] ?? '').trim(); } return ''; }
+    const headerMap = headerRow => Object.fromEntries(headerRow.map((h,i)=>[String(h||'').trim().toLowerCase(), i]));
+    const getCell = (row, hmap, aliases) => { for (const a of aliases){ const idx = hmap[a.toLowerCase()]; if (idx != null) return String(row[idx] ?? '').trim(); } return ''; };
     const splitNumbers = raw => (raw||'').split(',').map(s=>s.trim()).filter(Boolean);
     function findOrCreateCustomer({id, name, numbers}){
       let c = null;
@@ -1040,18 +988,94 @@
       }
       saveAll(); showToast('success', `Leads CSV imported • Added ${added}, Updated ${updated}`);
     }
-    q('#btnCsvUpload')?.addEventListener('click', ()=> q('#csvFile').click());
-    q('#csvFile')?.addEventListener('change', async (e)=>{
-      const file = e.target.files && e.target.files[0]; if (!file) return;
+
+    /* ===== DueSoon open/close ===== */
+    function openDueSoonModal(){ renderDueSoonModal(); q('#dueSoonModal').style.display = 'flex'; }
+    function closeDueSoonModal(){ q('#dueSoonModal').style.display = 'none'; }
+
+    q('#btnDueSoon')?.addEventListener('click', openDueSoonModal);
+
+    // Auto-popup loop
+    function getGlobalSnoozeUntil(){ const v = localStorage.getItem('ct_due_snooze_until'); return v ? parseInt(v,10) : 0; }
+    function autoDueSoonCheck(){
       try{
-        const text = await file.text(); const rows = parseCSV(text); if (!rows.length){ showToast('error','CSV appears empty'); return; }
-        const target = (q('#csvTarget')?.value) || 'customers';
-        if (target === 'customers') importCSV_Customers(rows);
-        else if (target === 'tasks') importCSV_Tasks(rows);
-        else importCSV_Leads(rows);
-      }catch(err){ console.error('CSV read error', err); showToast('error','Failed to read CSV'); }
-      finally{ e.target.value = ''; }
+        refreshDueSoonBadge();
+        const items = collectDueSoon(); if (!items.length) return;
+        const snoozeUntil = getGlobalSnoozeUntil(); if (Date.now() < snoozeUntil) return;
+        const isOpen = q('#dueSoonModal').style.display === 'flex';
+        if (!isOpen){ openDueSoonModal(); showToast('info','You have overdue / due-soon tasks'); }
+      }catch(e){ console.error('autoDueSoonCheck', e); }
+    }
+    autoDueSoonCheck();
+    setInterval(autoDueSoonCheck, 60_000);
+
+    /* ===== COMPLETE MODAL logic ===== */
+    const elCompleteModal = q('#completeModal');
+    const elCompleteNotes = q('#completeNotes');
+    const elCompleteCtx   = q('#completeContext');
+    const elCompleteTs    = q('#completeTimestamps');
+    let completingTaskId = null;
+
+    function openCompleteModal(taskId){
+      completingTaskId = taskId;
+      const t = tasks.find(x=>x.id===taskId);
+      const c = customers.find(x=>x.id===t?.customerId);
+      elCompleteCtx.innerHTML = t ? `
+        <div><strong>${escapeHtml(c?.name||'(unknown)')}</strong> — ${escapeHtml(t.description||'')}</div>
+        <div class="muted" style="margin-top:4px">Due: ${t.dueDate||'(none)'} • Status: ${t.status}</div>
+      ` : '';
+      elCompleteTs.textContent = t ? `Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}` : '';
+      elCompleteNotes.value = '';
+      elCompleteModal.style.display = 'flex';
+      setTimeout(()=>elCompleteNotes.focus(), 0);
+    }
+    function closeCompleteModal(){ elCompleteModal.style.display = 'none'; completingTaskId = null; }
+
+    function buildCompletionEmail(taskId, notes){
+      const t = tasks.find(x=>x.id===taskId); const c = customers.find(x=>x.id===t?.customerId);
+      const subject = `Task Completed: ${c?.name||'Customer'} — ${t?.description||''}`.slice(0,180);
+      const lines = [
+        `Task Completed`,
+        `Customer: ${c?.name||'(unknown)'}`,
+        `Numbers: ${(c?.numbers||[]).join(', ')||'(none)'}`,
+        `Description: ${t?.description||''}`,
+        `Due Date: ${t?.dueDate||'(none)'}`,
+        `Completed At: ${new Date().toLocaleString()}`,
+        `Notes: ${notes||'(none)'}`
+      ];
+      const body = encodeURIComponent(lines.join('\n'));
+      return `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`;
+    }
+
+    q('#btnCompleteOnly')?.addEventListener('click', ()=>{
+      if (!completingTaskId) return;
+      completeTaskStatusOnly(completingTaskId);
+      closeCompleteModal();
     });
+    q('#btnCompleteAndEmail')?.addEventListener('click', ()=>{
+      if (!completingTaskId) return;
+      const notes = elCompleteNotes.value.trim();
+      completeTaskStatusOnly(completingTaskId);
+      const url = buildCompletionEmail(completingTaskId, notes);
+      closeCompleteModal();
+      // open email compose
+      try{ window.location.href = url; }catch{}
+      showToast('success','Marked completed • Email compose opened');
+    });
+    q('#btnCompleteCancel')?.addEventListener('click', closeCompleteModal);
+
+    /* ===== Hook complete action in Due Soon list as well ===== */
+    function hookDueSoonClicks(){
+      const container = q('#dueSoonList');
+      if (!container) return;
+      container.addEventListener('click', (e)=>{
+        const host = e.target.closest('.actions'); if (!host) return;
+        const act = e.target.closest('[data-act]')?.getAttribute('data-act'); if (!act) return;
+        const taskId = host.getAttribute('data-actions');
+        if (act==='complete'){ e.stopPropagation(); openCompleteModal(taskId); }
+      });
+    }
+    hookDueSoonClicks();
 
     /* ===== Keyboard Shortcuts ===== */
     document.addEventListener('keydown', (e)=>{
@@ -1066,11 +1090,9 @@
       else if (k==='e'){ e.preventDefault(); q('#btnShareCSVs').click(); }
       else if (k==='b'){ e.preventDefault(); q('#btnBackupZip').click(); }
       else if (k==='a'){ e.preventDefault(); q('#btnShareAll').click(); }
-      else if (k==='arrowleft' || k==='arrowright'){
-        e.preventDefault();
-        const order = ['Active','Completed','Leads']; let i = order.indexOf(activeTab);
-        i = (k==='arrowright') ? (i+1)%order.length : (i-1+order.length)%order.length;
-        setTab(order[i]);
+      else if (k==='escape'){
+        if (q('#completeModal').style.display==='flex') closeCompleteModal();
+        if (q('#dueSoonModal').style.display==='flex') closeDueSoonModal();
       }
     });
 
