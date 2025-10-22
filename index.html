@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Customer Tasks & Leads (with CSV Upload)</title>
+  <title>Customer Tasks & Leads (CSV + Due Soon & Snooze)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root{
@@ -76,7 +76,7 @@
       <button class="btn secondary" onclick="window.CT && CT.backupJSON()">Backup</button>
       <button class="btn primary"   onclick="window.CT && CT.openAdd()">Add Task</button>
 
-      <!-- CSV Target + Upload (wired in JS too) -->
+      <!-- CSV Target + Upload -->
       <select id="csvTarget" class="btn secondary" style="padding:9px 10px">
         <option value="customers">Upload CSV → Customers</option>
         <option value="tasks">Upload CSV → Tasks</option>
@@ -84,6 +84,11 @@
       </select>
       <button class="btn secondary" id="btnCsvUpload">Choose CSV</button>
       <input id="csvFile" type="file" accept=".csv,text/csv" hidden />
+
+      <!-- Due Soon -->
+      <button class="btn secondary" id="btnDueSoon">
+        Due Soon <span id="dueSoonCount" class="small" style="margin-left:6px; opacity:.8"></span>
+      </button>
     </div>
     <div class="tabs">
       <div id="tabActive"   class="tab active" onclick="window.CT && CT.switchTab('Active')">Active <span id="countActive" class="small"></span></div>
@@ -238,6 +243,26 @@
     </div>
   </div>
 
+  <!-- DUE SOON CENTER -->
+  <div id="dueSoonModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:60">
+    <div class="card" style="width:min(980px,96vw); max-height:92vh; overflow:auto">
+      <div class="inline wrap" style="gap:8px">
+        <h3 class="grow" style="margin:0">Due Soon & Overdue</h3>
+        <div class="inline" style="gap:6px">
+          <button id="btnSnooze1h" class="btn secondary sm" title="Mute auto-popup for 1 hour">Snooze 1h</button>
+          <button id="btnSnooze1d" class="btn secondary sm" title="Mute auto-popup for 1 day">Snooze 1d</button>
+          <button id="btnSnooze3d" class="btn secondary sm" title="Mute auto-popup for 3 days">Snooze 3d</button>
+          <button id="btnDueSoonClose" class="btn secondary sm">Close</button>
+        </div>
+      </div>
+      <div class="muted small" style="margin-top:6px">
+        Showing tasks that are <strong>Pending / In Progress / On Hold</strong> with a due date
+        that is <strong>overdue</strong> or within the next <strong>3 days</strong>. Snoozed tasks are hidden until their snooze ends.
+      </div>
+      <div id="dueSoonList" class="list" style="margin-top:10px; max-height:70vh; overflow:auto"></div>
+    </div>
+  </div>
+
   <div id="toaster"></div>
 
   <script>
@@ -271,9 +296,13 @@
     const LS_CUSTOMERS = "ct_customers_v1";
     const LS_TASKS = "ct_tasks_v1";
     const LS_LEADS = "ct_leads_v1";
+    const LS_SNOOZE_GLOBAL = "ct_due_snooze_until";
+    const LS_SNOOZE_TASKS  = "ct_task_snoozes_v1";
     let customers = loadJSON(LS_CUSTOMERS, []);
     let tasks = loadJSON(LS_TASKS, []);
     let leads = loadJSON(LS_LEADS, []);
+    let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {}); // { taskId: timestamp_ms }
+
     function loadJSON(key, fallback){
       try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }
       catch(e){ console.warn('loadJSON', e); return fallback; }
@@ -283,7 +312,9 @@
         localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
         localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
         localStorage.setItem(LS_LEADS, JSON.stringify(leads));
+        localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
         render();
+        refreshDueSoonBadge();
       }catch(e){ console.error('saveAll', e); }
     }
 
@@ -664,9 +695,8 @@
       const row = e.target.closest('.row[data-lead-id]');
       if (row){ openLeadModal(row.dataset.leadId); }
     });
-    q("#addLeadBtn")?.addEventListener("click", ()=> openLeadModal(null));
+    q("#addLeadBtn")?.addEventListener("click", ()=> CT.openLeadAdd());
 
-    // Keyboard open on Enter
     ['#activeList', '#completedList', '#leadsList'].forEach(sel=>{
       const root = document.querySelector(sel);
       root.addEventListener('keydown', (e)=>{
@@ -890,18 +920,15 @@
     }
 
     // Wire CSV inputs
-    const csvBtn = q('#btnCsvUpload');
-    const csvFile = q('#csvFile');
-    const csvTarget = q('#csvTarget');
-    csvBtn?.addEventListener('click', ()=> csvFile.click());
-    csvFile?.addEventListener('change', async (e)=>{
+    q('#btnCsvUpload')?.addEventListener('click', ()=> q('#csvFile').click());
+    q('#csvFile')?.addEventListener('change', async (e)=>{
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       try{
         const text = await file.text();
         const rows = parseCSV(text);
         if (!rows.length){ showToast('error','CSV appears empty'); return; }
-        const target = csvTarget.value || 'customers';
+        const target = (q('#csvTarget')?.value) || 'customers';
         if (target === 'customers') importCSV_Customers(rows);
         else if (target === 'tasks') importCSV_Tasks(rows);
         else importCSV_Leads(rows);
@@ -913,10 +940,196 @@
       }
     });
 
+    /* ===== Due Soon (Overdue + next 3 days) with global & per-task snooze ===== */
+    const DUE_WINDOW_DAYS = 3;
+    const CHECK_INTERVAL_MS = 60_000;
+
+    function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+    function daysFromToday(dateStr){
+      if (!dateStr) return null;
+      const today = startOfDay(new Date());
+      const due = startOfDay(new Date(dateStr));
+      const diffMs = due - today;
+      return Math.round(diffMs / (24*60*60*1000));
+    }
+    function actionableStatus(s){ return [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD].includes(s); }
+
+    function cleanupExpiredSnoozes(){
+      const now = Date.now();
+      let changed = false;
+      for (const [tid, ts] of Object.entries(taskSnoozes)){
+        if (!ts || ts <= now){ delete taskSnoozes[tid]; changed = true; }
+      }
+      if (changed) localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+    }
+
+    function isTaskSnoozed(id){
+      const ts = taskSnoozes[id];
+      return ts && ts > Date.now();
+    }
+
+    function collectDueSoon(){
+      cleanupExpiredSnoozes();
+      const out = [];
+      for (const t of tasks){
+        if (!actionableStatus(t.status)) continue;
+        if (!t.dueDate) continue;
+        if (isTaskSnoozed(t.id)) continue;
+        const k = daysFromToday(t.dueDate);
+        if (k===null) continue;
+        if (k <= DUE_WINDOW_DAYS){
+          const c = customers.find(x=>x.id===t.customerId);
+          out.push({ task: t, customer: c||null, days: k });
+        }
+      }
+      out.sort((a,b)=>{
+        if (a.days===b.days){
+          return new Date(a.task.dueDate) - new Date(b.task.dueDate);
+        }
+        return a.days - b.days; // overdue first, then sooner
+      });
+      return out;
+    }
+
+    function dueLabel(k){
+      if (k < 0) return `Overdue by ${Math.abs(k)} day${Math.abs(k)===1?'':'s'}`;
+      if (k === 0) return 'Due Today';
+      return `Due in ${k} day${k===1?'':'s'}`;
+    }
+    function pillDueClass(k){
+      if (k < 0) return 'p-overdue';
+      return 'p-due';
+    }
+
+    function refreshDueSoonBadge(){
+      const list = collectDueSoon();
+      const el = q('#dueSoonCount');
+      if (!el) return;
+      el.textContent = list.length ? `(${list.length})` : '';
+    }
+
+    function snoozeGlobal(ms){
+      const until = Date.now() + ms;
+      localStorage.setItem(LS_SNOOZE_GLOBAL, String(until));
+      showToast('success', `Muted Due Soon popups for ${Math.round(ms/3600000)}h`);
+    }
+    function getGlobalSnoozeUntil(){
+      const v = localStorage.getItem(LS_SNOOZE_GLOBAL);
+      return v ? parseInt(v, 10) : 0;
+    }
+    function snoozeTask(taskId, ms){
+      taskSnoozes[taskId] = Date.now() + ms;
+      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+      refreshDueSoonBadge();
+      renderDueSoonModal();
+    }
+    function snoozeTaskToday(taskId){
+      const end = new Date();
+      end.setHours(23,59,59,999);
+      taskSnoozes[taskId] = +end;
+      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+      refreshDueSoonBadge();
+      renderDueSoonModal();
+    }
+
+    function renderDueSoonModal(){
+      const container = q('#dueSoonList');
+      if (!container) return;
+      container.innerHTML = '';
+      const items = collectDueSoon();
+
+      if (!items.length){
+        container.innerHTML = `<div class="row"><div class="meta">No overdue or due-soon tasks 🎉</div></div>`;
+        return;
+      }
+
+      for (const {task:t, customer:c, days:k} of items){
+        const name = c ? (c.name||'Unknown') : '(missing)';
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.dataset.taskId = t.id;
+        row.innerHTML = `
+          <div class="meta">
+            <div class="inline wrap">
+              <strong>${escapeHtml(name)}</strong>
+              <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
+              <span class="pill ${pillDueClass(k)}" style="margin-left:8px">${dueLabel(k)} • ${t.dueDate||''}</span>
+            </div>
+            <div class="muted small" style="margin-top:4px">
+              ${escapeHtml(t.description||'(no description)')}
+              • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}
+            </div>
+            <div class="inline wrap" style="gap:6px; margin-top:8px">
+              <button class="btn secondary sm" data-open="${t.id}">Open/Edit</button>
+              <button class="btn secondary sm" data-snooze-day="${t.id}">Snooze 1d</button>
+              <button class="btn secondary sm" data-snooze-3day="${t.id}">Snooze 3d</button>
+              <button class="btn secondary sm" data-snooze-today="${t.id}">Snooze Today</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(row);
+      }
+
+      container.querySelectorAll('button[data-open]').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          const id = b.getAttribute('data-open');
+          q('#dueSoonModal').style.display = 'none';
+          CT.editTask(id);
+        });
+      });
+      container.querySelectorAll('button[data-snooze-day]').forEach(b=>{
+        b.addEventListener('click', ()=> snoozeTask(b.getAttribute('data-snooze-day'), 24*60*60*1000));
+      });
+      container.querySelectorAll('button[data-snooze-3day]').forEach(b=>{
+        b.addEventListener('click', ()=> snoozeTask(b.getAttribute('data-snooze-3day'), 3*24*60*60*1000));
+      });
+      container.querySelectorAll('button[data-snooze-today]').forEach(b=>{
+        b.addEventListener('click', ()=> snoozeTaskToday(b.getAttribute('data-snooze-today')));
+      });
+    }
+
+    function openDueSoonModal(){
+      renderDueSoonModal();
+      const modal = q('#dueSoonModal');
+      if (modal){ modal.style.display = 'flex'; }
+    }
+    function closeDueSoonModal(){
+      const modal = q('#dueSoonModal');
+      if (modal){ modal.style.display = 'none'; }
+    }
+
+    function autoDueSoonCheck(){
+      try{
+        refreshDueSoonBadge();
+        const items = collectDueSoon();
+        if (!items.length) return;
+
+        const snoozeUntil = getGlobalSnoozeUntil();
+        if (Date.now() < snoozeUntil) return;
+
+        const modal = q('#dueSoonModal');
+        const isOpen = modal && modal.style.display === 'flex';
+        if (!isOpen){
+          openDueSoonModal();
+          showToast('info', 'You have overdue / due-soon tasks');
+        }
+      }catch(e){ console.error('autoDueSoonCheck', e); }
+    }
+
+    // Wire Due Soon controls
+    q('#btnDueSoon')?.addEventListener('click', openDueSoonModal);
+    q('#btnDueSoonClose')?.addEventListener('click', closeDueSoonModal);
+    q('#btnSnooze1h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed for 1 hour'); });
+    q('#btnSnooze1d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+24*60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed for 1 day'); });
+    q('#btnSnooze3d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+3*24*60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed for 3 days'); });
+
+    // Initial badge, maybe popup, then periodic checks
+    refreshDueSoonBadge();
+    autoDueSoonCheck();
+    setInterval(autoDueSoonCheck, CHECK_INTERVAL_MS);
+
     /* ===== Init ===== */
-    // Leads filter buttons
     document.getElementById('addLeadBtn')?.addEventListener('click', ()=> CT.openLeadAdd());
-    // Modal close buttons
     document.getElementById('cancelTaskBtn')?.addEventListener('click', ()=> { q('#taskModal').style.display = 'none'; });
     document.getElementById('cancelLeadBtn')?.addEventListener('click', ()=> { q('#leadModal').style.display = 'none'; });
 
