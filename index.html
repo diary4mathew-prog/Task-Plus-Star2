@@ -236,6 +236,7 @@
         <button id="saveLeadBtn" class="btn ok">Save</button>
         <button id="cancelLeadBtn" class="btn secondary">Cancel</button>
         <button id="deleteLeadBtn" class="btn danger hidden">Delete</button>
+        <button id="emailLeadBtn" class="btn secondary hidden">Email</button>
         <div class="right small muted" id="leadTimestamps"></div>
       </div>
     </div>
@@ -1353,6 +1354,7 @@
     const elSaveLeadBtn = q('#saveLeadBtn');
     const elCancelLeadBtn = q('#cancelLeadBtn');
     const elDeleteLeadBtn = q('#deleteLeadBtn');
+    const elEmailLeadBtn = q('#emailLeadBtn');
     const elLeadTimestamps = q('#leadTimestamps');
     let editingLeadId = null;
 
@@ -1369,6 +1371,7 @@
         elLeadDesc.value = l.description || '';
         elLeadTimestamps.textContent = `Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}`;
         elDeleteLeadBtn.classList.remove('hidden');
+        elEmailLeadBtn.classList.remove('hidden');
       }else{
         elLeadModalTitle.textContent = 'Add Lead';
         elLeadName.value = '';
@@ -1378,6 +1381,7 @@
         elLeadDesc.value = '';
         elLeadTimestamps.textContent = '';
         elDeleteLeadBtn.classList.add('hidden');
+        elEmailLeadBtn.classList.add('hidden');
       }
       elLeadModal.style.display = 'flex';
       setTimeout(()=>elLeadName.focus(),0);
@@ -1389,6 +1393,32 @@
 
     CT.openLeadAdd = ()=> openLeadModal(null);
     q('#addLeadBtn')?.addEventListener('click', ()=> openLeadModal(null));
+
+    function buildLeadEmailFromModal(){
+      const name = (elLeadName.value || '').trim() || '(Unnamed lead)';
+      const numbers = (elLeadNumbers.value || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      const product = elLeadProduct.value.trim();
+      const status = elLeadStatus.value;
+      const desc = elLeadDesc.value.trim();
+
+      const subjectRaw = `Lead: ${name}${product ? ' — ' + product : ''}`;
+      const subject = subjectRaw.slice(0, 180);
+
+      const lines = [
+        'Lead Details',
+        `Name: ${name}`,
+        `Numbers: ${numbers.length ? numbers.join(', ') : '(none)'}`,
+        `Product: ${product || '(not specified)'}`,
+        `Status: ${status || '(not set)'}`,
+        `Notes: ${desc || '(none)'}`
+      ];
+
+      const body = encodeURIComponent(lines.join('\n'));
+      return `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`;
+    }
 
     elSaveLeadBtn.addEventListener('click', ()=>{
       try{
@@ -1442,6 +1472,17 @@
       saveAll();
       closeLeadModal();
       showToast('success','Lead deleted');
+    });
+
+    elEmailLeadBtn?.addEventListener('click', () => {
+      try{
+        const url = buildLeadEmailFromModal();
+        window.location.href = url;
+        showToast('success','Email compose opened for this lead');
+      }catch(e){
+        console.error('lead email', e);
+        showToast('error','Could not open email compose');
+      }
     });
 
     elLeadsList.addEventListener('click', (e)=>{
