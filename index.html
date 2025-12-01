@@ -291,7 +291,7 @@
   (function(){
     'use strict';
 
-    /* ===== App Namespace ===== */
+    /* ===== App Namespace & Utils ===== */
     const CT = window.CT = window.CT || {};
     const q = sel => document.querySelector(sel);
     const qAll = sel => Array.from(document.querySelectorAll(sel));
@@ -302,7 +302,10 @@
 
     /* ===== Theme ===== */
     const LS_THEME = 'ct_theme';
-    function applyTheme(t){ document.documentElement.setAttribute('data-theme', t); localStorage.setItem(LS_THEME, t); }
+    function applyTheme(t){
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem(LS_THEME, t);
+    }
     (function initTheme(){
       const saved = localStorage.getItem(LS_THEME);
       if (saved) applyTheme(saved);
@@ -334,11 +337,29 @@
     const LS_LEADS = "ct_leads_v1";
     const LS_SNOOZE_GLOBAL = "ct_due_snooze_until";
     const LS_SNOOZE_TASKS  = "ct_task_snoozes_v1";
+
+    function loadJSON(key, fallback){
+      try{
+        const s = localStorage.getItem(key);
+        return s ? JSON.parse(s) : fallback;
+      }catch{
+        return fallback;
+      }
+    }
+
     let customers = loadJSON(LS_CUSTOMERS, []);
     let tasks = loadJSON(LS_TASKS, []);
-    let leads = loadJSON(LS_LEADS, []);
+
+    // Safely migrate old leads format (object) → array
+    let rawLeads = loadJSON(LS_LEADS, []);
+    let leads = Array.isArray(rawLeads)
+      ? rawLeads
+      : (rawLeads && typeof rawLeads === 'object'
+            ? Object.values(rawLeads)
+            : []);
+
     let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {});
-    function loadJSON(key, fallback){ try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }catch{ return fallback; } }
+
     function saveAll(){
       localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
       localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
@@ -349,7 +370,13 @@
     }
 
     /* ===== State ===== */
-    const STATUS = { PENDING: "Pending", INPROG: "In Progress", ONHOLD: "On Hold", CANCELLED: "Cancelled", COMPLETED: "Completed" };
+    const STATUS = {
+      PENDING: "Pending",
+      INPROG: "In Progress",
+      ONHOLD: "On Hold",
+      CANCELLED: "Cancelled",
+      COMPLETED: "Completed"
+    };
     const LEAD_STATUS = ["Talked","Interested","Waiting Confirmation","Converted"];
     let activeTab = "Active";
     let activeFilter = STATUS.PENDING;
@@ -373,23 +400,20 @@
         default: return "p-pending";
       }
     }
-    function leadPillClass(s){ return s==="Converted"?"p-complete": s==="Waiting Confirmation"?"p-onhold": s==="Interested"?"p-inprog":"p-pending"; }
+    function leadPillClass(s){
+      return s==="Converted"?"p-complete"
+           : s==="Waiting Confirmation"?"p-onhold"
+           : s==="Interested"?"p-inprog"
+           : "p-pending";
+    }
 
     /* ===== Rendering ===== */
-    const elActiveView = q("#activeView"), elCompletedView = q("#completedView"), elLeadsView = q("#leadsView");
-    const elActiveList = q("#activeList"), elCompletedList = q("#completedList"), elLeadsList = q("#leadsList");
-
-    function render(){
-      q("#countActive").textContent = `(${tasks.filter(t=>t.status!==STATUS.COMPLETED).length})`;
-      q("#countCompleted").textContent = `(${tasks.filter(t=>t.status===STATUS.COMPLETED).length})`;
-      q("#countLeads").textContent = `(${leads.length})`;
-      elActiveView.classList.toggle("hidden", activeTab!=="Active");
-      elCompletedView.classList.toggle("hidden", activeTab!=="Completed");
-      elLeadsView.classList.toggle("hidden", activeTab!=="Leads");
-      if(activeTab==="Active") renderActive();
-      else if(activeTab==="Completed") renderCompleted();
-      else renderLeads();
-    }
+    const elActiveView = q("#activeView"),
+          elCompletedView = q("#completedView"),
+          elLeadsView = q("#leadsView");
+    const elActiveList = q("#activeList"),
+          elCompletedList = q("#completedList"),
+          elLeadsList = q("#leadsList");
 
     function quickActionsHTML(t, c){
       const wa = c && (c.numbers||[])[0] ? `https://wa.me/${(c.numbers[0]||'').replace(/[^\d]/g,'')}` : '';
@@ -403,6 +427,20 @@
           ${wa ? `<a class="iconbtn" data-act="wa" href="${wa}" target="_blank" rel="noopener" title="WhatsApp">🟢 WA</a>` : `<button class="iconbtn" disabled title="No number">WA</button>`}
         </div>
       `;
+    }
+
+    function render(){
+      q("#countActive").textContent = `(${tasks.filter(t=>t.status!==STATUS.COMPLETED).length})`;
+      q("#countCompleted").textContent = `(${tasks.filter(t=>t.status===STATUS.COMPLETED).length})`;
+      q("#countLeads").textContent = `(${leads.length})`;
+
+      elActiveView.classList.toggle("hidden", activeTab!=="Active");
+      elCompletedView.classList.toggle("hidden", activeTab!=="Completed");
+      elLeadsView.classList.toggle("hidden", activeTab!=="Leads");
+
+      if(activeTab==="Active") renderActive();
+      else if(activeTab==="Completed") renderCompleted();
+      else renderLeads();
     }
 
     function renderActive(){
@@ -438,6 +476,7 @@
         elActiveList.appendChild(row);
       }
     }
+
     function renderCompleted(){
       elCompletedList.innerHTML = "";
       let pool = tasks.filter(t => t.status === STATUS.COMPLETED);
@@ -467,6 +506,7 @@
         elCompletedList.appendChild(row);
       }
     }
+
     function renderLeads(){
       elLeadsList.innerHTML = "";
       let pool = leads.slice();
@@ -564,7 +604,8 @@
         elTaskStatus.value = STATUS.PENDING;
         elTaskTimestamps.textContent = "";
       }
-      elTaskModal.style.display = "flex"; setTimeout(()=>elTaskCustomerName.focus(), 0);
+      elTaskModal.style.display = "flex";
+      setTimeout(()=>elTaskCustomerName.focus(), 0);
     }
     function closeTaskModal(){ elTaskModal.style.display = "none"; }
 
@@ -575,11 +616,18 @@
         const desc = elTaskDesc.value.trim();
         const due = elTaskDue.value || "";
         const st = elTaskStatus.value;
-        if (!name && numbersRaw.length===0){ showToast('error','Enter name or at least one number'); return; }
+        if (!name && numbersRaw.length===0){
+          showToast('error','Enter name or at least one number');
+          return;
+        }
 
         let customer = null;
-        if(editingTaskCustomerId){ customer = customers.find(c=>c.id===editingTaskCustomerId) || null; }
-        if(!customer && name){ customer = customers.find(c=> (c.name||"") === name) || null; }
+        if(editingTaskCustomerId){
+          customer = customers.find(c=>c.id===editingTaskCustomerId) || null;
+        }
+        if(!customer && name){
+          customer = customers.find(c=> (c.name||"") === name) || null;
+        }
         if(!customer && numbersRaw.length){
           const flat = new Set(numbersRaw);
           customer = customers.find(c => (c.numbers||[]).some(m => flat.has(m))) || null;
@@ -589,41 +637,70 @@
           customers.push(customer);
         }else{
           const exist = new Set((customer.numbers||[]).map(x=>x.trim()).filter(Boolean));
-          for(const n of numbersRaw){ if(n && !exist.has(n)){ customer.numbers.push(n); exist.add(n); } }
+          for(const n of numbersRaw){
+            if(n && !exist.has(n)){ customer.numbers.push(n); exist.add(n); }
+          }
           customer.updatedAt = nowISO();
         }
+
         if(editingTaskId){
           const t = tasks.find(x=>x.id===editingTaskId);
-          t.customerId = customer.id; t.description = desc; t.dueDate = due; t.status = st; t.updatedAt = nowISO();
+          t.customerId = customer.id;
+          t.description = desc;
+          t.dueDate = due;
+          t.status = st;
+          t.updatedAt = nowISO();
         }else{
-          tasks.push({ id: uuid(), customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
+          tasks.push({
+            id: uuid(),
+            customerId: customer.id,
+            description: desc,
+            dueDate: due,
+            status: st,
+            createdAt: nowISO(),
+            updatedAt: nowISO()
+          });
         }
-        saveAll(); closeTaskModal(); showToast('success','Task saved');
-      }catch(e){ console.error('save task', e); showToast('error','Could not save task'); }
+        saveAll();
+        closeTaskModal();
+        showToast('success','Task saved');
+      }catch(e){
+        console.error('save task', e);
+        showToast('error','Could not save task');
+      }
     });
     elCancelTaskBtn.addEventListener("click", closeTaskModal);
     q('#btnAddTask').addEventListener('click', ()=> openTaskModal(null, null));
     CT.openAdd = ()=> openTaskModal(null, null);
-    CT.editTask = (id)=>{ const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
+    CT.editTask = (id)=>{
+      const t = tasks.find(x=>x.id===id);
+      if(t) openTaskModal(t.customerId, id);
+    };
 
     /* ===== Quick Actions — row buttons ===== */
     function completeTaskStatusOnly(id){
-      const t = tasks.find(x=>x.id===id); if(!t) return;
-      t.status = STATUS.COMPLETED; t.updatedAt = nowISO(); saveAll(); showToast('success','Task completed');
+      const t = tasks.find(x=>x.id===id);
+      if(!t) return;
+      t.status = STATUS.COMPLETED;
+      t.updatedAt = nowISO();
+      saveAll();
+      showToast('success','Task completed');
     }
     function snoozeTask(taskId, ms){
       taskSnoozes[taskId] = Date.now() + ms;
       localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-      refreshDueSoonBadge(); renderDueSoonModal();
+      refreshDueSoonBadge();
+      renderDueSoonModal();
     }
     function snoozeTaskToday(taskId){
-      const end = new Date(); end.setHours(23,59,59,999);
+      const end = new Date();
+      end.setHours(23,59,59,999);
       taskSnoozes[taskId] = +end;
       localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-      refreshDueSoonBadge(); renderDueSoonModal();
+      refreshDueSoonBadge();
+      renderDueSoonModal();
     }
 
-    // NEW: intercept "complete" to open the Complete Modal
     function handleRowActions(e){
       const actionHost = e.target.closest('.actions');
       if (!actionHost) {
@@ -638,18 +715,21 @@
       const act = actBtn.getAttribute('data-act');
       selectedTaskForCustomSnooze = taskId;
       if (act==='edit') CT.editTask(taskId);
-      else if (act==='complete') openCompleteModal(taskId); // <— open modal instead of immediate
+      else if (act==='complete') openCompleteModal(taskId);
       else if (act==='snooze1d') snoozeTask(taskId, 24*60*60*1000);
       else if (act==='snooze3d') snoozeTask(taskId, 3*24*60*60*1000);
       else if (act==='snoozeToday') snoozeTaskToday(taskId);
     }
-    q("#activeList").addEventListener('click', handleRowActions);
-    q("#completedList").addEventListener('click', handleRowActions);
+    elActiveList.addEventListener('click', handleRowActions);
+    elCompletedList.addEventListener('click', handleRowActions);
 
     /* ===== Due Soon (auto + custom snooze) ===== */
     const DUE_WINDOW_DAYS = 3;
     const CHECK_INTERVAL_MS = 300_000;
-    function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+
+    function startOfDay(d){
+      const x = new Date(d); x.setHours(0,0,0,0); return x;
+    }
     function daysFromToday(dateStr){
       if (!dateStr) return null;
       const today = startOfDay(new Date());
@@ -657,13 +737,23 @@
       const diffMs = due - today;
       return Math.round(diffMs / (24*60*60*1000));
     }
-    function actionableStatus(s){ return [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD].includes(s); }
+    function actionableStatus(s){
+      return [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD].includes(s);
+    }
     function cleanupExpiredSnoozes(){
       const now = Date.now(); let changed = false;
-      for (const [tid, ts] of Object.entries(taskSnoozes)){ if (!ts || ts <= now){ delete taskSnoozes[tid]; changed = true; } }
+      for (const [tid, ts] of Object.entries(taskSnoozes)){
+        if (!ts || ts <= now){
+          delete taskSnoozes[tid];
+          changed = true;
+        }
+      }
       if (changed) localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
     }
-    function isTaskSnoozed(id){ const ts = taskSnoozes[id]; return ts && ts > Date.now(); }
+    function isTaskSnoozed(id){
+      const ts = taskSnoozes[id];
+      return ts && ts > Date.now();
+    }
     function collectDueSoon(){
       cleanupExpiredSnoozes();
       const out = [];
@@ -678,17 +768,37 @@
           out.push({ task: t, customer: c||null, days: k });
         }
       }
-      out.sort((a,b)=> (a.days===b.days) ? (new Date(a.task.dueDate) - new Date(b.task.dueDate)) : (a.days - b.days));
+      out.sort((a,b)=>
+        (a.days===b.days)
+          ? (new Date(a.task.dueDate) - new Date(b.task.dueDate))
+          : (a.days - b.days)
+      );
       return out;
     }
-    function dueLabel(k){ if (k < 0) return `Overdue by ${Math.abs(k)} day${Math.abs(k)===1?'':'s'}`; if (k === 0) return 'Due Today'; return `Due in ${k} day${k===1?'':'s'}`; }
-    function pillDueClass(k){ return k<0 ? 'p-overdue' : 'p-due'; }
-    function refreshDueSoonBadge(){ const el = q('#dueSoonCount'); if (!el) return; const n = collectDueSoon().length; el.textContent = n ? `(${n})` : ''; }
+    function dueLabel(k){
+      if (k < 0) return `Overdue by ${Math.abs(k)} day${Math.abs(k)===1?'':'s'}`;
+      if (k === 0) return 'Due Today';
+      return `Due in ${k} day${k===1?'':'s'}`;
+    }
+    function pillDueClass(k){
+      return k<0 ? 'p-overdue' : 'p-due';
+    }
+    function refreshDueSoonBadge(){
+      const el = q('#dueSoonCount');
+      if (!el) return;
+      const n = collectDueSoon().length;
+      el.textContent = n ? `(${n})` : '';
+    }
 
     function renderDueSoonModal(){
-      const container = q('#dueSoonList'); if (!container) return; container.innerHTML = '';
+      const container = q('#dueSoonList');
+      if (!container) return;
+      container.innerHTML = '';
       const items = collectDueSoon();
-      if (!items.length){ container.innerHTML = `<div class="row"><div class="meta">No overdue or due-soon tasks 🎉</div></div>`; return; }
+      if (!items.length){
+        container.innerHTML = `<div class="row"><div class="meta">No overdue or due-soon tasks 🎉</div></div>`;
+        return;
+      }
       for (const {task:t, customer:c, days:k} of items){
         const name = c ? (c.name||'Unknown') : '(missing)';
         const row = document.createElement('div');
@@ -725,42 +835,84 @@
       });
       container.addEventListener('click', handleRowActions);
     }
-    function openDueSoonModal(){ renderDueSoonModal(); q('#dueSoonModal').style.display = 'flex'; }
-    function closeDueSoonModal(){ q('#dueSoonModal').style.display = 'none'; }
+
+    function openDueSoonModal(){
+      renderDueSoonModal();
+      q('#dueSoonModal').style.display = 'flex';
+    }
+    function closeDueSoonModal(){
+      q('#dueSoonModal').style.display = 'none';
+    }
     q('#btnDueSoon')?.addEventListener('click', openDueSoonModal);
     q('#btnDueSoonClose')?.addEventListener('click', closeDueSoonModal);
 
-    q('#btnSnooze2h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+2*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 2h'); });
-    q('#btnSnooze6h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+6*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 6h'); });
-    q('#btnSnooze1d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+24*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 1 day'); });
-    q('#btnSnooze3d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+3*24*60*60*1000)); closeDueSoonModal(); showToast('success','Auto-popup snoozed 3 days'); });
+    q('#btnSnooze2h')?.addEventListener('click', ()=>{
+      localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+2*60*60*1000));
+      closeDueSoonModal();
+      showToast('success','Auto-popup snoozed 2h');
+    });
+    q('#btnSnooze6h')?.addEventListener('click', ()=>{
+      localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+6*60*60*1000));
+      closeDueSoonModal();
+      showToast('success','Auto-popup snoozed 6h');
+    });
+    q('#btnSnooze1d')?.addEventListener('click', ()=>{
+      localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+24*60*60*1000));
+      closeDueSoonModal();
+      showToast('success','Auto-popup snoozed 1 day');
+    });
+    q('#btnSnooze3d')?.addEventListener('click', ()=>{
+      localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+3*24*60*60*1000));
+      closeDueSoonModal();
+      showToast('success','Auto-popup snoozed 3 days');
+    });
 
     q('#applyCustomSnooze')?.addEventListener('click', ()=>{
       const dt = q('#customSnoozeDT').value;
-      if (!selectedTaskForCustomSnooze){ showToast('error','Pick a task (click any snooze button first)'); return; }
-      if (!dt){ showToast('error','Pick a date & time'); return; }
+      if (!selectedTaskForCustomSnooze){
+        showToast('error','Pick a task (click any snooze button first)');
+        return;
+      }
+      if (!dt){
+        showToast('error','Pick a date & time');
+        return;
+      }
       const ts = +new Date(dt);
-      if (ts <= Date.now()){ showToast('error','Choose a time in the future'); return; }
+      if (ts <= Date.now()){
+        showToast('error','Choose a time in the future');
+        return;
+      }
       taskSnoozes[selectedTaskForCustomSnooze] = ts;
       localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-      refreshDueSoonBadge(); renderDueSoonModal(); showToast('success','Custom snooze set');
+      refreshDueSoonBadge();
+      renderDueSoonModal();
+      showToast('success','Custom snooze set');
     });
 
-    function getGlobalSnoozeUntil(){ const v = localStorage.getItem(LS_SNOOZE_GLOBAL); return v ? parseInt(v,10) : 0; }
+    function getGlobalSnoozeUntil(){
+      const v = localStorage.getItem(LS_SNOOZE_GLOBAL);
+      return v ? parseInt(v,10) : 0;
+    }
     function autoDueSoonCheck(){
       try{
         refreshDueSoonBadge();
-        const items = collectDueSoon(); if (!items.length) return;
-        const snoozeUntil = getGlobalSnoOZE_GLOBAL = getGlobalSnoozeUntil();
+        const items = collectDueSoon();
+        if (!items.length) return;
+        const snoozeUntil = getGlobalSnoozeUntil();
         if (Date.now() < snoozeUntil) return;
         const isOpen = q('#dueSoonModal').style.display === 'flex';
-        if (!isOpen){ openDueSoonModal(); showToast('info','You have overdue / due-soon tasks'); }
-      }catch(e){ console.error('autoDueSoonCheck', e); }
+        if (!isOpen){
+          openDueSoonModal();
+          showToast('info','You have overdue / due-soon tasks');
+        }
+      }catch(e){
+        console.error('autoDueSoonCheck', e);
+      }
     }
     autoDueSoonCheck();
     setInterval(autoDueSoonCheck, CHECK_INTERVAL_MS);
 
-    /* ===== CSV Export/Backup/Share (unchanged) ===== */
+    /* ===== CSV Export/Backup/Share ===== */
     function csvFromRows(rows){
       return rows.map(r => r.map(cell => {
         const s = String(cell ?? "");
@@ -769,19 +921,49 @@
     }
     function makeCSVFiles(){
       const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
-      for(const c of customers){ custRows.push([c.id, c.name||"", (c.numbers||[]).join(", "), c.createdAt||"", c.updatedAt||""]); }
+      for(const c of customers){
+        custRows.push([
+          c.id,
+          c.name||"",
+          (c.numbers||[]).join(", "),
+          c.createdAt||"",
+          c.updatedAt||""
+        ]);
+      }
       const cust = "\uFEFF" + csvFromRows(custRows);
+
       const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"]];
       for(const t of tasks){
         const c = customers.find(x=>x.id===t.customerId);
-        taskRows.push([ t.id, t.customerId, c?(c.name||""):"", c?(c.numbers||[]).join(", "):"", t.description||"", t.dueDate||"", t.status||"", t.createdAt||"", t.updatedAt||"" ]);
+        taskRows.push([
+          t.id,
+          t.customerId,
+          c?(c.name||""):"",
+          c?(c.numbers||[]).join(", "):"",
+          t.description||"",
+          t.dueDate||"",
+          t.status||"",
+          t.createdAt||"",
+          t.updatedAt||""
+        ]);
       }
       const task = "\uFEFF" + csvFromRows(taskRows);
+
       const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Description","Created At","Updated At"]];
       for(const l of leads){
-        leadRows.push([ l.id, l.name||"", (l.numbers||[]).join(", "), l.product||"", l.status||"", l.description||"", l.createdAt||"", l.updatedAt||"" ]);
+        leadRows.push([
+          l.id,
+          l.name||"",
+          (l.numbers||[]).join(", "),
+          l.product||"",
+          l.status||"",
+          l.description||"",
+          l.createdAt||"",
+          l.updatedAt||""
+        ]);
       }
       const lead = "\uFEFF" + csvFromRows(leadRows);
+
       const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
       const f1 = new File([cust], `Customers_${ts}.csv`, {type:"text/csv"});
       const f2 = new File([task], `Tasks_${ts}.csv`, {type:"text/csv"});
@@ -790,19 +972,32 @@
     }
     async function shareFilesOrDownload(files, title, text){
       if (navigator.canShare && navigator.canShare({ files })){
-        try{ await navigator.share({ files, title, text }); showToast('success','Shared'); return true; }catch(e){ /* canceled */ }
+        try{
+          await navigator.share({ files, title, text });
+          showToast('success','Shared');
+          return true;
+        }catch(e){ /* canceled */ }
       }
-      // Fallback: try mailto (cannot attach automatically). Download then open email.
       try{
         const names = files.map(f=>f.name).join(', ');
         const body = encodeURIComponent(`${text || title || 'Files'}\n\n(${names}) have been saved in your Downloads folder. Please attach them manually.\n`);
         window.location.href = `mailto:?subject=${encodeURIComponent(title||'Files')}&body=${body}`;
       }catch{}
-      for (const f of files){ const url = URL.createObjectURL(f); const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1500); }
+      for (const f of files){
+        const url = URL.createObjectURL(f);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = f.name;
+        a.click();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);
+      }
       showToast('info','Files downloaded — attach them in your email client.');
       return false;
     }
-    async function shareCSVs(){ const files = makeCSVFiles(); await shareFilesOrDownload(files, 'Customer Tasks CSVs', 'Customers.csv, Tasks.csv, Leads.csv'); }
+    async function shareCSVs(){
+      const files = makeCSVFiles();
+      await shareFilesOrDownload(files, 'Customer Tasks CSVs', 'Customers.csv, Tasks.csv, Leads.csv');
+    }
     q('#btnShareCSVs')?.addEventListener('click', shareCSVs);
 
     function makeBackupJSON(){
@@ -810,12 +1005,18 @@
       return JSON.stringify(payload, null, 2);
     }
     async function makeBackupZipBlob(){
-      if (!window.JSZip){ return null; }
+      if (!window.JSZip){
+        return null;
+      }
       const zip = new JSZip();
       const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
       zip.file(`backup_${ts}.json`, makeBackupJSON());
       const [cF,tF,lF] = makeCSVFiles();
-      const asText = f => new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsText(f); });
+      const asText = f => new Promise(res=>{
+        const r=new FileReader();
+        r.onload=()=>res(r.result);
+        r.readAsText(f);
+      });
       const [cTxt,tTxt,lTxt] = await Promise.all([asText(cF),asText(tF),asText(lF)]);
       zip.file(`Customers_${ts}.csv`, cTxt);
       zip.file(`Tasks_${ts}.csv`, tTxt);
@@ -830,10 +1031,15 @@
           const file = new File([pack.blob], pack.filename, {type:'application/zip'});
           if (navigator.canShare && navigator.canShare({files:[file]})){
             await navigator.share({ files:[file], title:'Full Backup ZIP', text:'Backup JSON + 3 CSVs' });
-            showToast('success','Shared ZIP'); return;
+            showToast('success','Shared ZIP');
+            return;
           }
-          // Download ZIP then open email compose with instructions
-          const url = URL.createObjectURL(pack.blob); const a = document.createElement('a'); a.href=url; a.download=pack.filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+          const url = URL.createObjectURL(pack.blob);
+          const a = document.createElement('a');
+          a.href=url;
+          a.download=pack.filename;
+          a.click();
+          setTimeout(()=>URL.revokeObjectURL(url),1500);
           try{
             const body = encodeURIComponent(`Backup ZIP has been saved to your Downloads folder as ${pack.filename}. Please attach it to this email.`);
             window.location.href = `mailto:?subject=${encodeURIComponent('Full Backup ZIP')}&body=${body}`;
@@ -847,31 +1053,44 @@
           await shareFilesOrDownload([jf, ...csvs], 'Backup (no ZIP)', 'Backup JSON + CSVs');
         }
       }catch(e){
-        console.error(e); showToast('error','Backup ZIP failed');
+        console.error(e);
+        showToast('error','Backup ZIP failed');
       }
     }
     q('#btnBackupZip')?.addEventListener('click', backupZipShare);
     async function shareAll(){
       const pack = await makeBackupZipBlob();
       const files = [];
-      if (pack){ files.push(new File([pack.blob], pack.filename, {type:'application/zip'})); }
+      if (pack){
+        files.push(new File([pack.blob], pack.filename, {type:'application/zip'}));
+      }
       files.push(...makeCSVFiles());
       await shareFilesOrDownload(files, 'Customer Tasks — Full Share', 'Backup ZIP + Customers/Tasks/Leads CSVs');
     }
     q('#btnShareAll')?.addEventListener('click', shareAll);
 
-    /* ===== CSV Import (basic) ===== */
+    /* ===== CSV Import ===== */
     q('#btnCsvUpload')?.addEventListener('click', ()=> q('#csvFile').click());
     q('#csvFile')?.addEventListener('change', async (e)=>{
-      const file = e.target.files && e.target.files[0]; if (!file) return;
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
       try{
-        const text = await file.text(); const rows = parseCSV(text); if (!rows.length){ showToast('error','CSV appears empty'); return; }
+        const text = await file.text();
+        const rows = parseCSV(text);
+        if (!rows.length){
+          showToast('error','CSV appears empty');
+          return;
+        }
         const target = (q('#csvTarget')?.value) || 'customers';
         if (target === 'customers') importCSV_Customers(rows);
         else if (target === 'tasks') importCSV_Tasks(rows);
         else importCSV_Leads(rows);
-      }catch(err){ console.error('CSV read error', err); showToast('error','Failed to read CSV'); }
-      finally{ e.target.value = ''; }
+      }catch(err){
+        console.error('CSV read error', err);
+        showToast('error','Failed to read CSV');
+      }finally{
+        e.target.value = '';
+      }
     });
     function parseCSV(text){
       const rows = []; let cur = '', row = [], inQuotes = false;
@@ -894,8 +1113,15 @@
       return rows;
     }
     const headerMap = headerRow => Object.fromEntries(headerRow.map((h,i)=>[String(h||'').trim().toLowerCase(), i]));
-    const getCell = (row, hmap, aliases) => { for (const a of aliases){ const idx = hmap[a.toLowerCase()]; if (idx != null) return String(row[idx] ?? '').trim(); } return ''; };
+    const getCell = (row, hmap, aliases) => {
+      for (const a of aliases){
+        const idx = hmap[a.toLowerCase()];
+        if (idx != null) return String(row[idx] ?? '').trim();
+      }
+      return '';
+    };
     const splitNumbers = raw => (raw||'').split(',').map(s=>s.trim()).filter(Boolean);
+
     function findOrCreateCustomer({id, name, numbers}){
       let c = null;
       if (id) c = customers.find(x=>x.id===id) || null;
@@ -905,12 +1131,20 @@
         c = customers.find(x => (x.numbers||[]).some(m=> flat.has(m))) || null;
       }
       if (!c){
-        c = { id: id||uuid(), name: name||'(Unnamed)', numbers: Array.isArray(numbers)?numbers:[], createdAt: nowISO(), updatedAt: nowISO() };
+        c = {
+          id: id||uuid(),
+          name: name||'(Unnamed)',
+          numbers: Array.isArray(numbers)?numbers:[],
+          createdAt: nowISO(),
+          updatedAt: nowISO()
+        };
         customers.push(c);
         return { customer:c, created:true };
       }else{
         const exist = new Set((c.numbers||[]).map(x=>x.trim()).filter(Boolean));
-        for (const n of (numbers||[])){ if(n && !exist.has(n)){ c.numbers.push(n); exist.add(n); } }
+        for (const n of (numbers||[])){
+          if(n && !exist.has(n)){ c.numbers.push(n); exist.add(n); }
+        }
         c.updatedAt = nowISO();
         return { customer:c, created:false };
       }
@@ -933,7 +1167,9 @@
       return 'Talked';
     }
     function importCSV_Customers(rows){
-      const headers = rows[0]; const data = rows.slice(1); const h = headerMap(headers);
+      const headers = rows[0];
+      const data = rows.slice(1);
+      const h = headerMap(headers);
       let added=0, updated=0;
       for (const r of data){
         if (!r || r.every(x => !String(x||'').trim())) continue;
@@ -943,10 +1179,13 @@
         const res = findOrCreateCustomer({id,name,numbers:nums});
         if (res.created) added++; else updated++;
       }
-      saveAll(); showToast('success', `Customers CSV imported • Added ${added}, Updated ${updated}`);
+      saveAll();
+      showToast('success', `Customers CSV imported • Added ${added}, Updated ${updated}`);
     }
     function importCSV_Tasks(rows){
-      const headers = rows[0]; const data = rows.slice(1); const h = headerMap(headers);
+      const headers = rows[0];
+      const data = rows.slice(1);
+      const h = headerMap(headers);
       let added=0, updated=0, createdCustomers=0;
       for (const r of data){
         if (!r || r.every(x => !String(x||'').trim())) continue;
@@ -957,16 +1196,38 @@
         const desc   = getCell(r,h,['task description','description','task']);
         const due    = getCell(r,h,['due date','due']);
         const status = normTaskStatus(getCell(r,h,['status']));
-        const {customer, created} = findOrCreateCustomer({id:custId, name, numbers:nums}); if (created) createdCustomers++;
+        const {customer, created} = findOrCreateCustomer({id:custId, name, numbers:nums});
+        if (created) createdCustomers++;
         let t = taskId ? tasks.find(x=>x.id===taskId) : null;
-        if (!t){ tasks.push({ id: taskId||uuid(), customerId: customer.id, description: desc||'', dueDate: due||'', status, createdAt: nowISO(), updatedAt: nowISO() }); added++; }
-        else { t.customerId = customer.id; t.description = desc || t.description || ''; t.dueDate = due || t.dueDate || ''; t.status = status || t.status || 'Pending'; t.updatedAt = nowISO(); updated++; }
+        if (!t){
+          tasks.push({
+            id: taskId||uuid(),
+            customerId: customer.id,
+            description: desc||'',
+            dueDate: due||'',
+            status,
+            createdAt: nowISO(),
+            updatedAt: nowISO()
+          });
+          added++;
+        }else{
+          t.customerId = customer.id;
+          t.description = desc || t.description || '';
+          t.dueDate = due || t.dueDate || '';
+          t.status = status || t.status || 'Pending';
+          t.updatedAt = nowISO();
+          updated++;
+        }
       }
-      saveAll(); showToast('success', `Tasks CSV imported • Added ${added}, Updated ${updated}${createdCustomers?` • New customers ${createdCustomers}`:''}`);
+      saveAll();
+      showToast('success', `Tasks CSV imported • Added ${added}, Updated ${updated}${createdCustomers?` • New customers ${createdCustomers}`:''}`);
     }
     function importCSV_Leads(rows){
-      const headers = rows[0]; const data = rows.slice(1); const h = headerMap(headers);
-      let added=0, updated=0; const byId = new Map(leads.map(l=>[l.id,l]));
+      const headers = rows[0];
+      const data = rows.slice(1);
+      const h = headerMap(headers);
+      let added=0, updated=0;
+      const byId = new Map(leads.map(l=>[l.id,l]));
       for (const r of data){
         if (!r || r.every(x => !String(x||'').trim())) continue;
         const leadId = getCell(r,h,['leadid','id']);
@@ -977,37 +1238,34 @@
         const desc   = getCell(r,h,['description','lead description','notes']);
         if (leadId && byId.has(leadId)){
           const l = byId.get(leadId);
-          l.name = name || l.name || '(unnamed)'; if (!Array.isArray(l.numbers)) l.numbers = [];
-          const exist = new Set(l.numbers.map(x=>x.trim()).filter(Boolean)); for (const n of nums){ if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); } }
-          l.product = prod || l.product || ''; l.status = status || l.status || 'Talked'; l.description = (typeof desc==='string'?desc:'') || l.description || '';
-          l.updatedAt = nowISO(); updated++;
+          l.name = name || l.name || '(unnamed)';
+          if (!Array.isArray(l.numbers)) l.numbers = [];
+          const exist = new Set(l.numbers.map(x=>x.trim()).filter(Boolean));
+          for (const n of nums){
+            if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); }
+          }
+          l.product = prod || l.product || '';
+          l.status = status || l.status || 'Talked';
+          l.description = (typeof desc==='string'?desc:'') || l.description || '';
+          l.updatedAt = nowISO();
+          updated++;
         }else{
-          leads.push({ id: leadId||uuid(), name: name||'(unnamed)', numbers: nums, product: prod||'', status, description: (typeof desc==='string'?desc:''), createdAt: nowISO(), updatedAt: nowISO() });
+          leads.push({
+            id: leadId||uuid(),
+            name: name||'(unnamed)',
+            numbers: nums,
+            product: prod||'',
+            status,
+            description: (typeof desc==='string'?desc:''),
+            createdAt: nowISO(),
+            updatedAt: nowISO()
+          });
           added++;
         }
       }
-      saveAll(); showToast('success', `Leads CSV imported • Added ${added}, Updated ${updated}`);
+      saveAll();
+      showToast('success', `Leads CSV imported • Added ${added}, Updated ${updated}`);
     }
-
-    /* ===== DueSoon open/close ===== */
-    function openDueSoonModal(){ renderDueSoonModal(); q('#dueSoonModal').style.display = 'flex'; }
-    function closeDueSoonModal(){ q('#dueSoonModal').style.display = 'none'; }
-
-    q('#btnDueSoon')?.addEventListener('click', openDueSoonModal);
-
-    // Auto-popup loop
-    function getGlobalSnoozeUntil(){ const v = localStorage.getItem('ct_due_snooze_until'); return v ? parseInt(v,10) : 0; }
-    function autoDueSoonCheck(){
-      try{
-        refreshDueSoonBadge();
-        const items = collectDueSoon(); if (!items.length) return;
-        const snoozeUntil = getGlobalSnoozeUntil(); if (Date.now() < snoozeUntil) return;
-        const isOpen = q('#dueSoonModal').style.display === 'flex';
-        if (!isOpen){ openDueSoonModal(); showToast('info','You have overdue / due-soon tasks'); }
-      }catch(e){ console.error('autoDueSoonCheck', e); }
-    }
-    autoDueSoonCheck();
-    setInterval(autoDueSoonCheck, 300_000);
 
     /* ===== COMPLETE MODAL logic ===== */
     const elCompleteModal = q('#completeModal');
@@ -1029,10 +1287,14 @@
       elCompleteModal.style.display = 'flex';
       setTimeout(()=>elCompleteNotes.focus(), 0);
     }
-    function closeCompleteModal(){ elCompleteModal.style.display = 'none'; completingTaskId = null; }
+    function closeCompleteModal(){
+      elCompleteModal.style.display = 'none';
+      completingTaskId = null;
+    }
 
     function buildCompletionEmail(taskId, notes){
-      const t = tasks.find(x=>x.id===taskId); const c = customers.find(x=>x.id===t?.customerId);
+      const t = tasks.find(x=>x.id===taskId);
+      const c = customers.find(x=>x.id===t?.customerId);
       const subject = `Task Completed: ${c?.name||'Customer'} — ${t?.description||''}`.slice(0,180);
       const lines = [
         `Task Completed`,
@@ -1058,24 +1320,135 @@
       completeTaskStatusOnly(completingTaskId);
       const url = buildCompletionEmail(completingTaskId, notes);
       closeCompleteModal();
-      // open email compose
       try{ window.location.href = url; }catch{}
       showToast('success','Marked completed • Email compose opened');
     });
     q('#btnCompleteCancel')?.addEventListener('click', closeCompleteModal);
 
-    /* ===== Hook complete action in Due Soon list as well ===== */
     function hookDueSoonClicks(){
       const container = q('#dueSoonList');
       if (!container) return;
       container.addEventListener('click', (e)=>{
-        const host = e.target.closest('.actions'); if (!host) return;
-        const act = e.target.closest('[data-act]')?.getAttribute('data-act'); if (!act) return;
+        const host = e.target.closest('.actions');
+        if (!host) return;
+        const act = e.target.closest('[data-act]')?.getAttribute('data-act');
+        if (!act) return;
         const taskId = host.getAttribute('data-actions');
-        if (act==='complete'){ e.stopPropagation(); openCompleteModal(taskId); }
+        if (act==='complete'){
+          e.stopPropagation();
+          openCompleteModal(taskId);
+        }
       });
     }
     hookDueSoonClicks();
+
+    /* ===== Lead Modal logic ===== */
+    const elLeadModal = q('#leadModal');
+    const elLeadModalTitle = q('#leadModalTitle');
+    const elLeadName = q('#leadName');
+    const elLeadNumbers = q('#leadNumbers');
+    const elLeadProduct = q('#leadProduct');
+    const elLeadStatus = q('#leadStatus');
+    const elLeadDesc = q('#leadDesc');
+    const elSaveLeadBtn = q('#saveLeadBtn');
+    const elCancelLeadBtn = q('#cancelLeadBtn');
+    const elDeleteLeadBtn = q('#deleteLeadBtn');
+    const elLeadTimestamps = q('#leadTimestamps');
+    let editingLeadId = null;
+
+    function openLeadModal(leadId=null){
+      editingLeadId = leadId;
+      if(leadId){
+        const l = leads.find(x=>x.id===leadId);
+        if(!l) return;
+        elLeadModalTitle.textContent = 'Edit Lead';
+        elLeadName.value = l.name || '';
+        elLeadNumbers.value = (l.numbers||[]).join(', ');
+        elLeadProduct.value = l.product || '';
+        elLeadStatus.value = l.status || 'Talked';
+        elLeadDesc.value = l.description || '';
+        elLeadTimestamps.textContent = `Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}`;
+        elDeleteLeadBtn.classList.remove('hidden');
+      }else{
+        elLeadModalTitle.textContent = 'Add Lead';
+        elLeadName.value = '';
+        elLeadNumbers.value = '';
+        elLeadProduct.value = '';
+        elLeadStatus.value = 'Talked';
+        elLeadDesc.value = '';
+        elLeadTimestamps.textContent = '';
+        elDeleteLeadBtn.classList.add('hidden');
+      }
+      elLeadModal.style.display = 'flex';
+      setTimeout(()=>elLeadName.focus(),0);
+    }
+    function closeLeadModal(){
+      elLeadModal.style.display = 'none';
+      editingLeadId = null;
+    }
+
+    CT.openLeadAdd = ()=> openLeadModal(null);
+    q('#addLeadBtn')?.addEventListener('click', ()=> openLeadModal(null));
+
+    elSaveLeadBtn.addEventListener('click', ()=>{
+      try{
+        const name = (elLeadName.value||'').trim();
+        const numbers = (elLeadNumbers.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+        const product = elLeadProduct.value.trim();
+        const status = elLeadStatus.value;
+        const desc = elLeadDesc.value.trim();
+        if (!name && numbers.length===0){
+          showToast('error','Enter name or at least one number');
+          return;
+        }
+        if(editingLeadId){
+          const l = leads.find(x=>x.id===editingLeadId);
+          if(!l) return;
+          l.name = name || l.name || '(unnamed)';
+          if(!Array.isArray(l.numbers)) l.numbers = [];
+          const exist = new Set(l.numbers.map(x=>x.trim()).filter(Boolean));
+          for(const n of numbers){
+            if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); }
+          }
+          l.product = product || l.product || '';
+          l.status = status || l.status || 'Talked';
+          l.description = desc || l.description || '';
+          l.updatedAt = nowISO();
+        }else{
+          leads.push({
+            id: uuid(),
+            name: name || '(unnamed)',
+            numbers,
+            product,
+            status,
+            description: desc,
+            createdAt: nowISO(),
+            updatedAt: nowISO()
+          });
+        }
+        saveAll();
+        closeLeadModal();
+        showToast('success','Lead saved');
+      }catch(e){
+        console.error('save lead',e);
+        showToast('error','Could not save lead');
+      }
+    });
+
+    elCancelLeadBtn.addEventListener('click', closeLeadModal);
+    elDeleteLeadBtn.addEventListener('click', ()=>{
+      if(!editingLeadId) return;
+      leads = leads.filter(l=>l.id!==editingLeadId);
+      saveAll();
+      closeLeadModal();
+      showToast('success','Lead deleted');
+    });
+
+    elLeadsList.addEventListener('click', (e)=>{
+      const row = e.target.closest('.row[data-lead-id]');
+      if(!row) return;
+      openLeadModal(row.dataset.leadId);
+    });
 
     /* ===== Keyboard Shortcuts ===== */
     document.addEventListener('keydown', (e)=>{
@@ -1093,11 +1466,14 @@
       else if (k==='escape'){
         if (q('#completeModal').style.display==='flex') closeCompleteModal();
         if (q('#dueSoonModal').style.display==='flex') closeDueSoonModal();
+        if (q('#leadModal').style.display==='flex') closeLeadModal();
+        if (q('#taskModal').style.display==='flex') closeTaskModal();
       }
     });
 
     /* ===== Initial Render ===== */
-    render(); refreshDueSoonBadge();
+    render();
+    refreshDueSoonBadge();
 
   })();
   </script>
