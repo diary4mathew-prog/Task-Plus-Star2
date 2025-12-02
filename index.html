@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Customer Tasks & Leads — Complete</title>
+  <title>Customer Tasks & Leads — Smart OCR</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
@@ -84,7 +84,7 @@
     <div class="inline wrap">
       <div class="grow">
         <h1 style="margin:0;">Customer Tasks & Leads</h1>
-        <div class="sub">Quick actions • Snooze • Share/Zip • Light/Dark • Completion email • Camera OCR</div>
+        <div class="sub">Quick actions • Snooze • Share/Zip • Light/Dark • Completion email • <strong>Smart OCR</strong></div>
       </div>
       <button id="btnTheme" class="btn secondary sm" title="Toggle theme (X)">🌗 Theme</button>
     </div>
@@ -159,13 +159,13 @@
           <label>Customer Mobile(s)</label>
           <input id="taskCustomerMobile" type="text" placeholder="Any number(s), comma-separated for multiple" />
           <div style="margin-top:6px">
-            <button id="scanTaskNumbers" class="btn secondary sm" type="button">📷 Scan from Camera</button>
+            <button id="scanTaskNumbers" class="btn secondary sm" type="button">📷 Scan from Camera (OCR)</button>
             <input id="scanTaskImageInput" type="file" accept="image/*" capture="environment" hidden />
           </div>
         </div>
       </div>
       <div class="small muted" id="taskCustomerMeta" style="margin-top:6px">
-        Tip: Type a name + any number(s). A new customer is created if needed.
+        Tip: The scanner will also fill the Description with all text found on the card.
       </div>
       <div class="hr"></div>
       <div class="inline wrap" style="gap:16px; margin-top:10px">
@@ -208,7 +208,7 @@
           <label>Customer Mobile(s)</label>
           <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
           <div style="margin-top:6px">
-            <button id="scanLeadNumbers" class="btn secondary sm" type="button">📷 Scan from Camera</button>
+            <button id="scanLeadNumbers" class="btn secondary sm" type="button">📷 Scan from Camera (OCR)</button>
             <input id="scanLeadImageInput" type="file" accept="image/*" capture="environment" hidden />
           </div>
         </div>
@@ -347,7 +347,6 @@
 
     let customers = loadJSON(LS_CUSTOMERS, []);
     let tasks = loadJSON(LS_TASKS, []);
-    // Migrate old leads
     let rawLeads = loadJSON(LS_LEADS, []);
     let leads = Array.isArray(rawLeads) ? rawLeads : (rawLeads && typeof rawLeads === 'object' ? Object.values(rawLeads) : []);
     let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {});
@@ -805,7 +804,7 @@
     setInterval(autoDueSoonCheck, CHECK_INTERVAL_MS);
     setTimeout(autoDueSoonCheck, 1500);
 
-    /* ===== CSV / ZIP / Backup (Restored) ===== */
+    /* ===== CSV / ZIP / Backup ===== */
     function csvFromRows(rows){
       return rows.map(r => r.map(cell => {
         const s = String(cell ?? "");
@@ -1038,33 +1037,79 @@
       openLeadModal(row.dataset.leadId);
     });
 
-    /* ===== OCR Setup ===== */
-    function setupNumberScanner(buttonSelector, fileInputSelector, targetInputSelector){
-      const btn = q(buttonSelector), fileInput = q(fileInputSelector), targetInput = q(targetInputSelector);
-      if (!btn || !fileInput || !targetInput) return;
+    /* ===== SMART OCR (FIXED) ===== */
+    function setupSmartOCR(btnSel, fileSel, nameSel, mobileSel, descSel){
+      const btn = q(btnSel), fileInput = q(fileSel);
+      const elName = q(nameSel), elMobile = q(mobileSel), elDesc = q(descSel);
+
+      if (!btn || !fileInput) return;
+
       if (typeof Tesseract === 'undefined'){
-        btn.addEventListener('click', ()=> showToast('error','OCR library not loaded. Check connection.')); return;
+        btn.addEventListener('click', ()=> showToast('error','OCR library missing.'));
+        return;
       }
+
       btn.addEventListener('click', ()=> fileInput.click());
+
       fileInput.addEventListener('change', async (e)=>{
         const file = e.target.files && e.target.files[0];
         if (!file) return;
-        showToast('info','Reading text from image…');
+
+        showToast('info','Scanning image... Please wait.');
+
         try{
           const { data } = await Tesseract.recognize(file, 'eng');
-          const matches = (data.text || '').match(/\+?\d[\d\s\-]{6,}\d/g) || [];
-          const cleaned = matches.map(s => s.replace(/[^\d+]/g, '')).filter(Boolean);
-          if (!cleaned.length){ showToast('error','No phone numbers found.'); return; }
-          const existing = (targetInput.value || '').split(',').map(s=>s.trim()).filter(Boolean);
-          const all = Array.from(new Set([...existing, ...cleaned]));
-          targetInput.value = all.join(', ');
-          showToast('success','Numbers captured from image');
-        }catch(err){ console.error(err); showToast('error','Could not read image.'); }
-        finally{ fileInput.value = ''; }
+          const text = data.text || '';
+          const lines = text.split('\n').map(x=>x.trim()).filter(Boolean);
+
+          if (lines.length === 0){
+             showToast('error','No text found in image.');
+             return;
+          }
+
+          // 1. Get Phone Numbers (Improved Regex: allows () . and spaces)
+          // Look for sequences containing digits, hyphens, spaces, parens, starting with + or digit or (
+          const phoneMatches = text.match(/[+\d(][\d\s\-().]{8,}\d/g) || [];
+          const cleanedNumbers = phoneMatches
+            .map(s => s.trim())
+            .filter(s => s.replace(/\D/g,'').length >= 7); // must have at least 7 real digits
+
+          const uniqueNumbers = [...new Set(cleanedNumbers)];
+
+          // 2. Populate Mobile Field
+          if (elMobile && uniqueNumbers.length > 0) {
+             const existing = elMobile.value ? elMobile.value.split(',').map(s=>s.trim()) : [];
+             const combined = [...new Set([...existing, ...uniqueNumbers])];
+             elMobile.value = combined.join(', ');
+          }
+
+          // 3. Populate Name Field (Guess: First non-empty line that isn't a phone number)
+          if (elName && !elName.value.trim()){
+             // Find first line that doesn't look like a phone number
+             const potentialName = lines.find(l => !uniqueNumbers.some(num => l.includes(num)));
+             if (potentialName) elName.value = potentialName.replace(/[^\w\s\.]/g, ''); // Clean up symbols
+          }
+
+          // 4. Dump FULL data into Description (Safety net)
+          if (elDesc){
+             const separator = elDesc.value ? '\n--- OCR Data ---\n' : '--- OCR Data ---\n';
+             elDesc.value = elDesc.value + separator + text;
+          }
+
+          showToast('success', `Scanned! Found ${uniqueNumbers.length} numbers.`);
+
+        }catch(err){
+          console.error(err);
+          showToast('error','OCR Failed. Try a clearer image.');
+        }finally{
+          fileInput.value = '';
+        }
       });
     }
-    setupNumberScanner('#scanTaskNumbers', '#scanTaskImageInput', '#taskCustomerMobile');
-    setupNumberScanner('#scanLeadNumbers', '#scanLeadImageInput', '#leadNumbers');
+
+    // Connect the smart OCR
+    setupSmartOCR('#scanTaskNumbers', '#scanTaskImageInput', '#taskCustomerName', '#taskCustomerMobile', '#taskDesc');
+    setupSmartOCR('#scanLeadNumbers', '#scanLeadImageInput', '#leadName', '#leadNumbers', '#leadDesc');
 
     /* ===== Keyboard Shortcuts ===== */
     document.addEventListener('keydown', (e)=>{
