@@ -2,9 +2,10 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Customer Tasks & Leads — Complete with Email</title>
+  <title>Customer Tasks & Leads — Complete</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
   <style>
     :root{
       --bg:#0b1020; --panel:#121a35; --panel2:#0f1530; --text:#eaf0ff; --muted:#aab4d6;
@@ -74,8 +75,6 @@
     .toast.success{background:#2a7a47}
     .toast.error{background:#a33a3a}
     .toast button{background:transparent; border:none; color:#fff; margin-left:8px; cursor:pointer; font-weight:800}
-    @keyframes flash { 0%{box-shadow:0 0 0 0 rgba(91,140,255,.9)} 100%{box-shadow:0 0 0 12px rgba(91,140,255,0)} }
-    .flash { position:relative; animation:flash 1s ease-out 0s 1; border-color:#5b8cff !important; background:linear-gradient(180deg, color-mix(in oklab, var(--panel) 95%, #5b8cff 5%) 0%, var(--panel2) 100%); }
     .backdrop{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:60}
     .modal{width:min(980px,96vw); max-height:92vh; overflow:auto}
   </style>
@@ -85,7 +84,7 @@
     <div class="inline wrap">
       <div class="grow">
         <h1 style="margin:0;">Customer Tasks & Leads</h1>
-        <div class="sub">Quick actions • Snooze • Share/Zip • Light/Dark • Completion email</div>
+        <div class="sub">Quick actions • Snooze • Share/Zip • Light/Dark • Completion email • Camera OCR</div>
       </div>
       <button id="btnTheme" class="btn secondary sm" title="Toggle theme (X)">🌗 Theme</button>
     </div>
@@ -106,12 +105,11 @@
     <div class="tabs">
       <div id="tabActive"   class="tab active">Active <span id="countActive" class="small"></span></div>
       <div id="tabCompleted" class="tab">Completed <span id="countCompleted" class="small"></span></div>
-      <div id="tabLeads"     class="tab">Leads <span id="countLeads" class="small"></span></div>
+      <div id="tabLeads"      class="tab">Leads <span id="countLeads" class="small"></span></div>
     </div>
   </header>
 
   <div class="container">
-    <!-- Active -->
     <div id="activeView">
       <div class="card">
         <div class="filters">
@@ -125,7 +123,6 @@
       </div>
     </div>
 
-    <!-- Completed -->
     <div id="completedView" class="hidden">
       <div class="card">
         <div class="filters"><span class="muted">Archived. Open a row to update if needed.</span></div>
@@ -133,7 +130,6 @@
       </div>
     </div>
 
-    <!-- Leads -->
     <div id="leadsView" class="hidden">
       <div class="card">
         <div class="filters">
@@ -151,7 +147,6 @@
     </div>
   </div>
 
-  <!-- Task Modal -->
   <div id="taskModal" class="backdrop">
     <div class="card modal">
       <h3 id="taskModalTitle" style="margin:0 0 10px 0">Add Task</h3>
@@ -163,6 +158,10 @@
         <div class="grow">
           <label>Customer Mobile(s)</label>
           <input id="taskCustomerMobile" type="text" placeholder="Any number(s), comma-separated for multiple" />
+          <div style="margin-top:6px">
+            <button id="scanTaskNumbers" class="btn secondary sm" type="button">📷 Scan from Camera</button>
+            <input id="scanTaskImageInput" type="file" accept="image/*" capture="environment" hidden />
+          </div>
         </div>
       </div>
       <div class="small muted" id="taskCustomerMeta" style="margin-top:6px">
@@ -197,7 +196,6 @@
     </div>
   </div>
 
-  <!-- Lead Modal -->
   <div id="leadModal" class="backdrop">
     <div class="card modal">
       <h3 id="leadModalTitle" style="margin:0 0 10px 0">Add Lead</h3>
@@ -209,6 +207,10 @@
         <div class="grow">
           <label>Customer Mobile(s)</label>
           <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
+          <div style="margin-top:6px">
+            <button id="scanLeadNumbers" class="btn secondary sm" type="button">📷 Scan from Camera</button>
+            <input id="scanLeadImageInput" type="file" accept="image/*" capture="environment" hidden />
+          </div>
         </div>
       </div>
       <div class="inline wrap" style="gap:16px; margin-top:10px">
@@ -236,13 +238,11 @@
         <button id="saveLeadBtn" class="btn ok">Save</button>
         <button id="cancelLeadBtn" class="btn secondary">Cancel</button>
         <button id="deleteLeadBtn" class="btn danger hidden">Delete</button>
-        <button id="emailLeadBtn" class="btn secondary hidden">Email</button>
         <div class="right small muted" id="leadTimestamps"></div>
       </div>
     </div>
   </div>
 
-  <!-- DUE SOON CENTER -->
   <div id="dueSoonModal" class="backdrop">
     <div class="card modal">
       <div class="inline wrap" style="gap:8px">
@@ -269,7 +269,6 @@
     </div>
   </div>
 
-  <!-- COMPLETE MODAL (How completed + email option) -->
   <div id="completeModal" class="backdrop">
     <div class="card modal">
       <h3 style="margin:0 0 10px 0">Mark Task as Completed</h3>
@@ -343,22 +342,14 @@
       try{
         const s = localStorage.getItem(key);
         return s ? JSON.parse(s) : fallback;
-      }catch{
-        return fallback;
-      }
+      }catch{ return fallback; }
     }
 
     let customers = loadJSON(LS_CUSTOMERS, []);
     let tasks = loadJSON(LS_TASKS, []);
-
-    // Safely migrate old leads format (object) → array
+    // Migrate old leads
     let rawLeads = loadJSON(LS_LEADS, []);
-    let leads = Array.isArray(rawLeads)
-      ? rawLeads
-      : (rawLeads && typeof rawLeads === 'object'
-            ? Object.values(rawLeads)
-            : []);
-
+    let leads = Array.isArray(rawLeads) ? rawLeads : (rawLeads && typeof rawLeads === 'object' ? Object.values(rawLeads) : []);
     let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {});
 
     function saveAll(){
@@ -370,21 +361,13 @@
       refreshDueSoonBadge();
     }
 
-    /* ===== State ===== */
-    const STATUS = {
-      PENDING: "Pending",
-      INPROG: "In Progress",
-      ONHOLD: "On Hold",
-      CANCELLED: "Cancelled",
-      COMPLETED: "Completed"
-    };
-    const LEAD_STATUS = ["Talked","Interested","Waiting Confirmation","Converted"];
+    /* ===== State & Helpers ===== */
+    const STATUS = { PENDING: "Pending", INPROG: "In Progress", ONHOLD: "On Hold", CANCELLED: "Cancelled", COMPLETED: "Completed" };
     let activeTab = "Active";
     let activeFilter = STATUS.PENDING;
     let leadFilter = "All";
     let selectedTaskForCustomSnooze = null;
 
-    /* ===== Helpers ===== */
     function isOverdue(t){
       if(!t.dueDate || t.status===STATUS.COMPLETED) return false;
       const today = new Date(); today.setHours(0,0,0,0);
@@ -402,19 +385,12 @@
       }
     }
     function leadPillClass(s){
-      return s==="Converted"?"p-complete"
-           : s==="Waiting Confirmation"?"p-onhold"
-           : s==="Interested"?"p-inprog"
-           : "p-pending";
+      return s==="Converted"?"p-complete": s==="Waiting Confirmation"?"p-onhold": s==="Interested"?"p-inprog": "p-pending";
     }
 
     /* ===== Rendering ===== */
-    const elActiveView = q("#activeView"),
-          elCompletedView = q("#completedView"),
-          elLeadsView = q("#leadsView");
-    const elActiveList = q("#activeList"),
-          elCompletedList = q("#completedList"),
-          elLeadsList = q("#leadsList");
+    const elActiveView = q("#activeView"), elCompletedView = q("#completedView"), elLeadsView = q("#leadsView");
+    const elActiveList = q("#activeList"), elCompletedList = q("#completedList"), elLeadsList = q("#leadsList");
 
     function quickActionsHTML(t, c){
       const wa = c && (c.numbers||[])[0] ? `https://wa.me/${(c.numbers[0]||'').replace(/[^\d]/g,'')}` : '';
@@ -557,7 +533,6 @@
         render();
       });
     });
-
     qAll('.lead-filter').forEach(ch=>{
       ch.addEventListener("click", ()=>{
         qAll('.lead-filter').forEach(x=>x.classList.remove('active'));
@@ -621,14 +596,9 @@
           showToast('error','Enter name or at least one number');
           return;
         }
-
         let customer = null;
-        if(editingTaskCustomerId){
-          customer = customers.find(c=>c.id===editingTaskCustomerId) || null;
-        }
-        if(!customer && name){
-          customer = customers.find(c=> (c.name||"") === name) || null;
-        }
+        if(editingTaskCustomerId) customer = customers.find(c=>c.id===editingTaskCustomerId) || null;
+        if(!customer && name) customer = customers.find(c=> (c.name||"") === name) || null;
         if(!customer && numbersRaw.length){
           const flat = new Set(numbersRaw);
           customer = customers.find(c => (c.numbers||[]).some(m => flat.has(m))) || null;
@@ -643,7 +613,6 @@
           }
           customer.updatedAt = nowISO();
         }
-
         if(editingTaskId){
           const t = tasks.find(x=>x.id===editingTaskId);
           t.customerId = customer.id;
@@ -653,32 +622,20 @@
           t.updatedAt = nowISO();
         }else{
           tasks.push({
-            id: uuid(),
-            customerId: customer.id,
-            description: desc,
-            dueDate: due,
-            status: st,
-            createdAt: nowISO(),
-            updatedAt: nowISO()
+            id: uuid(), customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO()
           });
         }
         saveAll();
         closeTaskModal();
         showToast('success','Task saved');
-      }catch(e){
-        console.error('save task', e);
-        showToast('error','Could not save task');
-      }
+      }catch(e){ console.error(e); showToast('error','Could not save task'); }
     });
     elCancelTaskBtn.addEventListener("click", closeTaskModal);
     q('#btnAddTask').addEventListener('click', ()=> openTaskModal(null, null));
     CT.openAdd = ()=> openTaskModal(null, null);
-    CT.editTask = (id)=>{
-      const t = tasks.find(x=>x.id===id);
-      if(t) openTaskModal(t.customerId, id);
-    };
+    CT.editTask = (id)=>{ const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
 
-    /* ===== Quick Actions — row buttons ===== */
+    /* ===== Quick Actions ===== */
     function completeTaskStatusOnly(id){
       const t = tasks.find(x=>x.id===id);
       if(!t) return;
@@ -694,14 +651,12 @@
       renderDueSoonModal();
     }
     function snoozeTaskToday(taskId){
-      const end = new Date();
-      end.setHours(23,59,59,999);
+      const end = new Date(); end.setHours(23,59,59,999);
       taskSnoozes[taskId] = +end;
       localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
       refreshDueSoonBadge();
       renderDueSoonModal();
     }
-
     function handleRowActions(e){
       const actionHost = e.target.closest('.actions');
       if (!actionHost) {
@@ -724,42 +679,29 @@
     elActiveList.addEventListener('click', handleRowActions);
     elCompletedList.addEventListener('click', handleRowActions);
 
-    /* ===== Due Soon (auto + custom snooze) ===== */
+    /* ===== Due Soon ===== */
     const DUE_WINDOW_DAYS = 3;
-    const CHECK_INTERVAL_MS = 300_000;
-
-    function startOfDay(d){
-      const x = new Date(d); x.setHours(0,0,0,0); return x;
-    }
+    const CHECK_INTERVAL_MS = 300000;
+    function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
     function daysFromToday(dateStr){
       if (!dateStr) return null;
       const today = startOfDay(new Date());
       const due = startOfDay(new Date(dateStr));
-      const diffMs = due - today;
-      return Math.round(diffMs / (24*60*60*1000));
-    }
-    function actionableStatus(s){
-      return [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD].includes(s);
+      return Math.round((due - today) / (24*60*60*1000));
     }
     function cleanupExpiredSnoozes(){
       const now = Date.now(); let changed = false;
       for (const [tid, ts] of Object.entries(taskSnoozes)){
-        if (!ts || ts <= now){
-          delete taskSnoozes[tid];
-          changed = true;
-        }
+        if (!ts || ts <= now){ delete taskSnoozes[tid]; changed = true; }
       }
       if (changed) localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
     }
-    function isTaskSnoozed(id){
-      const ts = taskSnoozes[id];
-      return ts && ts > Date.now();
-    }
+    function isTaskSnoozed(id){ const ts = taskSnoozes[id]; return ts && ts > Date.now(); }
     function collectDueSoon(){
       cleanupExpiredSnoozes();
       const out = [];
       for (const t of tasks){
-        if (!actionableStatus(t.status)) continue;
+        if (![STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD].includes(t.status)) continue;
         if (!t.dueDate) continue;
         if (isTaskSnoozed(t.id)) continue;
         const k = daysFromToday(t.dueDate);
@@ -769,11 +711,7 @@
           out.push({ task: t, customer: c||null, days: k });
         }
       }
-      out.sort((a,b)=>
-        (a.days===b.days)
-          ? (new Date(a.task.dueDate) - new Date(b.task.dueDate))
-          : (a.days - b.days)
-      );
+      out.sort((a,b)=> (a.days===b.days) ? (new Date(a.task.dueDate) - new Date(b.task.dueDate)) : (a.days - b.days));
       return out;
     }
     function dueLabel(k){
@@ -781,25 +719,19 @@
       if (k === 0) return 'Due Today';
       return `Due in ${k} day${k===1?'':'s'}`;
     }
-    function pillDueClass(k){
-      return k<0 ? 'p-overdue' : 'p-due';
-    }
+    function pillDueClass(k){ return k<0 ? 'p-overdue' : 'p-due'; }
     function refreshDueSoonBadge(){
       const el = q('#dueSoonCount');
       if (!el) return;
       const n = collectDueSoon().length;
       el.textContent = n ? `(${n})` : '';
     }
-
     function renderDueSoonModal(){
       const container = q('#dueSoonList');
       if (!container) return;
       container.innerHTML = '';
       const items = collectDueSoon();
-      if (!items.length){
-        container.innerHTML = `<div class="row"><div class="meta">No overdue or due-soon tasks 🎉</div></div>`;
-        return;
-      }
+      if (!items.length){ container.innerHTML = `<div class="row"><div class="meta">No overdue or due-soon tasks 🎉</div></div>`; return; }
       for (const {task:t, customer:c, days:k} of items){
         const name = c ? (c.name||'Unknown') : '(missing)';
         const row = document.createElement('div');
@@ -812,10 +744,7 @@
               <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
               <span class="pill ${pillDueClass(k)}" style="margin-left:8px">${dueLabel(k)} • ${t.dueDate||''}</span>
             </div>
-            <div class="muted small" style="margin-top:4px">
-              ${escapeHtml(t.description||'(no description)')}
-              • Created: ${fmtDate(t.createdAt)} • Updated: ${fmtDate(t.updatedAt)}
-            </div>
+            <div class="muted small" style="margin-top:4px">${escapeHtml(t.description||'(no description)')}</div>
             <div class="actions" data-actions="${t.id}" style="margin-top:8px">
               <button class="iconbtn" data-act="edit">✏️ Edit</button>
               <button class="iconbtn" data-act="complete">✅ Done</button>
@@ -834,441 +763,164 @@
           q('#customSnoozeDT').focus();
         });
       });
-      container.addEventListener('click', handleRowActions);
+      container.addEventListener('click', (e)=>{
+        const host = e.target.closest('.actions');
+        if (!host) return;
+        const act = e.target.closest('[data-act]')?.getAttribute('data-act');
+        if (act==='complete'){
+           e.stopPropagation();
+           openCompleteModal(host.getAttribute('data-actions'));
+        }
+      });
     }
-
-    function openDueSoonModal(){
-      renderDueSoonModal();
-      q('#dueSoonModal').style.display = 'flex';
-    }
-    function closeDueSoonModal(){
-      q('#dueSoonModal').style.display = 'none';
-    }
+    function openDueSoonModal(){ renderDueSoonModal(); q('#dueSoonModal').style.display = 'flex'; }
+    function closeDueSoonModal(){ q('#dueSoonModal').style.display = 'none'; }
     q('#btnDueSoon')?.addEventListener('click', openDueSoonModal);
     q('#btnDueSoonClose')?.addEventListener('click', closeDueSoonModal);
 
-    q('#btnSnooze2h')?.addEventListener('click', ()=>{
-      localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+2*60*60*1000));
-      closeDueSoonModal();
-      showToast('success','Auto-popup snoozed 2h');
-    });
-    q('#btnSnooze6h')?.addEventListener('click', ()=>{
-      localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+6*60*60*1000));
-      closeDueSoonModal();
-      showToast('success','Auto-popup snoozed 6h');
-    });
-    q('#btnSnooze1d')?.addEventListener('click', ()=>{
-      localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+24*60*60*1000));
-      closeDueSoonModal();
-      showToast('success','Auto-popup snoozed 1 day');
-    });
-    q('#btnSnooze3d')?.addEventListener('click', ()=>{
-      localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+3*24*60*60*1000));
-      closeDueSoonModal();
-      showToast('success','Auto-popup snoozed 3 days');
-    });
+    q('#btnSnooze2h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+2*60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed 2h'); });
+    q('#btnSnooze6h')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+6*60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed 6h'); });
+    q('#btnSnooze1d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+24*60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed 1 day'); });
+    q('#btnSnooze3d')?.addEventListener('click', ()=>{ localStorage.setItem(LS_SNOOZE_GLOBAL, String(Date.now()+3*24*60*60*1000)); closeDueSoonModal(); showToast('success','Snoozed 3 days'); });
 
     q('#applyCustomSnooze')?.addEventListener('click', ()=>{
       const dt = q('#customSnoozeDT').value;
-      if (!selectedTaskForCustomSnooze){
-        showToast('error','Pick a task (click any snooze button first)');
-        return;
-      }
-      if (!dt){
-        showToast('error','Pick a date & time');
-        return;
-      }
-      const ts = +new Date(dt);
-      if (ts <= Date.now()){
-        showToast('error','Choose a time in the future');
-        return;
-      }
-      taskSnoozes[selectedTaskForCustomSnooze] = ts;
+      if (!selectedTaskForCustomSnooze || !dt) return;
+      taskSnoozes[selectedTaskForCustomSnooze] = +new Date(dt);
       localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-      refreshDueSoonBadge();
-      renderDueSoonModal();
-      showToast('success','Custom snooze set');
+      refreshDueSoonBadge(); renderDueSoonModal(); showToast('success','Custom snooze set');
     });
-
-    function getGlobalSnoozeUntil(){
-      const v = localStorage.getItem(LS_SNOOZE_GLOBAL);
-      return v ? parseInt(v,10) : 0;
-    }
     function autoDueSoonCheck(){
       try{
         refreshDueSoonBadge();
         const items = collectDueSoon();
         if (!items.length) return;
-        const snoozeUntil = getGlobalSnoozeUntil();
-        if (Date.now() < snoozeUntil) return;
-        const isOpen = q('#dueSoonModal').style.display === 'flex';
-        if (!isOpen){
-          openDueSoonModal();
-          showToast('info','You have overdue / due-soon tasks');
+        const until = parseInt(localStorage.getItem(LS_SNOOZE_GLOBAL)||0,10);
+        if (Date.now() < until) return;
+        if (q('#dueSoonModal').style.display !== 'flex'){
+          openDueSoonModal(); showToast('info','You have overdue tasks');
         }
-      }catch(e){
-        console.error('autoDueSoonCheck', e);
-      }
+      }catch(e){}
     }
-    autoDueSoonCheck();
     setInterval(autoDueSoonCheck, CHECK_INTERVAL_MS);
+    setTimeout(autoDueSoonCheck, 1500);
 
-    /* ===== CSV Export/Backup/Share ===== */
+    /* ===== CSV / ZIP / Backup (Restored) ===== */
     function csvFromRows(rows){
       return rows.map(r => r.map(cell => {
         const s = String(cell ?? "");
         return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
       }).join(",")).join("\n");
     }
+    function downloadFile(filename, content, type){
+      const blob = new Blob([content], {type});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
     function makeCSVFiles(){
-      const custRows = [["CustomerID","Customer Name","Mobile Numbers","Created At","Updated At"]];
-      for(const c of customers){
-        custRows.push([
-          c.id,
-          c.name||"",
-          (c.numbers||[]).join(", "),
-          c.createdAt||"",
-          c.updatedAt||""
-        ]);
-      }
-      const cust = "\uFEFF" + csvFromRows(custRows);
-
-      const taskRows = [["TaskID","CustomerID","Customer Name","Mobile Numbers","Task Description","Due Date","Status","Created At","Updated At"]];
-      for(const t of tasks){
-        const c = customers.find(x=>x.id===t.customerId);
-        taskRows.push([
-          t.id,
-          t.customerId,
-          c?(c.name||""):"",
-          c?(c.numbers||[]).join(", "):"",
-          t.description||"",
-          t.dueDate||"",
-          t.status||"",
-          t.createdAt||"",
-          t.updatedAt||""
-        ]);
-      }
-      const task = "\uFEFF" + csvFromRows(taskRows);
-
-      const leadRows = [["LeadID","Customer Name","Mobile Numbers","Product","Status","Description","Created At","Updated At"]];
-      for(const l of leads){
-        leadRows.push([
-          l.id,
-          l.name||"",
-          (l.numbers||[]).join(", "),
-          l.product||"",
-          l.status||"",
-          l.description||"",
-          l.createdAt||"",
-          l.updatedAt||""
-        ]);
-      }
-      const lead = "\uFEFF" + csvFromRows(leadRows);
-
-      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-      const f1 = new File([cust], `Customers_${ts}.csv`, {type:"text/csv"});
-      const f2 = new File([task], `Tasks_${ts}.csv`, {type:"text/csv"});
-      const f3 = new File([lead], `Leads_${ts}.csv`, {type:"text/csv"});
-      return [f1,f2,f3];
+      // Customers
+      const cRows = [["CustomerID","Name","MobileNumbers","CreatedAt","UpdatedAt"]];
+      customers.forEach(c => cRows.push([c.id, c.name, (c.numbers||[]).join(";"), c.createdAt, c.updatedAt]));
+      // Tasks
+      const tRows = [["TaskID","CustomerID","Description","DueDate","Status","CreatedAt","UpdatedAt"]];
+      tasks.forEach(t => tRows.push([t.id, t.customerId, t.description, t.dueDate, t.status, t.createdAt, t.updatedAt]));
+      // Leads
+      const lRows = [["LeadID","Name","MobileNumbers","Product","Status","Description","CreatedAt","UpdatedAt"]];
+      leads.forEach(l => lRows.push([l.id, l.name, (l.numbers||[]).join(";"), l.product, l.status, l.description, l.createdAt, l.updatedAt]));
+      return {
+        customers: csvFromRows(cRows),
+        tasks: csvFromRows(tRows),
+        leads: csvFromRows(lRows)
+      };
     }
-    async function shareFilesOrDownload(files, title, text){
-      if (navigator.canShare && navigator.canShare({ files })){
-        try{
-          await navigator.share({ files, title, text });
-          showToast('success','Shared');
-          return true;
-        }catch(e){ /* canceled */ }
-      }
-      try{
-        const names = files.map(f=>f.name).join(', ');
-        const body = encodeURIComponent(`${text || title || 'Files'}\n\n(${names}) have been saved in your Downloads folder. Please attach them manually.\n`);
-        window.location.href = `mailto:?subject=${encodeURIComponent(title||'Files')}&body=${body}`;
-      }catch{}
-      for (const f of files){
-        const url = URL.createObjectURL(f);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = f.name;
-        a.click();
-        setTimeout(()=>URL.revokeObjectURL(url),1500);
-      }
-      showToast('info','Files downloaded — attach them in your email client.');
-      return false;
-    }
-    async function shareCSVs(){
+    q('#btnShareCSVs').addEventListener('click', async ()=>{
+      if(typeof JSZip === 'undefined'){ alert('Zip lib not loaded'); return; }
       const files = makeCSVFiles();
-      await shareFilesOrDownload(files, 'Customer Tasks CSVs', 'Customers.csv, Tasks.csv, Leads.csv');
-    }
-    q('#btnShareCSVs')?.addEventListener('click', shareCSVs);
-
-    function makeBackupJSON(){
-      const payload = { version:1, exportedAt: nowISO(), customers, tasks, leads };
-      return JSON.stringify(payload, null, 2);
-    }
-    async function makeBackupZipBlob(){
-      if (!window.JSZip){
-        return null;
-      }
       const zip = new JSZip();
-      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-      zip.file(`backup_${ts}.json`, makeBackupJSON());
-      const [cF,tF,lF] = makeCSVFiles();
-      const asText = f => new Promise(res=>{
-        const r=new FileReader();
-        r.onload=()=>res(r.result);
-        r.readAsText(f);
-      });
-      const [cTxt,tTxt,lTxt] = await Promise.all([asText(cF),asText(tF),asText(lF)]);
-      zip.file(`Customers_${ts}.csv`, cTxt);
-      zip.file(`Tasks_${ts}.csv`, tTxt);
-      zip.file(`Leads_${ts}.csv`, lTxt);
-      const blob = await zip.generateAsync({type:'blob'});
-      return { blob, filename:`CustomerTasks_FullBackup_${ts}.zip` };
-    }
-    async function backupZipShare(){
-      try{
-        const pack = await makeBackupZipBlob();
-        if (pack){
-          const file = new File([pack.blob], pack.filename, {type:'application/zip'});
-          if (navigator.canShare && navigator.canShare({files:[file]})){
-            await navigator.share({ files:[file], title:'Full Backup ZIP', text:'Backup JSON + 3 CSVs' });
-            showToast('success','Shared ZIP');
-            return;
-          }
-          const url = URL.createObjectURL(pack.blob);
-          const a = document.createElement('a');
-          a.href=url;
-          a.download=pack.filename;
-          a.click();
-          setTimeout(()=>URL.revokeObjectURL(url),1500);
-          try{
-            const body = encodeURIComponent(`Backup ZIP has been saved to your Downloads folder as ${pack.filename}. Please attach it to this email.`);
-            window.location.href = `mailto:?subject=${encodeURIComponent('Full Backup ZIP')}&body=${body}`;
-          }catch{}
-          showToast('success','Backup ZIP downloaded');
-        }else{
-          const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-          const json = new Blob([makeBackupJSON()], {type:'application/json'});
-          const jf = new File([json], `backup_${ts}.json`, {type:'application/json'});
-          const csvs = makeCSVFiles();
-          await shareFilesOrDownload([jf, ...csvs], 'Backup (no ZIP)', 'Backup JSON + CSVs');
-        }
-      }catch(e){
-        console.error(e);
-        showToast('error','Backup ZIP failed');
-      }
-    }
-    q('#btnBackupZip')?.addEventListener('click', backupZipShare);
-    async function shareAll(){
-      const pack = await makeBackupZipBlob();
-      const files = [];
-      if (pack){
-        files.push(new File([pack.blob], pack.filename, {type:'application/zip'}));
-      }
-      files.push(...makeCSVFiles());
-      await shareFilesOrDownload(files, 'Customer Tasks — Full Share', 'Backup ZIP + Customers/Tasks/Leads CSVs');
-    }
-    q('#btnShareAll')?.addEventListener('click', shareAll);
-
-    /* ===== CSV Import ===== */
-    q('#btnCsvUpload')?.addEventListener('click', ()=> q('#csvFile').click());
-    q('#csvFile')?.addEventListener('change', async (e)=>{
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      try{
-        const text = await file.text();
-        const rows = parseCSV(text);
-        if (!rows.length){
-          showToast('error','CSV appears empty');
-          return;
-        }
-        const target = (q('#csvTarget')?.value) || 'customers';
-        if (target === 'customers') importCSV_Customers(rows);
-        else if (target === 'tasks') importCSV_Tasks(rows);
-        else importCSV_Leads(rows);
-      }catch(err){
-        console.error('CSV read error', err);
-        showToast('error','Failed to read CSV');
-      }finally{
-        e.target.value = '';
+      zip.file("customers.csv", files.customers);
+      zip.file("tasks.csv", files.tasks);
+      zip.file("leads.csv", files.leads);
+      const blob = await zip.generateAsync({type:"blob"});
+      const fname = `CT_Export_${new Date().toISOString().slice(0,10)}.zip`;
+      if(navigator.share && navigator.canShare({ files: [new File([blob], fname, {type: blob.type})] })){
+        try{ await navigator.share({ files: [new File([blob], fname, {type: blob.type})] }); } catch(e){ downloadFile(fname, blob, "application/zip"); }
+      } else {
+        downloadFile(fname, blob, "application/zip");
       }
     });
-    function parseCSV(text){
-      const rows = []; let cur = '', row = [], inQuotes = false;
-      for (let i=0; i<text.length; i++){
-        const c = text[i], n = text[i+1];
-        if (inQuotes){
-          if (c === '"' && n === '"'){ cur += '"'; i++; }
-          else if (c === '"'){ inQuotes = false; }
-          else { cur += c; }
-        }else{
-          if (c === '"'){ inQuotes = true; }
-          else if (c === ','){ row.push(cur); cur = ''; }
-          else if (c === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; }
-          else if (c === '\r'){ }
-          else { cur += c; }
-        }
+    q('#btnBackupZip').addEventListener('click', async ()=>{
+      if(typeof JSZip === 'undefined'){ alert('Zip lib not loaded'); return; }
+      const zip = new JSZip();
+      const data = { customers, tasks, leads, taskSnoozes, version: 1 };
+      zip.file("ct_full_backup.json", JSON.stringify(data, null, 2));
+      const blob = await zip.generateAsync({type:"blob"});
+      const fname = `CT_Backup_${new Date().toISOString().slice(0,10)}.zip`;
+      if(navigator.share && navigator.canShare({ files: [new File([blob], fname, {type: blob.type})] })){
+        try{ await navigator.share({ files: [new File([blob], fname, {type: blob.type})] }); } catch(e){ downloadFile(fname, blob, "application/zip"); }
+      } else {
+        downloadFile(fname, blob, "application/zip");
       }
-      row.push(cur); rows.push(row);
-      if (rows.length && rows[rows.length-1].every(x => String(x||'').trim()==='')) rows.pop();
-      return rows;
-    }
-    const headerMap = headerRow => Object.fromEntries(headerRow.map((h,i)=>[String(h||'').trim().toLowerCase(), i]));
-    const getCell = (row, hmap, aliases) => {
-      for (const a of aliases){
-        const idx = hmap[a.toLowerCase()];
-        if (idx != null) return String(row[idx] ?? '').trim();
+    });
+    q('#btnShareAll').addEventListener('click', async ()=>{
+      if(typeof JSZip === 'undefined'){ alert('Zip lib not loaded'); return; }
+      const files = makeCSVFiles();
+      const zip = new JSZip();
+      zip.file("customers.csv", files.customers);
+      zip.file("tasks.csv", files.tasks);
+      zip.file("leads.csv", files.leads);
+      const data = { customers, tasks, leads, taskSnoozes, version: 1 };
+      zip.file("ct_full_backup.json", JSON.stringify(data, null, 2));
+      const blob = await zip.generateAsync({type:"blob"});
+      const fname = `CT_All_${new Date().toISOString().slice(0,10)}.zip`;
+      if(navigator.share && navigator.canShare({ files: [new File([blob], fname, {type: blob.type})] })){
+        try{ await navigator.share({ files: [new File([blob], fname, {type: blob.type})] }); } catch(e){ downloadFile(fname, blob, "application/zip"); }
+      } else {
+        downloadFile(fname, blob, "application/zip");
       }
-      return '';
-    };
-    const splitNumbers = raw => (raw||'').split(',').map(s=>s.trim()).filter(Boolean);
-
-    function findOrCreateCustomer({id, name, numbers}){
-      let c = null;
-      if (id) c = customers.find(x=>x.id===id) || null;
-      if (!c && name) c = customers.find(x=>(x.name||'')===name) || null;
-      if (!c && numbers && numbers.length){
-        const flat = new Set(numbers);
-        c = customers.find(x => (x.numbers||[]).some(m=> flat.has(m))) || null;
-      }
-      if (!c){
-        c = {
-          id: id||uuid(),
-          name: name||'(Unnamed)',
-          numbers: Array.isArray(numbers)?numbers:[],
-          createdAt: nowISO(),
-          updatedAt: nowISO()
-        };
-        customers.push(c);
-        return { customer:c, created:true };
-      }else{
-        const exist = new Set((c.numbers||[]).map(x=>x.trim()).filter(Boolean));
-        for (const n of (numbers||[])){
-          if(n && !exist.has(n)){ c.numbers.push(n); exist.add(n); }
-        }
-        c.updatedAt = nowISO();
-        return { customer:c, created:false };
-      }
-    }
-    function normTaskStatus(s){
-      const x = String(s||'').toLowerCase();
-      if (x.startsWith('pend')) return 'Pending';
-      if (x.startsWith('in prog') || x==='ip') return 'In Progress';
-      if (x.startsWith('on hol')) return 'On Hold';
-      if (x.startsWith('cancel')) return 'Cancelled';
-      if (x.startsWith('compl') || x==='done') return 'Completed';
-      return 'Pending';
-    }
-    function normLeadStatus(s){
-      const x = String(s||'').toLowerCase();
-      if (x.startsWith('talk')) return 'Talked';
-      if (x.startsWith('inter')) return 'Interested';
-      if (x.startsWith('wait')) return 'Waiting Confirmation';
-      if (x.startsWith('conv')) return 'Converted';
-      return 'Talked';
-    }
-    function importCSV_Customers(rows){
-      const headers = rows[0];
-      const data = rows.slice(1);
-      const h = headerMap(headers);
-      let added=0, updated=0;
-      for (const r of data){
-        if (!r || r.every(x => !String(x||'').trim())) continue;
-        const id   = getCell(r,h,['customerid','id']);
-        const name = getCell(r,h,['customer name','name']);
-        const nums = splitNumbers(getCell(r,h,['mobile numbers','numbers','mobiles','phone','phones']));
-        const res = findOrCreateCustomer({id,name,numbers:nums});
-        if (res.created) added++; else updated++;
-      }
-      saveAll();
-      showToast('success', `Customers CSV imported • Added ${added}, Updated ${updated}`);
-    }
-    function importCSV_Tasks(rows){
-      const headers = rows[0];
-      const data = rows.slice(1);
-      const h = headerMap(headers);
-      let added=0, updated=0, createdCustomers=0;
-      for (const r of data){
-        if (!r || r.every(x => !String(x||'').trim())) continue;
-        const taskId = getCell(r,h,['taskid','id']);
-        const custId = getCell(r,h,['customerid','cust id']);
-        const name   = getCell(r,h,['customer name','name']);
-        const nums   = splitNumbers(getCell(r,h,['mobile numbers','numbers','mobiles','phone','phones']));
-        const desc   = getCell(r,h,['task description','description','task']);
-        const due    = getCell(r,h,['due date','due']);
-        const status = normTaskStatus(getCell(r,h,['status']));
-        const {customer, created} = findOrCreateCustomer({id:custId, name, numbers:nums});
-        if (created) createdCustomers++;
-        let t = taskId ? tasks.find(x=>x.id===taskId) : null;
-        if (!t){
-          tasks.push({
-            id: taskId||uuid(),
-            customerId: customer.id,
-            description: desc||'',
-            dueDate: due||'',
-            status,
-            createdAt: nowISO(),
-            updatedAt: nowISO()
-          });
-          added++;
-        }else{
-          t.customerId = customer.id;
-          t.description = desc || t.description || '';
-          t.dueDate = due || t.dueDate || '';
-          t.status = status || t.status || 'Pending';
-          t.updatedAt = nowISO();
-          updated++;
-        }
-      }
-      saveAll();
-      showToast('success', `Tasks CSV imported • Added ${added}, Updated ${updated}${createdCustomers?` • New customers ${createdCustomers}`:''}`);
-    }
-    function importCSV_Leads(rows){
-      const headers = rows[0];
-      const data = rows.slice(1);
-      const h = headerMap(headers);
-      let added=0, updated=0;
-      const byId = new Map(leads.map(l=>[l.id,l]));
-      for (const r of data){
-        if (!r || r.every(x => !String(x||'').trim())) continue;
-        const leadId = getCell(r,h,['leadid','id']);
-        const name   = getCell(r,h,['customer name','name']);
-        const nums   = splitNumbers(getCell(r,h,['mobile numbers','numbers','mobiles','phone','phones']));
-        const prod   = getCell(r,h,['product']);
-        const status = normLeadStatus(getCell(r,h,['status']));
-        const desc   = getCell(r,h,['description','lead description','notes']);
-        if (leadId && byId.has(leadId)){
-          const l = byId.get(leadId);
-          l.name = name || l.name || '(unnamed)';
-          if (!Array.isArray(l.numbers)) l.numbers = [];
-          const exist = new Set(l.numbers.map(x=>x.trim()).filter(Boolean));
-          for (const n of nums){
-            if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); }
+    });
+    // Import
+    const elCsvFile = q('#csvFile');
+    const elCsvTarget = q('#csvTarget');
+    q('#btnCsvUpload').addEventListener('click', ()=> elCsvFile.click());
+    elCsvFile.addEventListener('change', async (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      const text = await f.text();
+      const rows = text.split(/\r?\n/).map(row => row.split(",").map(c => c.replace(/^"|"$/g,"").trim()));
+      // Basic header check
+      if(rows.length < 2) return;
+      const target = elCsvTarget.value;
+      let count = 0;
+      if(target==="customers"){
+        rows.slice(1).forEach(r => {
+          if(r.length < 2) return;
+          if(!customers.find(c=>c.id===r[0] || c.name===r[1])){
+            customers.push({ id: r[0]||uuid(), name: r[1], numbers: r[2]?r[2].split(";"):[], createdAt: nowISO(), updatedAt: nowISO() });
+            count++;
           }
-          l.product = prod || l.product || '';
-          l.status = status || l.status || 'Talked';
-          l.description = (typeof desc==='string'?desc:'') || l.description || '';
-          l.updatedAt = nowISO();
-          updated++;
-        }else{
-          leads.push({
-            id: leadId||uuid(),
-            name: name||'(unnamed)',
-            numbers: nums,
-            product: prod||'',
-            status,
-            description: (typeof desc==='string'?desc:''),
-            createdAt: nowISO(),
-            updatedAt: nowISO()
-          });
-          added++;
-        }
+        });
+      } else if(target==="tasks"){
+        rows.slice(1).forEach(r => {
+          if(r.length < 3) return;
+          tasks.push({ id: r[0]||uuid(), customerId: r[1], description: r[2], dueDate: r[3]||"", status: r[4]||"Pending", createdAt: nowISO(), updatedAt: nowISO() });
+          count++;
+        });
+      } else if(target==="leads"){
+        rows.slice(1).forEach(r => {
+          if(r.length < 2) return;
+          leads.push({ id: r[0]||uuid(), name: r[1], numbers: r[2]?r[2].split(";"):[], product: r[3]||"", status: r[4]||"Talked", description: r[5]||"", createdAt: nowISO(), updatedAt: nowISO() });
+          count++;
+        });
       }
       saveAll();
-      showToast('success', `Leads CSV imported • Added ${added}, Updated ${updated}`);
-    }
+      showToast('success', `Imported ${count} items into ${target}`);
+      elCsvFile.value = "";
+    });
 
-    /* ===== COMPLETE MODAL logic ===== */
+    /* ===== Complete + Email ===== */
     const elCompleteModal = q('#completeModal');
     const elCompleteNotes = q('#completeNotes');
     const elCompleteCtx   = q('#completeContext');
@@ -1288,32 +940,21 @@
       elCompleteModal.style.display = 'flex';
       setTimeout(()=>elCompleteNotes.focus(), 0);
     }
-    function closeCompleteModal(){
-      elCompleteModal.style.display = 'none';
-      completingTaskId = null;
-    }
-
+    function closeCompleteModal(){ elCompleteModal.style.display = 'none'; completingTaskId = null; }
     function buildCompletionEmail(taskId, notes){
       const t = tasks.find(x=>x.id===taskId);
       const c = customers.find(x=>x.id===t?.customerId);
       const subject = `Task Completed: ${c?.name||'Customer'} — ${t?.description||''}`.slice(0,180);
       const lines = [
-        `Task Completed`,
-        `Customer: ${c?.name||'(unknown)'}`,
-        `Numbers: ${(c?.numbers||[]).join(', ')||'(none)'}`,
-        `Description: ${t?.description||''}`,
-        `Due Date: ${t?.dueDate||'(none)'}`,
-        `Completed At: ${new Date().toLocaleString()}`,
+        `Task Completed`, `Customer: ${c?.name||'(unknown)'}`, `Numbers: ${(c?.numbers||[]).join(', ')||'(none)'}`,
+        `Description: ${t?.description||''}`, `Due Date: ${t?.dueDate||'(none)'}`, `Completed At: ${new Date().toLocaleString()}`,
         `Notes: ${notes||'(none)'}`
       ];
-      const body = encodeURIComponent(lines.join('\n'));
-      return `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`;
+      return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
     }
-
     q('#btnCompleteOnly')?.addEventListener('click', ()=>{
       if (!completingTaskId) return;
-      completeTaskStatusOnly(completingTaskId);
-      closeCompleteModal();
+      completeTaskStatusOnly(completingTaskId); closeCompleteModal();
     });
     q('#btnCompleteAndEmail')?.addEventListener('click', ()=>{
       if (!completingTaskId) return;
@@ -1326,35 +967,12 @@
     });
     q('#btnCompleteCancel')?.addEventListener('click', closeCompleteModal);
 
-    function hookDueSoonClicks(){
-      const container = q('#dueSoonList');
-      if (!container) return;
-      container.addEventListener('click', (e)=>{
-        const host = e.target.closest('.actions');
-        if (!host) return;
-        const act = e.target.closest('[data-act]')?.getAttribute('data-act');
-        if (!act) return;
-        const taskId = host.getAttribute('data-actions');
-        if (act==='complete'){
-          e.stopPropagation();
-          openCompleteModal(taskId);
-        }
-      });
-    }
-    hookDueSoonClicks();
-
-    /* ===== Lead Modal logic ===== */
-    const elLeadModal = q('#leadModal');
-    const elLeadModalTitle = q('#leadModalTitle');
-    const elLeadName = q('#leadName');
-    const elLeadNumbers = q('#leadNumbers');
-    const elLeadProduct = q('#leadProduct');
-    const elLeadStatus = q('#leadStatus');
-    const elLeadDesc = q('#leadDesc');
-    const elSaveLeadBtn = q('#saveLeadBtn');
-    const elCancelLeadBtn = q('#cancelLeadBtn');
-    const elDeleteLeadBtn = q('#deleteLeadBtn');
-    const elEmailLeadBtn = q('#emailLeadBtn');
+    /* ===== Leads Modal ===== */
+    const elLeadModal = q('#leadModal'), elLeadModalTitle = q('#leadModalTitle');
+    const elLeadName = q('#leadName'), elLeadNumbers = q('#leadNumbers');
+    const elLeadProduct = q('#leadProduct'), elLeadStatus = q('#leadStatus');
+    const elLeadDesc = q('#leadDesc'), elSaveLeadBtn = q('#saveLeadBtn');
+    const elCancelLeadBtn = q('#cancelLeadBtn'), elDeleteLeadBtn = q('#deleteLeadBtn');
     const elLeadTimestamps = q('#leadTimestamps');
     let editingLeadId = null;
 
@@ -1371,125 +989,82 @@
         elLeadDesc.value = l.description || '';
         elLeadTimestamps.textContent = `Created: ${fmtDate(l.createdAt)} • Updated: ${fmtDate(l.updatedAt)}`;
         elDeleteLeadBtn.classList.remove('hidden');
-        elEmailLeadBtn.classList.remove('hidden');
       }else{
         elLeadModalTitle.textContent = 'Add Lead';
-        elLeadName.value = '';
-        elLeadNumbers.value = '';
-        elLeadProduct.value = '';
-        elLeadStatus.value = 'Talked';
-        elLeadDesc.value = '';
-        elLeadTimestamps.textContent = '';
+        elLeadName.value = ''; elLeadNumbers.value = ''; elLeadProduct.value = ''; elLeadStatus.value = 'Talked';
+        elLeadDesc.value = ''; elLeadTimestamps.textContent = '';
         elDeleteLeadBtn.classList.add('hidden');
-        elEmailLeadBtn.classList.add('hidden');
       }
       elLeadModal.style.display = 'flex';
       setTimeout(()=>elLeadName.focus(),0);
     }
-    function closeLeadModal(){
-      elLeadModal.style.display = 'none';
-      editingLeadId = null;
-    }
-
+    function closeLeadModal(){ elLeadModal.style.display = 'none'; editingLeadId = null; }
     CT.openLeadAdd = ()=> openLeadModal(null);
     q('#addLeadBtn')?.addEventListener('click', ()=> openLeadModal(null));
-
-    function buildLeadEmailFromModal(){
-      const name = (elLeadName.value || '').trim() || '(Unnamed lead)';
-      const numbers = (elLeadNumbers.value || '')
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-      const product = elLeadProduct.value.trim();
-      const status = elLeadStatus.value;
-      const desc = elLeadDesc.value.trim();
-
-      const subjectRaw = `Lead: ${name}${product ? ' — ' + product : ''}`;
-      const subject = subjectRaw.slice(0, 180);
-
-      const lines = [
-        'Lead Details',
-        `Name: ${name}`,
-        `Numbers: ${numbers.length ? numbers.join(', ') : '(none)'}`,
-        `Product: ${product || '(not specified)'}`,
-        `Status: ${status || '(not set)'}`,
-        `Notes: ${desc || '(none)'}`
-      ];
-
-      const body = encodeURIComponent(lines.join('\n'));
-      return `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`;
-    }
-
     elSaveLeadBtn.addEventListener('click', ()=>{
       try{
         const name = (elLeadName.value||'').trim();
         const numbers = (elLeadNumbers.value||'').split(',').map(s=>s.trim()).filter(Boolean);
-        const product = elLeadProduct.value.trim();
-        const status = elLeadStatus.value;
-        const desc = elLeadDesc.value.trim();
-        if (!name && numbers.length===0){
-          showToast('error','Enter name or at least one number');
-          return;
-        }
+        if (!name && numbers.length===0){ showToast('error','Enter name or at least one number'); return; }
         if(editingLeadId){
           const l = leads.find(x=>x.id===editingLeadId);
           if(!l) return;
           l.name = name || l.name || '(unnamed)';
           if(!Array.isArray(l.numbers)) l.numbers = [];
           const exist = new Set(l.numbers.map(x=>x.trim()).filter(Boolean));
-          for(const n of numbers){
-            if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); }
-          }
-          l.product = product || l.product || '';
-          l.status = status || l.status || 'Talked';
-          l.description = desc || l.description || '';
+          for(const n of numbers){ if(n && !exist.has(n)){ l.numbers.push(n); exist.add(n); } }
+          l.product = elLeadProduct.value.trim() || l.product || '';
+          l.status = elLeadStatus.value || 'Talked';
+          l.description = elLeadDesc.value.trim();
           l.updatedAt = nowISO();
         }else{
           leads.push({
-            id: uuid(),
-            name: name || '(unnamed)',
-            numbers,
-            product,
-            status,
-            description: desc,
-            createdAt: nowISO(),
-            updatedAt: nowISO()
+            id: uuid(), name: name || '(unnamed)', numbers, product: elLeadProduct.value.trim(),
+            status: elLeadStatus.value, description: elLeadDesc.value.trim(), createdAt: nowISO(), updatedAt: nowISO()
           });
         }
-        saveAll();
-        closeLeadModal();
-        showToast('success','Lead saved');
-      }catch(e){
-        console.error('save lead',e);
-        showToast('error','Could not save lead');
-      }
+        saveAll(); closeLeadModal(); showToast('success','Lead saved');
+      }catch(e){ console.error(e); showToast('error','Could not save lead'); }
     });
-
     elCancelLeadBtn.addEventListener('click', closeLeadModal);
     elDeleteLeadBtn.addEventListener('click', ()=>{
       if(!editingLeadId) return;
       leads = leads.filter(l=>l.id!==editingLeadId);
-      saveAll();
-      closeLeadModal();
-      showToast('success','Lead deleted');
+      saveAll(); closeLeadModal(); showToast('success','Lead deleted');
     });
-
-    elEmailLeadBtn?.addEventListener('click', () => {
-      try{
-        const url = buildLeadEmailFromModal();
-        window.location.href = url;
-        showToast('success','Email compose opened for this lead');
-      }catch(e){
-        console.error('lead email', e);
-        showToast('error','Could not open email compose');
-      }
-    });
-
     elLeadsList.addEventListener('click', (e)=>{
       const row = e.target.closest('.row[data-lead-id]');
       if(!row) return;
       openLeadModal(row.dataset.leadId);
     });
+
+    /* ===== OCR Setup ===== */
+    function setupNumberScanner(buttonSelector, fileInputSelector, targetInputSelector){
+      const btn = q(buttonSelector), fileInput = q(fileInputSelector), targetInput = q(targetInputSelector);
+      if (!btn || !fileInput || !targetInput) return;
+      if (typeof Tesseract === 'undefined'){
+        btn.addEventListener('click', ()=> showToast('error','OCR library not loaded. Check connection.')); return;
+      }
+      btn.addEventListener('click', ()=> fileInput.click());
+      fileInput.addEventListener('change', async (e)=>{
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        showToast('info','Reading text from image…');
+        try{
+          const { data } = await Tesseract.recognize(file, 'eng');
+          const matches = (data.text || '').match(/\+?\d[\d\s\-]{6,}\d/g) || [];
+          const cleaned = matches.map(s => s.replace(/[^\d+]/g, '')).filter(Boolean);
+          if (!cleaned.length){ showToast('error','No phone numbers found.'); return; }
+          const existing = (targetInput.value || '').split(',').map(s=>s.trim()).filter(Boolean);
+          const all = Array.from(new Set([...existing, ...cleaned]));
+          targetInput.value = all.join(', ');
+          showToast('success','Numbers captured from image');
+        }catch(err){ console.error(err); showToast('error','Could not read image.'); }
+        finally{ fileInput.value = ''; }
+      });
+    }
+    setupNumberScanner('#scanTaskNumbers', '#scanTaskImageInput', '#taskCustomerMobile');
+    setupNumberScanner('#scanLeadNumbers', '#scanLeadImageInput', '#leadNumbers');
 
     /* ===== Keyboard Shortcuts ===== */
     document.addEventListener('keydown', (e)=>{
@@ -1501,9 +1076,9 @@
       else if (k==='h'){ e.preventDefault(); setTab('Completed'); }
       else if (k==='l'){ e.preventDefault(); setTab('Leads'); }
       else if (k==='x'){ e.preventDefault(); q('#btnTheme').click(); }
-      else if (k==='e'){ e.preventDefault(); q('#btnShareCSVs').click(); }
-      else if (k==='b'){ e.preventDefault(); q('#btnBackupZip').click(); }
-      else if (k==='a'){ e.preventDefault(); q('#btnShareAll').click(); }
+      else if (k==='e'){ e.preventDefault(); q('#btnShareCSVs')?.click(); }
+      else if (k==='b'){ e.preventDefault(); q('#btnBackupZip')?.click(); }
+      else if (k==='a'){ e.preventDefault(); q('#btnShareAll')?.click(); }
       else if (k==='escape'){
         if (q('#completeModal').style.display==='flex') closeCompleteModal();
         if (q('#dueSoonModal').style.display==='flex') closeDueSoonModal();
@@ -1512,10 +1087,7 @@
       }
     });
 
-    /* ===== Initial Render ===== */
-    render();
-    refreshDueSoonBadge();
-
+    render(); refreshDueSoonBadge();
   })();
   </script>
 </body>
