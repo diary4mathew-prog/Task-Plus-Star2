@@ -97,18 +97,24 @@
     /* Stats Grid */
     .stats-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
 
-    /* --- Generator Tools Specific --- */
+    /* --- Generator & History Styles --- */
     .gen-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:10px; }
     .gen-output { font-family: monospace; font-size: 13px; background: var(--bg); color: var(--accent); padding:10px; border-radius:8px; border:1px solid var(--border); margin-top:4px; word-break: break-all; }
     .gen-label { text-transform: uppercase; font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 12px; display:block; margin-bottom:4px; }
     .copy-row { display:flex; gap:8px; align-items:center; }
-    .history-header { background:var(--panel2); padding:8px 12px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); font-size:13px; font-weight:700; color:var(--accent); }
     
-    /* SCROLLABLE HISTORY FIX */
-    .scroll-box { max-height: 250px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-    .scroll-box::-webkit-scrollbar { width: 6px; }
-    .scroll-box::-webkit-scrollbar-track { background: transparent; }
-    .scroll-box::-webkit-scrollbar-thumb { background-color: var(--border); border-radius: 20px; }
+    /* Accordion / History Styles */
+    .history-header { 
+      background:var(--panel2); padding:10px 14px; 
+      display:flex; justify-content:space-between; align-items:center; 
+      border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--accent); 
+      cursor:pointer; user-select:none;
+    }
+    .history-header:hover { background:var(--row-hover); }
+    .history-group-content { display:none; border-bottom:1px solid var(--border); }
+    .history-group.expanded .history-group-content { display:block; }
+    .history-group.expanded .arrow { transform:rotate(180deg); }
+    .arrow { transition: transform 0.2s ease; display:inline-block; margin-right:6px; font-size:10px; }
   </style>
 </head>
 <body>
@@ -121,7 +127,7 @@
       <button id="btnTheme" class="btn secondary sm" title="Toggle theme (X)">🌗 Theme</button>
     </div>
     <div class="toolbar">
-      <input id="globalSearch" type="text" placeholder="🔍 Search database..." style="max-width:240px; border-color:var(--accent)">
+      <input id="globalSearch" type="text" placeholder="🔍 Search database (All Statuses)..." style="max-width:240px; border-color:var(--accent)">
       
       <button class="btn secondary" id="btnStats" title="View Statistics">📊 Stats</button>
       <button class="btn secondary" id="btnShareCSVs" title="Share CSVs (E)">CSVs</button>
@@ -185,9 +191,21 @@
     </div>
 
     <div id="generatorView" class="hidden">
-      <div class="card" style="max-width:600px; margin:0 auto">
+      <div class="card" style="max-width:700px; margin:0 auto">
+         <div class="inline" style="justify-content:space-between; margin-bottom:12px">
+            <h2 style="margin:0;">Scheduled Queue</h2>
+            <button class="btn primary" id="btnOpenGenModal">➕ New Command</button>
+         </div>
+         <div class="muted small" style="margin-bottom:10px">Sorted by Date: Present → Future</div>
+         <div id="genHistoryList" class="list" style="border:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="genModal" class="backdrop">
+    <div class="card modal" style="max-width:500px">
         <div class="inline" style="justify-content:space-between">
-          <h2 style="margin:0; font-size:18px">Reminder Command Generator</h2>
+          <h3 style="margin:0">Create Reminder</h3>
           <button class="btn secondary sm" id="btnResetGen">Reset</button>
         </div>
         <div class="hr"></div>
@@ -220,7 +238,7 @@
         <span class="gen-label">Message</span>
         <input type="text" id="genMsg" placeholder="Reminder message..." />
 
-        <button class="btn primary" style="width:100%; margin-top:20px" id="btnGenerateCmd">GENERATE</button>
+        <button class="btn primary" style="width:100%; margin-top:20px" id="btnGenerateCmd">GENERATE & SAVE</button>
 
         <div id="genResultArea" class="hidden" style="margin-top:20px; border-top:1px solid var(--border); padding-top:10px">
             <span class="gen-label">Bot Command</span>
@@ -234,14 +252,9 @@
                 <button class="btn secondary sm" onclick="CT.copy('#outClean')">Copy</button>
             </div>
         </div>
-        
+
         <div class="hr"></div>
-        <div class="inline" style="justify-content:space-between">
-            <h3 style="margin:0">History</h3>
-            <button id="btnClearGenHistory" class="btn danger sm">Clear</button>
-        </div>
-        <div id="genHistoryList" class="list scroll-box" style="margin-top:10px; border:1px solid var(--border)"></div>
-      </div>
+        <button class="btn secondary" style="width:100%" onclick="q('#genModal').style.display='none'">Close</button>
     </div>
   </div>
 
@@ -408,6 +421,19 @@
     </div>
   </div>
 
+  <div id="smartDeleteModal" class="backdrop">
+     <div class="card modal" style="max-width:400px">
+        <h3>Delete Schedule?</h3>
+        <p>You are about to delete the schedule for <strong id="sdDate"></strong>.</p>
+        <div class="hr"></div>
+        <div style="display:grid; gap:10px">
+            <button class="btn primary" id="btnSD_EmailDelete">📧 Email then Delete (Safe)</button>
+            <button class="btn danger" id="btnSD_JustDelete">🗑️ Just Delete</button>
+            <button class="btn secondary" onclick="q('#smartDeleteModal').style.display='none'">Cancel</button>
+        </div>
+     </div>
+  </div>
+
   <div id="toaster"></div>
 
   <script>
@@ -470,8 +496,8 @@
 
     let customers = loadJSON(LS_CUSTOMERS, []);
     let tasks = loadJSON(LS_TASKS, []);
-    let rawLeads = loadJSON(LS_LEADS, []);
-    let leads = Array.isArray(rawLeads) ? rawLeads : (rawLeads ? Object.values(rawLeads) : []);
+    let leads = loadJSON(LS_LEADS, []);
+    if (!Array.isArray(leads)) leads = [];
     let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {});
     let genHistory = loadJSON(LS_GEN_HISTORY, []);
 
@@ -487,11 +513,15 @@
 
     /* ===== State ===== */
     const STATUS = { PENDING: "Pending", INPROG: "In Progress", ONHOLD: "On Hold", CANCELLED: "Cancelled", COMPLETED: "Completed" };
+    // Rank for search sorting (1 = highest priority)
+    const STATUS_RANK = { "Pending": 1, "In Progress": 2, "On Hold": 3, "Cancelled": 4, "Completed": 5 };
+
     let activeTab = "Active";
     let activeFilter = STATUS.PENDING;
     let leadFilter = "All";
     let searchTerm = ""; 
     let selectedTaskForCustomSnooze = null;
+    let smartDeleteTargetDate = null; // For the Smart Delete Modal
 
     /* ===== Helpers ===== */
     function isOverdue(t){
@@ -556,79 +586,70 @@
       `;
     }
 
-    function renderActive(){
-      elActiveList.innerHTML = "";
-      let pool = tasks.filter(t => t.status !== STATUS.COMPLETED);
-      
-      if([STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD, STATUS.CANCELLED].includes(activeFilter)){
-        pool = pool.filter(t => t.status === activeFilter);
-      }
-      if(searchTerm){
-        pool = pool.filter(t => {
-          const c = customers.find(x=>x.id===t.customerId);
-          const txt = ((c?c.name:"") + " " + (c?(c.numbers||[]).join(" "):"") + " " + (t.description||"")).toLowerCase();
-          return txt.includes(searchTerm);
-        });
-      }
+    // Unified Render Helper for Tasks
+    function renderTaskList(targetEl, filterFn) {
+       targetEl.innerHTML = "";
+       let pool = tasks.slice();
+       
+       // Apply filters
+       pool = pool.filter(filterFn);
+       
+       // Search Logic (Unified Hierarchy)
+       if(searchTerm){
+          // If searching, grab ALL tasks (ignore tab filter slightly) so user finds everything
+          pool = tasks.filter(t => {
+             const c = customers.find(x=>x.id===t.customerId);
+             const txt = ((c?c.name:"") + " " + (c?(c.numbers||[]).join(" "):"") + " " + (t.description||"")).toLowerCase();
+             return txt.includes(searchTerm);
+          });
+          // Sort by Hierarchy (Rank)
+          pool.sort((a,b)=> (STATUS_RANK[a.status]||9) - (STATUS_RANK[b.status]||9));
+       } else {
+          // Default Sort: Updated Date
+          pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
+       }
 
-      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      
-      if(pool.length===0){
-        elActiveList.innerHTML = `<div class="row"><div class="meta">No tasks found.</div><button class="btn primary sm" onclick="CT.openAdd()">Add Task</button></div>`;
-        return;
-      }
-      for(const t of pool){
-        const c = customers.find(c=>c.id===t.customerId);
-        const name = c ? c.name : "(missing)";
-        const nums = c ? (c.numbers||[]).map(makePhoneLink).join(", ") : "";
-        const overdue = isOverdue(t);
-        const row = document.createElement("div");
-        row.className = "row"; row.dataset.taskId = t.id; row.tabIndex = 0;
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap">
-              <strong>${escapeHtml(name)}</strong>
-              ${nums ? `<span class="muted small">(${nums})</span>` : ""}
-              <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
-              ${t.dueDate ? `<span class="pill ${overdue? 'p-overdue':'p-due'}" style="margin-left:8px">${overdue? 'Overdue:':'Due:'} ${t.dueDate}</span>` : ""}
+       if(pool.length===0){
+          targetEl.innerHTML = `<div class="row"><div class="meta">No tasks found.</div></div>`;
+          return;
+       }
+       
+       for(const t of pool){
+          const c = customers.find(c=>c.id===t.customerId);
+          const name = c ? c.name : "(missing)";
+          const nums = c ? (c.numbers||[]).map(makePhoneLink).join(", ") : "";
+          const overdue = isOverdue(t);
+          const row = document.createElement("div");
+          row.className = "row"; row.dataset.taskId = t.id; row.tabIndex = 0;
+          row.innerHTML = `
+            <div class="meta">
+              <div class="inline wrap">
+                <strong>${escapeHtml(name)}</strong>
+                ${nums ? `<span class="muted small">(${nums})</span>` : ""}
+                <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
+                ${t.dueDate && t.status!==STATUS.COMPLETED ? `<span class="pill ${overdue? 'p-overdue':'p-due'}" style="margin-left:8px">${overdue? 'Overdue:':'Due:'} ${t.dueDate}</span>` : ""}
+              </div>
+              <div class="muted small" style="margin-top:4px; white-space:pre-wrap">${escapeHtml(t.description||"(no description)")}</div> 
+              ${quickActionsHTML(t, c)}
             </div>
-            <div class="muted small" style="margin-top:4px; white-space:pre-wrap">${escapeHtml(t.description||"(no description)")}</div> 
-            ${quickActionsHTML(t, c)}
-          </div>
-        `;
-        elActiveList.appendChild(row);
-      }
+          `;
+          targetEl.appendChild(row);
+       }
+    }
+
+    function renderActive(){
+       renderTaskList(elActiveList, t => {
+          if(searchTerm) return true; // Search overrides status filter
+          if(t.status === STATUS.COMPLETED) return false;
+          return [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD, STATUS.CANCELLED].includes(activeFilter) ? t.status === activeFilter : true;
+       });
     }
 
     function renderCompleted(){
-      elCompletedList.innerHTML = "";
-      let pool = tasks.filter(t => t.status === STATUS.COMPLETED);
-      if(searchTerm){
-        pool = pool.filter(t => {
-          const c = customers.find(x=>x.id===t.customerId);
-          const txt = ((c?c.name:"") + " " + (c?(c.numbers||[]).join(" "):"") + " " + (t.description||"")).toLowerCase();
-          return txt.includes(searchTerm);
-        });
-      }
-      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      if(pool.length===0){ elCompletedList.innerHTML = `<div class="row"><div class="meta">No completed tasks found.</div></div>`; return; }
-      for(const t of pool){
-        const c = customers.find(c=>c.id===t.customerId);
-        const name = c ? c.name : "(missing)";
-        const row = document.createElement("div");
-        row.className = "row"; row.dataset.taskId = t.id; row.tabIndex = 0;
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap">
-              <strong>${escapeHtml(name)}</strong>
-              <span class="pill p-complete" style="margin-left:8px">Completed</span>
-            </div>
-            <div class="muted small" style="margin-top:4px">${escapeHtml(t.description||"(no description)")}</div>
-            ${quickActionsHTML(t, c)}
-          </div>
-        `;
-        elCompletedList.appendChild(row);
-      }
+       renderTaskList(elCompletedList, t => {
+          if(searchTerm) return t.status === STATUS.COMPLETED; // In completed tab, prefer completed
+          return t.status === STATUS.COMPLETED;
+       });
     }
 
     function renderLeads(){
@@ -673,38 +694,46 @@
       }
     }
 
-    // NEW: Render Generator History
+    // NEW: Render Generator History (Timeline & Accordion)
     function renderGenHistory() {
       const list = q('#genHistoryList'); list.innerHTML = "";
-      if(genHistory.length === 0) { list.innerHTML = `<div class="muted small" style="padding:10px; text-align:center">No history yet.</div>`; return; }
+      if(genHistory.length === 0) { list.innerHTML = `<div class="muted small" style="padding:20px; text-align:center">No scheduled commands yet.</div>`; return; }
       
       // Group by date
       const grouped = {};
       genHistory.forEach(item => { if(!grouped[item.date]) grouped[item.date]=[]; grouped[item.date].push(item); });
       
-      // Sort keys desc
-      const dates = Object.keys(grouped).sort().reverse();
+      // Sort keys ASCENDING (Present -> Future)
+      const dates = Object.keys(grouped).sort(); 
       
       dates.forEach(date => {
           const div = document.createElement('div');
           div.className = "history-group";
+          // Header
           div.innerHTML = `
-            <div class="history-header">
-               <span>${date}</span>
-               <button class="iconbtn sm" style="border:none; background:transparent" onclick="CT.gen.emailDay('${date}')">✉️ Email</button>
+            <div class="history-header" onclick="this.parentElement.classList.toggle('expanded')">
+               <div><span class="arrow">▼</span> ${date} <span class="muted small">(${grouped[date].length})</span></div>
+               <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
+                   <button class="iconbtn sm" onclick="CT.gen.emailDay('${date}')" title="Email Schedule">✉️</button>
+                   <button class="iconbtn sm" style="color:var(--danger); border-color:var(--danger)" onclick="CT.gen.promptDelete('${date}')" title="Delete Schedule">🗑️</button>
+               </div>
             </div>
+            <div class="history-group-content"></div>
           `;
+          // Content
+          const contentDiv = div.querySelector('.history-group-content');
           grouped[date].forEach(item => {
               const row = document.createElement('div');
               row.className = "row";
-              row.style.padding = "8px 12px";
+              row.style.padding = "8px 14px";
               row.innerHTML = `
-                 <div class="meta" style="font-family:monospace; font-size:12px">
-                    <span style="color:var(--accent2)">${item.time}</span> ${escapeHtml(item.msg || '(No msg)')}
+                 <div class="meta" style="font-family:monospace; font-size:13px">
+                    <span style="color:var(--accent2); font-weight:bold">${item.time}</span> 
+                    <span style="opacity:0.8">${escapeHtml(item.msg || '(No msg)')}</span>
                  </div>
-                 <button class="iconbtn sm" title="Reuse" onclick="CT.gen.reuse('${item.id}')">🔄</button>
+                 <button class="iconbtn sm" title="Reuse / Edit" onclick="CT.gen.reuse('${item.id}')">🔄</button>
               `;
-              div.appendChild(row);
+              contentDiv.appendChild(row);
           });
           list.appendChild(div);
       });
@@ -1131,15 +1160,48 @@
        updateGenInputs(d);
     };
 
-    // HISTORY LOGIC
-    CT.gen.emailDay = function(dateKey) {
+    // --- Helper for Emailing ---
+    function sendScheduleEmail(dateKey) {
         const items = genHistory.filter(i => i.date === dateKey);
-        let text = `SCHEDULE FOR ${dateKey}:\n`;
-        items.forEach(i => text += `${i.clean}\n`);
+        let text = `SCHEDULE FOR ${dateKey}:\n\n`;
+        items.forEach(i => text += `• ${i.time} - ${i.clean}\n`);
         if (window.AppInventor) window.AppInventor.setWebViewString(text);
         else window.location.href = `mailto:?subject=Schedule ${dateKey}&body=${encodeURIComponent(text)}`;
+    }
+
+    // --- History Actions ---
+    CT.gen.emailDay = function(dateKey) {
+        sendScheduleEmail(dateKey);
     };
 
+    CT.gen.promptDelete = function(dateKey) {
+        smartDeleteTargetDate = dateKey;
+        q('#sdDate').textContent = dateKey;
+        q('#smartDeleteModal').style.display='flex';
+    };
+
+    // Smart Delete Logic
+    q('#btnSD_EmailDelete').addEventListener('click', () => {
+        if(!smartDeleteTargetDate) return;
+        sendScheduleEmail(smartDeleteTargetDate); // 1. Email
+        // 2. Delete after short delay (to allow email trigger)
+        setTimeout(()=>{
+            genHistory = genHistory.filter(i => i.date !== smartDeleteTargetDate);
+            saveAll();
+            q('#smartDeleteModal').style.display='none';
+            showToast('success', 'Emailed & Deleted');
+        }, 1000);
+    });
+    
+    q('#btnSD_JustDelete').addEventListener('click', () => {
+        if(!smartDeleteTargetDate) return;
+        genHistory = genHistory.filter(i => i.date !== smartDeleteTargetDate);
+        saveAll();
+        q('#smartDeleteModal').style.display='none';
+        showToast('success', 'Deleted');
+    });
+
+    // Reuse Logic
     CT.gen.reuse = function(id) {
         const item = genHistory.find(i => String(i.id) === String(id));
         if(item) {
@@ -1147,10 +1209,11 @@
             elGenTime.value = item.time;
             elGenMsg.value = item.msg;
             q('#genResultArea').classList.add('hidden');
-            // We removed scrollTo for better UX in scroll box
+            q('#genModal').style.display='flex'; // Open Modal
         }
     };
 
+    // Generate Button Logic
     q('#btnGenerateCmd').addEventListener('click', ()=>{
         const dStr = elGenDate.value;
         const tStr = elGenTime.value;
@@ -1189,11 +1252,12 @@
         }
         q('#genResultArea').classList.remove('hidden');
     });
-    
-    q('#btnClearGenHistory').addEventListener('click', ()=>{
-        if(confirm("Clear history?")) { genHistory = []; saveAll(); }
-    });
 
+    q('#btnOpenGenModal').addEventListener('click', ()=> {
+        initGenInputs();
+        q('#genModal').style.display='flex';
+    });
+    
     q('#btnResetGen').addEventListener('click', ()=> initGenInputs());
     initGenInputs(); // Run once on load
 
