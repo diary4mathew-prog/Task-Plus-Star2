@@ -9,7 +9,8 @@
     :root{
       --bg:#0b1020; --panel:#121a35; --panel2:#0f1530; --text:#eaf0ff; --muted:#aab4d6;
       --border:#1f2a4f; --accent:#5b8cff; --accent2:#74d680; --warn:#ffcc66; --danger:#ff6b6b;
-      --nav-height:65px; --header-height:60px;
+      --nav-height:75px; /* Increased slightly to account for lift */
+      --header-height:60px;
     }
     [data-theme="light"]{
       --bg:#f5f7ff; --panel:#ffffff; --panel2:#f3f6ff; --text:#0c1533; --muted:#4a5577;
@@ -46,19 +47,20 @@
     /* --- MAIN CONTENT --- */
     main{
       flex:1; overflow-y:auto; padding:16px; 
-      /* leave space for FAB + nav + safe area */
-      padding-bottom: calc(var(--nav-height) + 40px + env(safe-area-inset-bottom));
+      /* INCREASED PADDING HERE to ensure content isn't hidden behind taller nav */
+      padding-bottom: calc(var(--nav-height) + 50px + env(safe-area-inset-bottom));
       -webkit-overflow-scrolling: touch;
       position: relative; z-index: 10;
     }
     .container{max-width:800px; margin:0 auto}
 
-    /* --- BOTTOM NAV --- */
+    /* --- BOTTOM NAV (FIXED HERE) --- */
     .bottom-nav{
       flex-shrink:0; display:flex; justify-content:space-around; align-items:center;
       background:var(--panel); border-top:1px solid var(--border); z-index:50;
-      padding-bottom: calc(10px + env(safe-area-inset-bottom));
-      padding-top: 10px;
+      /* INCREASED PADDING BOTTOM significantly to clear Android gestures */
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      padding-top: 12px;
       height: auto; min-height: var(--nav-height);
     }
     .nav-item{
@@ -69,10 +71,11 @@
     .nav-item.active{color:var(--accent); opacity: 1;}
     .nav-icon{font-size:22px; margin-bottom:2px}
 
-    /* --- FAB --- */
+    /* --- FAB (FIXED HERE) --- */
     .fab{
       position:fixed; 
-      bottom: calc(var(--nav-height) + 24px + env(safe-area-inset-bottom)); 
+      /* Lifted Higher */
+      bottom: calc(var(--nav-height) + 35px + env(safe-area-inset-bottom)); 
       right:20px;
       width:60px; height:60px; border-radius:50%; background:var(--accent); color:#fff;
       display:flex; align-items:center; justify-content:center; font-size:32px; 
@@ -244,7 +247,6 @@
   <main>
     <div class="container">
       
-      <!-- TASKS VIEW -->
       <div id="viewTasks">
         <div class="filters">
           <button class="chip active" data-filter="Pending">Pending</button>
@@ -255,7 +257,6 @@
         <div id="taskList"></div>
       </div>
 
-      <!-- LEADS VIEW -->
       <div id="viewLeads" class="hidden">
         <div class="filters">
           <button class="chip active" data-lfilter="All">All</button>
@@ -266,7 +267,6 @@
         <div id="leadList"></div>
       </div>
 
-      <!-- BOT VIEW -->
       <div id="viewBot" class="hidden">
         <div class="inline" style="justify-content:space-between; margin-bottom:12px">
            <h3 style="margin:0">Timeline Queue</h3>
@@ -275,7 +275,6 @@
         <div id="botHistoryList"></div>
       </div>
 
-      <!-- DIARY VIEW -->
       <div id="viewDiary" class="hidden">
         <div class="inline wrap" style="justify-content:space-between; margin-bottom:10px">
           <div class="inline" style="gap:6px">
@@ -352,7 +351,6 @@
     </div>
   </nav>
 
-  <!-- SETTINGS MODAL -->
   <div id="modalSettings" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -371,7 +369,6 @@
     </div>
   </div>
 
-  <!-- TASK MODAL -->
   <div id="modalTask" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -414,7 +411,6 @@
     </div>
   </div>
 
-  <!-- LEAD MODAL -->
   <div id="modalLead" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -446,7 +442,6 @@
     </div>
   </div>
 
-  <!-- BOT MODAL -->
   <div id="modalBot" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -487,7 +482,6 @@
     </div>
   </div>
 
-  <!-- DUE SOON MODAL -->
   <div id="modalDue" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -502,7 +496,6 @@
     </div>
   </div>
 
-  <!-- SMART DELETE MODAL -->
   <div id="modalSmartDel" class="backdrop">
     <div class="modal" style="text-align:center">
       <div class="modal-head">
@@ -518,7 +511,6 @@
     </div>
   </div>
 
-  <!-- STATS MODAL -->
   <div id="modalStats" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -533,7 +525,6 @@
     </div>
   </div>
 
-  <!-- DIARY ENTRY MODAL -->
   <div id="modalDiary" class="backdrop">
     <div class="modal">
       <div class="modal-head">
