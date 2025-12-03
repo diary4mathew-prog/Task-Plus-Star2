@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Customer Tasks & Leads — Pro</title>
+  <title>CRM & Bot Command Center</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <style>
@@ -17,7 +17,7 @@
       --row-hover:#eef2ff; --btn-ghost:#eef2ff;
     }
     *{box-sizing:border-box}
-    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,var(--bg) 0%, var(--panel2) 200%); color:var(--text)}
+    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,var(--bg) 0%, var(--panel2) 200%); color:var(--text); padding-bottom:40px}
     header{position:sticky; top:0; z-index:10; padding:12px 16px; border-bottom:1px solid var(--border); background:rgba(13,18,40,.7); backdrop-filter:blur(6px) saturate(140%)}
     [data-theme="light"] header{background:rgba(255,255,255,.8)}
     .container{max-width:1100px; margin:18px auto; padding:0 14px}
@@ -25,13 +25,13 @@
     .sub{margin-top:2px; color:var(--muted); font-size:13px}
     .toolbar{margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center}
     
-    /* Compact Inputs */
-    input[type="text"], input[type="date"], input[type="datetime-local"], textarea, select{
+    /* Inputs */
+    input[type="text"], input[type="date"], input[type="datetime-local"], input[type="time"], input[type="tel"], textarea, select{
       width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:color-mix(in oklab, var(--panel) 85%, black 5%); color:var(--text); outline:none; font-size:14px;
     }
     textarea{min-height:90px; resize:vertical; font-family:inherit}
     
-    .btn{appearance:none; border:none; border-radius:8px; padding:8px 12px; color:#fff; font-weight:600; cursor:pointer; transition:.15s transform ease, .2s background ease; font-size:13px}
+    .btn{appearance:none; border:none; border-radius:8px; padding:8px 12px; color:#fff; font-weight:600; cursor:pointer; transition:.15s transform ease, .2s background ease; font-size:13px; text-align:center; display:inline-flex; align-items:center; justify-content:center;}
     .btn:hover{transform:translateY(-1px)}
     .btn.primary{background:linear-gradient(180deg, var(--accent) 0%, #3f69ff 100%)}
     .btn.secondary{background:var(--btn-ghost); border:1px solid var(--border); color:inherit}
@@ -40,10 +40,12 @@
     .btn.danger{background:linear-gradient(180deg, var(--danger) 0%, #ff5252 100%)}
     .btn.sm{padding:5px 9px; font-size:12px}
     
+    /* Navigation */
     .tabs{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
     .tab{padding:8px 12px; border-radius:8px; background:var(--panel); border:1px solid var(--border); color:inherit; cursor:pointer; font-weight:700; font-size:13px}
-    .tab.active{outline:2px solid color-mix(in oklab, var(--accent) 50%, transparent)}
+    .tab.active{outline:2px solid color-mix(in oklab, var(--accent) 50%, transparent); background:var(--row-hover)}
     
+    /* Cards & Lists */
     .card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel2) 100%); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.15)}
     .filters{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
     .chip{padding:6px 10px; background:var(--panel); border:1px solid var(--border); border-radius:999px; color:inherit; font-weight:700; cursor:pointer; font-size:12px; user-select:none}
@@ -55,6 +57,7 @@
     .row:last-child{border-bottom:none}
     .row .meta{flex:1}
     
+    /* Pills & Status */
     .muted{color:var(--muted); font-size:12px}
     .pill{display:inline-block; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px}
     .p-pending{background:#20305f; color:#7fb1ff}
@@ -65,6 +68,7 @@
     .p-overdue{background:#3a1212; color:#ff9a9a}
     .p-complete{background:#173726; color:#87e2a5}
     
+    /* Utils */
     .hidden{display:none}
     .hr{height:1px; background:var(--border); margin:12px 0}
     .inline{display:flex; gap:8px; align-items:center}
@@ -78,6 +82,7 @@
     .iconbtn{appearance:none; border:1px solid var(--border); background:var(--panel); color:inherit; border-radius:6px; padding:5px 8px; cursor:pointer; font-size:12px}
     .iconbtn:hover{transform:translateY(-1px); background:var(--row-hover)}
     
+    /* Toaster */
     #toaster{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:9999}
     .toast{min-width:260px; max-width:420px; padding:10px 12px; border-radius:10px; color:#fff; font-weight:600; box-shadow:0 10px 20px rgba(0,0,0,.25)}
     .toast.info{background:#2b4a9e}
@@ -85,24 +90,38 @@
     .toast.error{background:#a33a3a}
     .toast button{background:transparent; border:none; color:#fff; margin-left:8px; cursor:pointer; font-weight:800; float:right}
     
+    /* Modals */
     .backdrop{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.6); z-index:60; backdrop-filter:blur(2px)}
     .modal{width:min(980px,96vw); max-height:92vh; overflow:auto}
     
     /* Stats Grid */
     .stats-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
+
+    /* --- Generator Tools Specific --- */
+    .gen-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:10px; }
+    .gen-output { font-family: monospace; font-size: 13px; background: var(--bg); color: var(--accent); padding:10px; border-radius:8px; border:1px solid var(--border); margin-top:4px; word-break: break-all; }
+    .gen-label { text-transform: uppercase; font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 12px; display:block; margin-bottom:4px; }
+    .copy-row { display:flex; gap:8px; align-items:center; }
+    .history-header { background:var(--panel2); padding:8px 12px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); font-size:13px; font-weight:700; color:var(--accent); }
+    
+    /* SCROLLABLE HISTORY FIX */
+    .scroll-box { max-height: 250px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    .scroll-box::-webkit-scrollbar { width: 6px; }
+    .scroll-box::-webkit-scrollbar-track { background: transparent; }
+    .scroll-box::-webkit-scrollbar-thumb { background-color: var(--border); border-radius: 20px; }
   </style>
 </head>
 <body>
   <header>
     <div class="inline wrap">
       <div class="grow">
-        <h1 style="margin:0;">Customer Tasks & Leads</h1>
-        <div class="sub">CRM Pro • Search • WhatsApp Templates • Follow-ups</div>
+        <h1 style="margin:0;">Pro Command Center</h1>
+        <div class="sub">CRM • Leads • Bot Generator</div>
       </div>
       <button id="btnTheme" class="btn secondary sm" title="Toggle theme (X)">🌗 Theme</button>
     </div>
     <div class="toolbar">
-      <input id="globalSearch" type="text" placeholder="🔍 Search name, number, or notes..." style="max-width:240px; border-color:var(--accent)">
+      <input id="globalSearch" type="text" placeholder="🔍 Search database..." style="max-width:240px; border-color:var(--accent)">
       
       <button class="btn secondary" id="btnStats" title="View Statistics">📊 Stats</button>
       <button class="btn secondary" id="btnShareCSVs" title="Share CSVs (E)">CSVs</button>
@@ -125,6 +144,7 @@
       <div id="tabActive" class="tab active">Active <span id="countActive" class="small"></span></div>
       <div id="tabCompleted" class="tab">Completed <span id="countCompleted" class="small"></span></div>
       <div id="tabLeads" class="tab">Leads <span id="countLeads" class="small"></span></div>
+      <div id="tabGenerator" class="tab" style="color:var(--accent2)">🤖 Bot Gen</div>
     </div>
   </header>
 
@@ -163,6 +183,66 @@
         <div id="leadsList" class="list"></div>
       </div>
     </div>
+
+    <div id="generatorView" class="hidden">
+      <div class="card" style="max-width:600px; margin:0 auto">
+        <div class="inline" style="justify-content:space-between">
+          <h2 style="margin:0; font-size:18px">Reminder Command Generator</h2>
+          <button class="btn secondary sm" id="btnResetGen">Reset</button>
+        </div>
+        <div class="hr"></div>
+
+        <span class="gen-label">Quick Time</span>
+        <div class="gen-grid">
+            <button class="btn secondary sm" onclick="CT.gen.setSmartTime(10,0)">10:00 AM</button>
+            <button class="btn secondary sm" onclick="CT.gen.setSmartTime(11,0)">11:00 AM</button>
+            <button class="btn secondary sm" onclick="CT.gen.setSmartTime(15,30)">03:30 PM</button>
+            <button class="btn secondary sm" onclick="CT.gen.setSmartTime(16,0)">04:00 PM</button>
+        </div>
+
+        <div class="inline wrap" style="gap:10px">
+            <div class="grow">
+                <span class="gen-label">Date</span>
+                <input type="date" id="genDate">
+            </div>
+            <div class="grow">
+                <span class="gen-label">Time</span>
+                <input type="time" id="genTime">
+            </div>
+        </div>
+
+        <div class="inline wrap" style="margin-top:8px; gap:8px">
+            <button class="btn secondary sm" onclick="CT.gen.addWorkingDays(1)">+1 Work Day</button>
+            <button class="btn secondary sm" onclick="CT.gen.addWorkingDays(2)">+2 Work Days</button>
+            <button class="btn secondary sm" onclick="CT.gen.addWorkingDays(3)">+3 Work Days</button>
+        </div>
+
+        <span class="gen-label">Message</span>
+        <input type="text" id="genMsg" placeholder="Reminder message..." />
+
+        <button class="btn primary" style="width:100%; margin-top:20px" id="btnGenerateCmd">GENERATE</button>
+
+        <div id="genResultArea" class="hidden" style="margin-top:20px; border-top:1px solid var(--border); padding-top:10px">
+            <span class="gen-label">Bot Command</span>
+            <div class="copy-row">
+                <div id="outBot" class="gen-output grow"></div>
+                <button class="btn secondary sm" onclick="CT.copy('#outBot')">Copy</button>
+            </div>
+            <span class="gen-label">Clean Text (+10m)</span>
+            <div class="copy-row">
+                <div id="outClean" class="gen-output grow"></div>
+                <button class="btn secondary sm" onclick="CT.copy('#outClean')">Copy</button>
+            </div>
+        </div>
+        
+        <div class="hr"></div>
+        <div class="inline" style="justify-content:space-between">
+            <h3 style="margin:0">History</h3>
+            <button id="btnClearGenHistory" class="btn danger sm">Clear</button>
+        </div>
+        <div id="genHistoryList" class="list scroll-box" style="margin-top:10px; border:1px solid var(--border)"></div>
+      </div>
+    </div>
   </div>
 
   <div id="taskModal" class="backdrop">
@@ -170,11 +250,11 @@
       <h3 id="taskModalTitle" style="margin:0 0 10px 0">Add Task</h3>
       <div class="inline wrap" style="gap:16px">
         <div class="grow">
-          <label>Customer Name</label>
+          <label class="small muted">Customer Name</label>
           <input id="taskCustomerName" type="text" placeholder="Type name (new or existing)" />
         </div>
         <div class="grow">
-          <label>Customer Mobile(s)</label>
+          <label class="small muted">Customer Mobile(s)</label>
           <input id="taskCustomerMobile" type="text" placeholder="Any number(s), comma-separated" />
         </div>
       </div>
@@ -182,16 +262,16 @@
       <div class="inline wrap" style="gap:16px; margin-top:10px">
         <div class="grow">
           <div class="inline" style="justify-content:space-between; margin-bottom:4px">
-            <label>Task Description</label>
-            <button class="btn secondary sm" id="btnAppendTimestampTask" title="Add timestamp to notes">🕒 Stamp</button>
+            <label class="small muted">Task Description</label>
+            <button class="btn secondary sm" id="btnAppendTimestampTask">🕒 Stamp</button>
           </div>
           <textarea id="taskDesc" placeholder="What needs to be done?"></textarea>
         </div>
         <div style="min-width:240px; flex:1">
-          <label>Due Date</label>
+          <label class="small muted">Due Date</label>
           <input id="taskDue" type="date" />
           <div class="hr"></div>
-          <label>Status</label>
+          <label class="small muted">Status</label>
           <select id="taskStatus">
             <option>Pending</option>
             <option>In Progress</option>
@@ -215,21 +295,21 @@
       <h3 id="leadModalTitle" style="margin:0 0 10px 0">Add Lead</h3>
       <div class="inline wrap" style="gap:16px">
         <div class="grow">
-          <label>Customer Name</label>
+          <label class="small muted">Name</label>
           <input id="leadName" type="text" placeholder="Name" />
         </div>
         <div class="grow">
-          <label>Customer Mobile(s)</label>
+          <label class="small muted">Mobile(s)</label>
           <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
         </div>
       </div>
       <div class="inline wrap" style="gap:16px; margin-top:10px">
         <div class="grow">
-          <label>Product</label>
+          <label class="small muted">Product</label>
           <input id="leadProduct" type="text" placeholder="Product name" />
         </div>
         <div style="min-width:240px; flex:1">
-          <label>Status</label>
+          <label class="small muted">Status</label>
           <select id="leadStatus">
             <option>Talked</option>
             <option>Interested</option>
@@ -241,8 +321,8 @@
       <div class="inline wrap" style="gap:16px; margin-top:10px">
         <div class="grow">
           <div class="inline" style="justify-content:space-between; margin-bottom:4px">
-            <label>Notes</label>
-            <button class="btn secondary sm" id="btnAppendTimestampLead" title="Add timestamp">🕒 Stamp</button>
+            <label class="small muted">Notes</label>
+            <button class="btn secondary sm" id="btnAppendTimestampLead">🕒 Stamp</button>
           </div>
           <textarea id="leadDesc" placeholder="Context, requirements..."></textarea>
         </div>
@@ -251,7 +331,6 @@
         <button id="saveLeadBtn" class="btn ok">Save</button>
         <button id="cancelLeadBtn" class="btn secondary">Cancel</button>
         <button id="deleteLeadBtn" class="btn danger hidden">Delete</button>
-        <button id="emailLeadBtn" class="btn secondary hidden">Email</button>
         <div class="right small muted" id="leadTimestamps"></div>
       </div>
     </div>
@@ -281,7 +360,7 @@
       <h3 style="margin:0 0 10px 0">Mark Task as Completed</h3>
       <div id="completeContext" class="muted small"></div>
       <div class="hr"></div>
-      <label>How completed? (Notes)</label>
+      <label class="small muted">How completed? (Notes)</label>
       <textarea id="completeNotes" placeholder="What was done / remarks?"></textarea>
       
       <div class="hr"></div>
@@ -291,7 +370,7 @@
       </div>
       <div id="followUpOptions" class="hidden" style="margin-top:8px; padding-left:14px; border-left:3px solid var(--border)">
          <div class="inline wrap" style="gap:10px; margin-bottom:6px">
-           <label>Due in:</label>
+           <label class="small muted">Due in:</label>
            <select id="followUpDelay" style="width:auto">
              <option value="1">1 Day</option>
              <option value="3" selected>3 Days</option>
@@ -299,7 +378,7 @@
              <option value="30">1 Month</option>
            </select>
          </div>
-         <input type="text" id="followUpDesc" placeholder="Follow up description (e.g. Call back for update)" />
+         <input type="text" id="followUpDesc" placeholder="Follow up description" />
       </div>
 
       <div class="inline wrap" style="gap:8px; margin-top:14px">
@@ -375,12 +454,17 @@
         setTimeout(()=>{ el.remove(); }, ms);
       }catch(e){ alert(msg); }
     }
+    CT.copy = function(sel) {
+        const txt = q(sel).textContent;
+        navigator.clipboard.writeText(txt).then(() => showToast('success', 'Copied!'));
+    };
 
     /* ===== Persistence ===== */
     const LS_CUSTOMERS = "ct_customers_v1";
     const LS_TASKS = "ct_tasks_v1";
     const LS_LEADS = "ct_leads_v1";
     const LS_SNOOZE_TASKS = "ct_task_snoozes_v1";
+    const LS_GEN_HISTORY = "ct_gen_history_v1";
 
     function loadJSON(key, fallback){ try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }catch{ return fallback; } }
 
@@ -389,12 +473,14 @@
     let rawLeads = loadJSON(LS_LEADS, []);
     let leads = Array.isArray(rawLeads) ? rawLeads : (rawLeads ? Object.values(rawLeads) : []);
     let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {});
+    let genHistory = loadJSON(LS_GEN_HISTORY, []);
 
     function saveAll(){
       localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
       localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
       localStorage.setItem(LS_LEADS, JSON.stringify(leads));
       localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
+      localStorage.setItem(LS_GEN_HISTORY, JSON.stringify(genHistory)); 
       render();
       refreshDueSoonBadge();
     }
@@ -404,7 +490,7 @@
     let activeTab = "Active";
     let activeFilter = STATUS.PENDING;
     let leadFilter = "All";
-    let searchTerm = ""; // NEW: Global search state
+    let searchTerm = ""; 
     let selectedTaskForCustomSnooze = null;
 
     /* ===== Helpers ===== */
@@ -432,13 +518,13 @@
       return `<a href="tel:${clean}" onclick="event.stopPropagation()">${escapeHtml(num)}</a>`;
     }
 
-    /* ===== NEW: Search & Render Logic ===== */
+    /* ===== Search & Render Logic ===== */
     q('#globalSearch').addEventListener('input', (e)=>{
       searchTerm = e.target.value.toLowerCase().trim();
       render();
     });
 
-    const elActiveView = q("#activeView"), elCompletedView = q("#completedView"), elLeadsView = q("#leadsView");
+    const elViews = { Active: q("#activeView"), Completed: q("#completedView"), Leads: q("#leadsView"), Generator: q("#generatorView") };
     const elActiveList = q("#activeList"), elCompletedList = q("#completedList"), elLeadsList = q("#leadsList");
 
     function render(){
@@ -446,39 +532,14 @@
       q("#countCompleted").textContent = `(${tasks.filter(t=>t.status===STATUS.COMPLETED).length})`;
       q("#countLeads").textContent = `(${leads.length})`;
 
-      elActiveView.classList.toggle("hidden", activeTab!=="Active");
-      elCompletedView.classList.toggle("hidden", activeTab!=="Completed");
-      elLeadsView.classList.toggle("hidden", activeTab!=="Leads");
+      Object.keys(elViews).forEach(k => elViews[k].classList.add("hidden"));
+      if(elViews[activeTab]) elViews[activeTab].classList.remove("hidden");
 
       if(activeTab==="Active") renderActive();
       else if(activeTab==="Completed") renderCompleted();
-      else renderLeads();
+      else if(activeTab==="Leads") renderLeads();
+      else if(activeTab==="Generator") renderGenHistory(); 
     }
-
-    /* ===== WhatsApp Logic (Templates) ===== */
-    let currentMsgNumber = "", currentMsgName = "";
-    function openMsgModal(number, name) {
-      if (!number) return showToast('error', 'No number available');
-      currentMsgNumber = number.replace(/[^\d]/g, ''); 
-      currentMsgName = name;
-      const list = q('#msgTemplatesList');
-      list.innerHTML = "";
-      MSG_TEMPLATES.forEach(tmpl => {
-        const btn = document.createElement('div');
-        btn.className = "row"; 
-        btn.style.padding = "10px";
-        btn.innerHTML = `<strong>${tmpl.label}</strong>`;
-        btn.onclick = () => {
-          const finalTxt = tmpl.text.replace("{name}", (currentMsgName||"").split(' ')[0]);
-          const url = `https://wa.me/${currentMsgNumber}?text=${encodeURIComponent(finalTxt)}`;
-          window.open(url, '_blank');
-          q('#msgModal').style.display = 'none';
-        };
-        list.appendChild(btn);
-      });
-      q('#msgModal').style.display = 'flex';
-    }
-    CT.openMsg = openMsgModal;
 
     /* ===== Render Functions ===== */
     function quickActionsHTML(t, c){
@@ -499,11 +560,9 @@
       elActiveList.innerHTML = "";
       let pool = tasks.filter(t => t.status !== STATUS.COMPLETED);
       
-      // Filter by Status
       if([STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD, STATUS.CANCELLED].includes(activeFilter)){
         pool = pool.filter(t => t.status === activeFilter);
       }
-      // Filter by Search
       if(searchTerm){
         pool = pool.filter(t => {
           const c = customers.find(x=>x.id===t.customerId);
@@ -614,17 +673,56 @@
       }
     }
 
+    // NEW: Render Generator History
+    function renderGenHistory() {
+      const list = q('#genHistoryList'); list.innerHTML = "";
+      if(genHistory.length === 0) { list.innerHTML = `<div class="muted small" style="padding:10px; text-align:center">No history yet.</div>`; return; }
+      
+      // Group by date
+      const grouped = {};
+      genHistory.forEach(item => { if(!grouped[item.date]) grouped[item.date]=[]; grouped[item.date].push(item); });
+      
+      // Sort keys desc
+      const dates = Object.keys(grouped).sort().reverse();
+      
+      dates.forEach(date => {
+          const div = document.createElement('div');
+          div.className = "history-group";
+          div.innerHTML = `
+            <div class="history-header">
+               <span>${date}</span>
+               <button class="iconbtn sm" style="border:none; background:transparent" onclick="CT.gen.emailDay('${date}')">✉️ Email</button>
+            </div>
+          `;
+          grouped[date].forEach(item => {
+              const row = document.createElement('div');
+              row.className = "row";
+              row.style.padding = "8px 12px";
+              row.innerHTML = `
+                 <div class="meta" style="font-family:monospace; font-size:12px">
+                    <span style="color:var(--accent2)">${item.time}</span> ${escapeHtml(item.msg || '(No msg)')}
+                 </div>
+                 <button class="iconbtn sm" title="Reuse" onclick="CT.gen.reuse('${item.id}')">🔄</button>
+              `;
+              div.appendChild(row);
+          });
+          list.appendChild(div);
+      });
+    }
+
     /* ===== Tab Switching ===== */
     function setTab(which){
       activeTab = which;
       q("#tabActive").classList.toggle("active", which==="Active");
       q("#tabCompleted").classList.toggle("active", which==="Completed");
       q("#tabLeads").classList.toggle("active", which==="Leads");
+      q("#tabGenerator").classList.toggle("active", which==="Generator");
       render();
     }
     q("#tabActive").addEventListener('click', ()=> setTab('Active'));
     q("#tabCompleted").addEventListener('click', ()=> setTab('Completed'));
     q("#tabLeads").addEventListener('click', ()=> setTab('Leads'));
+    q("#tabGenerator").addEventListener('click', ()=> setTab('Generator'));
 
     qAll('.filters .chip[data-filter]').forEach(ch=>{
       ch.addEventListener("click", ()=>{
@@ -799,10 +897,10 @@
       const items = collectDueSoon();
       if(!items.length) { list.innerHTML = `<div class="row"><div class="meta">No overdue tasks 🎉</div></div>`; return; }
       for(const {t, diff} of items){
-         const c = customers.find(x=>x.id===t.customerId);
-         const row = document.createElement('div'); row.className = 'row';
-         row.innerHTML = `<div class="meta"><strong>${c?.name||'Unknown'}</strong> <span class="pill ${diff<0?'p-overdue':'p-due'}">${diff<0?'Overdue':'Due'} ${t.dueDate}</span><div class="small muted">${t.description}</div>${quickActionsHTML(t,c)}</div>`;
-         list.appendChild(row);
+          const c = customers.find(x=>x.id===t.customerId);
+          const row = document.createElement('div'); row.className = 'row';
+          row.innerHTML = `<div class="meta"><strong>${c?.name||'Unknown'}</strong> <span class="pill ${diff<0?'p-overdue':'p-due'}">${diff<0?'Overdue':'Due'} ${t.dueDate}</span><div class="small muted">${t.description}</div>${quickActionsHTML(t,c)}</div>`;
+          list.appendChild(row);
       }
       list.onclick = handleRowActions;
     }
@@ -872,7 +970,7 @@
     let editingLeadId = null;
     function openLeadModal(lid=null){
       editingLeadId = lid;
-      const elDel = q('#deleteLeadBtn'), elEm = q('#emailLeadBtn');
+      const elDel = q('#deleteLeadBtn');
       if(lid){
         const l = leads.find(x=>x.id===lid);
         q('#leadModalTitle').textContent = "Edit Lead";
@@ -882,13 +980,13 @@
         q('#leadStatus').value = l.status||"Talked";
         q('#leadDesc').value = l.description||"";
         q('#leadTimestamps').textContent = `Updated: ${fmtDate(l.updatedAt)}`;
-        elDel.classList.remove('hidden'); elEm.classList.remove('hidden');
+        elDel.classList.remove('hidden');
       }else{
         q('#leadModalTitle').textContent = "Add Lead";
         q('#leadName').value = ""; q('#leadNumbers').value = "";
         q('#leadProduct').value = ""; q('#leadStatus').value = "Talked"; q('#leadDesc').value = "";
         q('#leadTimestamps').textContent = "";
-        elDel.classList.add('hidden'); elEm.classList.add('hidden');
+        elDel.classList.add('hidden');
       }
       elLeadModal.style.display = 'flex';
     }
@@ -918,6 +1016,31 @@
        if(row && !e.target.closest('button')) openLeadModal(row.dataset.leadId);
     });
 
+    /* ===== WhatsApp Modal ===== */
+    let currentMsgNumber = "", currentMsgName = "";
+    function openMsgModal(number, name) {
+      if (!number) return showToast('error', 'No number available');
+      currentMsgNumber = number.replace(/[^\d]/g, ''); 
+      currentMsgName = name;
+      const list = q('#msgTemplatesList');
+      list.innerHTML = "";
+      MSG_TEMPLATES.forEach(tmpl => {
+        const btn = document.createElement('div');
+        btn.className = "row"; 
+        btn.style.padding = "10px";
+        btn.innerHTML = `<strong>${tmpl.label}</strong>`;
+        btn.onclick = () => {
+          const finalTxt = tmpl.text.replace("{name}", (currentMsgName||"").split(' ')[0]);
+          const url = `https://wa.me/${currentMsgNumber}?text=${encodeURIComponent(finalTxt)}`;
+          window.open(url, '_blank');
+          q('#msgModal').style.display = 'none';
+        };
+        list.appendChild(btn);
+      });
+      q('#msgModal').style.display = 'flex';
+    }
+    CT.openMsg = openMsgModal;
+
     /* ===== Stats Modal ===== */
     q('#btnStats').addEventListener('click', ()=>{
       const totLeads = leads.length;
@@ -939,7 +1062,7 @@
       q('#statsModal').style.display = 'flex';
     });
 
-    /* ===== CSV Export/Import & Backup (Simplified for brevity but functional) ===== */
+    /* ===== CSV Export/Import & Backup ===== */
     function csvFromRows(rows){ return rows.map(r=>r.map(c=> `"${String(c||'').replace(/"/g,'""')}"`).join(",")).join("\n"); }
     function dl(blob, name){ const u=URL.createObjectURL(blob), a=document.createElement('a'); a.href=u; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
     
@@ -960,7 +1083,121 @@
       dl(blob, `CRM_Backup_${new Date().toISOString().slice(0,10)}.zip`);
     });
 
-    /* ===== Keyboard ===== */
+    /* ===== BOT GENERATOR LOGIC ===== */
+    CT.gen = {};
+    const elGenDate = q('#genDate'), elGenTime = q('#genTime'), elGenMsg = q('#genMsg');
+    
+    function initGenInputs(d = new Date()) {
+       const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
+       elGenDate.value = `${y}-${m}-${day}`;
+       const h = String(d.getHours()).padStart(2,'0'); const min = String(d.getMinutes()).padStart(2,'0');
+       elGenTime.value = `${h}:${min}`;
+       elGenMsg.value = "";
+       q('#genResultArea').classList.add('hidden');
+    }
+
+    CT.gen.setSmartTime = function(h, m) {
+       let d = new Date(); d.setHours(h, m, 0, 0);
+       if (d < new Date()) { d.setDate(d.getDate() + 1); d = getNextWorkingDay(d); }
+       updateGenInputs(d);
+    };
+
+    function updateGenInputs(d) {
+       const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
+       elGenDate.value = `${y}-${m}-${day}`;
+       const h = String(d.getHours()).padStart(2,'0'); const min = String(d.getMinutes()).padStart(2,'0');
+       elGenTime.value = `${h}:${min}`;
+    }
+
+    function isWorkingDay(d) {
+       const day = d.getDay(); const date = d.getDate();
+       if (day === 0) return false; 
+       if (day === 6) { const wn = Math.ceil(date / 7); if (wn === 2 || wn === 4) return false; }
+       return true;
+    }
+    
+    function getNextWorkingDay(d) { while (!isWorkingDay(d)) d.setDate(d.getDate() + 1); return d; }
+
+    CT.gen.addWorkingDays = function(days) {
+       const val = elGenDate.value;
+       const [y, M, D] = val.split('-').map(Number);
+       let d = new Date(y, M - 1, D);
+       let added = 0;
+       while (added < days) {
+           d.setDate(d.getDate() + 1);
+           if (isWorkingDay(d)) added++;
+       }
+       d.setHours(10, 0, 0, 0);
+       updateGenInputs(d);
+    };
+
+    // HISTORY LOGIC
+    CT.gen.emailDay = function(dateKey) {
+        const items = genHistory.filter(i => i.date === dateKey);
+        let text = `SCHEDULE FOR ${dateKey}:\n`;
+        items.forEach(i => text += `${i.clean}\n`);
+        if (window.AppInventor) window.AppInventor.setWebViewString(text);
+        else window.location.href = `mailto:?subject=Schedule ${dateKey}&body=${encodeURIComponent(text)}`;
+    };
+
+    CT.gen.reuse = function(id) {
+        const item = genHistory.find(i => String(i.id) === String(id));
+        if(item) {
+            elGenDate.value = item.date;
+            elGenTime.value = item.time;
+            elGenMsg.value = item.msg;
+            q('#genResultArea').classList.add('hidden');
+            // We removed scrollTo for better UX in scroll box
+        }
+    };
+
+    q('#btnGenerateCmd').addEventListener('click', ()=>{
+        const dStr = elGenDate.value;
+        const tStr = elGenTime.value;
+        const msg = elGenMsg.value.trim();
+
+        const botCmd = `!remind ${dStr} ${tStr} ${msg}`;
+        q('#outBot').textContent = botCmd;
+        
+        let cleanCmd = "Invalid Date/Time";
+        if(dStr && tStr) {
+            const [y, M, D] = dStr.split('-').map(Number);
+            const [h, m] = tStr.split(':').map(Number);
+            let cDate = new Date(y, M - 1, D, h, m);
+            cDate.setMinutes(cDate.getMinutes() + 10);
+            
+            const cY = cDate.getFullYear(); const cM = String(cDate.getMonth() + 1).padStart(2, '0');
+            const cD = String(cDate.getDate()).padStart(2, '0'); const cH = String(cDate.getHours()).padStart(2, '0');
+            const cMin = String(cDate.getMinutes()).padStart(2, '0');
+            
+            cleanCmd = `remind ${cY}-${cM}-${cD} ${cH}:${cMin} ${msg}`;
+            q('#outClean').textContent = cleanCmd;
+            
+            // Add to History
+            const safeMsg = msg || "(No Message)";
+            const exists = genHistory.some(i => i.date===dStr && i.time===tStr && i.msg===safeMsg);
+            if(!exists){
+                genHistory.push({ id: Date.now(), date: dStr, time: tStr, msg: safeMsg, clean: cleanCmd });
+                genHistory.sort((a, b) => {
+                     if (a.date !== b.date) return a.date.localeCompare(b.date);
+                     return a.time.localeCompare(b.time);
+                });
+                saveAll();
+            }
+        } else {
+            q('#outClean').textContent = cleanCmd;
+        }
+        q('#genResultArea').classList.remove('hidden');
+    });
+    
+    q('#btnClearGenHistory').addEventListener('click', ()=>{
+        if(confirm("Clear history?")) { genHistory = []; saveAll(); }
+    });
+
+    q('#btnResetGen').addEventListener('click', ()=> initGenInputs());
+    initGenInputs(); // Run once on load
+
+    /* ===== Keyboard & Init ===== */
     document.addEventListener('keydown', (e)=>{
       if (e.target.matches('input, textarea')) return;
       if (e.key.toLowerCase()==='n') { e.preventDefault(); CT.openAdd(); }
