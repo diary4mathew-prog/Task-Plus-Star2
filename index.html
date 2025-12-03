@@ -2,1274 +2,661 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>CRM & Bot Command Center</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Super CRM & Bot</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <style>
     :root{
       --bg:#0b1020; --panel:#121a35; --panel2:#0f1530; --text:#eaf0ff; --muted:#aab4d6;
-      --border:#1f2a4f; --accent:#5b8cff; --accent2:#74d680; --warn:#ffcc66; --danger:#ff6b6b; --mark:#fff2a8;
-      --row-hover:#101a3a; --btn-ghost:#1a2446;
+      --border:#1f2a4f; --accent:#5b8cff; --accent2:#74d680; --warn:#ffcc66; --danger:#ff6b6b;
+      --nav-height:60px; --header-height:60px;
     }
     [data-theme="light"]{
       --bg:#f5f7ff; --panel:#ffffff; --panel2:#f3f6ff; --text:#0c1533; --muted:#4a5577;
-      --border:#d8def0; --accent:#375dfb; --accent2:#2fbf71; --warn:#f6b84e; --danger:#ef4b4b; --mark:#fff2a8;
-      --row-hover:#eef2ff; --btn-ghost:#eef2ff;
+      --border:#d8def0; --accent:#375dfb; --accent2:#2fbf71; --warn:#f6b84e; --danger:#ef4b4b;
     }
     *{box-sizing:border-box}
-    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,var(--bg) 0%, var(--panel2) 200%); color:var(--text); padding-bottom:40px}
-    header{position:sticky; top:0; z-index:10; padding:12px 16px; border-bottom:1px solid var(--border); background:rgba(13,18,40,.7); backdrop-filter:blur(6px) saturate(140%)}
-    [data-theme="light"] header{background:rgba(255,255,255,.8)}
-    .container{max-width:1100px; margin:18px auto; padding:0 14px}
-    h1{margin:0; font-size:20px}
-    .sub{margin-top:2px; color:var(--muted); font-size:13px}
-    .toolbar{margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    body{margin:0; font-family:Inter,system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); overflow:hidden; height:100vh; display:flex; flex-direction:column;}
     
-    /* Inputs */
-    input[type="text"], input[type="date"], input[type="datetime-local"], input[type="time"], input[type="tel"], textarea, select{
-      width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:color-mix(in oklab, var(--panel) 85%, black 5%); color:var(--text); outline:none; font-size:14px;
+    /* --- HEADER --- */
+    header{
+      height:var(--header-height); flex-shrink:0; display:flex; align-items:center; gap:12px; padding:0 16px;
+      background:var(--panel); border-bottom:1px solid var(--border); z-index:20;
     }
-    textarea{min-height:90px; resize:vertical; font-family:inherit}
+    .search-bar{
+      flex:1; position:relative;
+    }
+    .search-bar input{
+      width:100%; padding:8px 12px; padding-left:34px; border-radius:99px; border:1px solid var(--border); 
+      background:var(--bg); color:var(--text); outline:none; font-size:14px;
+    }
+    .search-icon{position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.5}
     
-    .btn{appearance:none; border:none; border-radius:8px; padding:8px 12px; color:#fff; font-weight:600; cursor:pointer; transition:.15s transform ease, .2s background ease; font-size:13px; text-align:center; display:inline-flex; align-items:center; justify-content:center;}
-    .btn:hover{transform:translateY(-1px)}
-    .btn.primary{background:linear-gradient(180deg, var(--accent) 0%, #3f69ff 100%)}
-    .btn.secondary{background:var(--btn-ghost); border:1px solid var(--border); color:inherit}
-    .btn.ok{background:linear-gradient(180deg, var(--accent2) 0%, #3fbf74 100%)}
-    .btn.warn{background:linear-gradient(180deg, var(--warn) 0%, #f5b24e 100%); color:#2a1b05}
-    .btn.danger{background:linear-gradient(180deg, var(--danger) 0%, #ff5252 100%)}
-    .btn.sm{padding:5px 9px; font-size:12px}
-    
-    /* Navigation */
-    .tabs{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
-    .tab{padding:8px 12px; border-radius:8px; background:var(--panel); border:1px solid var(--border); color:inherit; cursor:pointer; font-weight:700; font-size:13px}
-    .tab.active{outline:2px solid color-mix(in oklab, var(--accent) 50%, transparent); background:var(--row-hover)}
-    
-    /* Cards & Lists */
-    .card{background:linear-gradient(180deg,var(--panel) 0%, var(--panel2) 100%); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.15)}
-    .filters{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
-    .chip{padding:6px 10px; background:var(--panel); border:1px solid var(--border); border-radius:999px; color:inherit; font-weight:700; cursor:pointer; font-size:12px; user-select:none}
-    .chip.active{outline:2px solid color-mix(in oklab, var(--accent) 50%, transparent)}
-    
-    .list{margin-top:10px; border:1px solid var(--border); border-radius:12px; overflow:hidden}
-    .row{display:flex; gap:12px; align-items:flex-start; padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer}
-    .row:hover{background:var(--row-hover)}
-    .row:last-child{border-bottom:none}
-    .row .meta{flex:1}
-    
-    /* Pills & Status */
-    .muted{color:var(--muted); font-size:12px}
-    .pill{display:inline-block; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px}
-    .p-pending{background:#20305f; color:#7fb1ff}
-    .p-inprog{background:#4a2b05; color:#ffb067}
-    .p-onhold{background:#2e1f44; color:#c79bff}
-    .p-cancel{background:#313842; color:#9bb0c4}
-    .p-due{background:#372a12; color:#ffd27e}
-    .p-overdue{background:#3a1212; color:#ff9a9a}
-    .p-complete{background:#173726; color:#87e2a5}
-    
-    /* Utils */
-    .hidden{display:none}
-    .hr{height:1px; background:var(--border); margin:12px 0}
+    .icon-btn{
+      background:transparent; border:none; color:var(--text); font-size:20px; cursor:pointer; position:relative; padding:4px;
+    }
+    .badge{
+      position:absolute; top:0; right:0; width:10px; height:10px; background:var(--danger); border-radius:50%; border:2px solid var(--panel); display:none;
+    }
+    .badge.show{display:block}
+
+    /* --- MAIN CONTENT --- */
+    main{
+      flex:1; overflow-y:auto; padding:16px; padding-bottom:90px; /* Space for FAB/Nav */
+      scroll-behavior: smooth;
+    }
+    .container{max-width:800px; margin:0 auto}
+
+    /* --- BOTTOM NAV --- */
+    .bottom-nav{
+      height:var(--nav-height); flex-shrink:0; display:flex; justify-content:space-around; align-items:center;
+      background:var(--panel); border-top:1px solid var(--border); z-index:20; padding-bottom:env(safe-area-inset-bottom);
+    }
+    .nav-item{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+      color:var(--muted); font-size:11px; font-weight:600; cursor:pointer; height:100%;
+    }
+    .nav-item.active{color:var(--accent)}
+    .nav-icon{font-size:20px}
+
+    /* --- FAB --- */
+    .fab{
+      position:fixed; bottom:calc(var(--nav-height) + 16px); right:16px;
+      width:56px; height:56px; border-radius:50%; background:var(--accent); color:#fff;
+      display:flex; align-items:center; justify-content:center; font-size:28px; box-shadow:0 4px 12px rgba(0,0,0,.3);
+      cursor:pointer; z-index:30; transition:transform .2s; border:none;
+    }
+    .fab:active{transform:scale(0.95)}
+
+    /* --- COMMON UI --- */
+    .hidden{display:none !important}
+    .card{background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px}
     .inline{display:flex; gap:8px; align-items:center}
     .wrap{flex-wrap:wrap}
     .grow{flex:1}
     .right{margin-left:auto}
-    .small{font-size:12px}
-    a {color:var(--accent); text-decoration:none} a:hover{text-decoration:underline}
+    .muted{color:var(--muted); font-size:12px}
+    .hr{height:1px; background:var(--border); margin:12px 0}
     
-    .actions{display:flex; gap:6px; margin-top:8px}
-    .iconbtn{appearance:none; border:1px solid var(--border); background:var(--panel); color:inherit; border-radius:6px; padding:5px 8px; cursor:pointer; font-size:12px}
-    .iconbtn:hover{transform:translateY(-1px); background:var(--row-hover)}
+    .btn{padding:8px 14px; border-radius:8px; border:none; font-weight:600; cursor:pointer; font-size:13px}
+    .btn.primary{background:var(--accent); color:#fff}
+    .btn.secondary{background:var(--panel); border:1px solid var(--border); color:var(--text)}
+    .btn.danger{background:var(--danger); color:#fff}
+    .btn.sm{padding:4px 10px; font-size:12px}
+
+    /* Filters */
+    .filters{display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px; scrollbar-width:none}
+    .chip{
+      white-space:nowrap; padding:6px 12px; background:var(--panel); border:1px solid var(--border); 
+      border-radius:99px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer;
+    }
+    .chip.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+
+    /* Lists */
+    .row{display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); align-items:flex-start}
+    .row:last-child{border-bottom:none}
     
-    /* Toaster */
-    #toaster{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:9999}
-    .toast{min-width:260px; max-width:420px; padding:10px 12px; border-radius:10px; color:#fff; font-weight:600; box-shadow:0 10px 20px rgba(0,0,0,.25)}
-    .toast.info{background:#2b4a9e}
-    .toast.success{background:#2a7a47}
-    .toast.error{background:#a33a3a}
-    .toast button{background:transparent; border:none; color:#fff; margin-left:8px; cursor:pointer; font-weight:800; float:right}
+    /* Pills */
+    .pill{padding:2px 6px; border-radius:4px; font-size:10px; font-weight:800; text-transform:uppercase}
+    .p-Pending{background:#20305f; color:#7fb1ff}
+    .p-InProgress{background:#4a2b05; color:#ffb067}
+    .p-Completed{background:#173726; color:#87e2a5}
+    .p-due{background:#372a12; color:#ffd27e}
+    .p-overdue{background:#3a1212; color:#ff9a9a}
+
+    /* History / Accordion */
+    .hist-group-header{
+      padding:10px; background:var(--panel); border-radius:8px; font-weight:700; font-size:13px;
+      display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom:6px;
+    }
+    .hist-content{display:none; padding-left:8px; margin-bottom:12px}
+    .expanded .hist-content{display:block}
     
     /* Modals */
-    .backdrop{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.6); z-index:60; backdrop-filter:blur(2px)}
-    .modal{width:min(980px,96vw); max-height:92vh; overflow:auto}
-    
-    /* Stats Grid */
-    .stats-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
-
-    /* --- Generator & History Styles --- */
-    .gen-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:10px; }
-    .gen-output { font-family: monospace; font-size: 13px; background: var(--bg); color: var(--accent); padding:10px; border-radius:8px; border:1px solid var(--border); margin-top:4px; word-break: break-all; }
-    .gen-label { text-transform: uppercase; font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 12px; display:block; margin-bottom:4px; }
-    .copy-row { display:flex; gap:8px; align-items:center; }
-    
-    /* Accordion / History Styles */
-    .history-header { 
-      background:var(--panel2); padding:10px 14px; 
-      display:flex; justify-content:space-between; align-items:center; 
-      border-bottom:1px solid var(--border); font-size:14px; font-weight:700; color:var(--accent); 
-      cursor:pointer; user-select:none;
+    .backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(2px); z-index:100;
+      display:none; align-items:center; justify-content:center;
     }
-    .history-header:hover { background:var(--row-hover); }
-    .history-group-content { display:none; border-bottom:1px solid var(--border); }
-    .history-group.expanded .history-group-content { display:block; }
-    .history-group.expanded .arrow { transform:rotate(180deg); }
-    .arrow { transition: transform 0.2s ease; display:inline-block; margin-right:6px; font-size:10px; }
+    .modal{
+      width:90%; max-width:500px; max-height:85vh; background:var(--panel); border-radius:16px; 
+      padding:20px; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.4);
+    }
+    
+    /* Form Inputs */
+    input, textarea, select{
+      width:100%; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:8px;
+      color:var(--text); outline:none; font-size:14px; display:block; margin-bottom:10px;
+    }
+    label{font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:4px; display:block}
+    
+    /* Action Grid for Settings */
+    .settings-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .settings-btn{
+      display:flex; flex-direction:column; align-items:center; padding:15px; 
+      background:var(--panel2); border-radius:10px; border:1px solid var(--border); cursor:pointer
+    }
+    .settings-btn span{font-size:24px; margin-bottom:6px}
+
+    /* Bot Gen Grid */
+    .time-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px}
   </style>
 </head>
 <body>
+
   <header>
-    <div class="inline wrap">
-      <div class="grow">
-        <h1 style="margin:0;">Pro Command Center</h1>
-        <div class="sub">CRM • Leads • Bot Generator</div>
-      </div>
-      <button id="btnTheme" class="btn secondary sm" title="Toggle theme (X)">🌗 Theme</button>
+    <div style="font-size:18px">🚀</div>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="globalSearch" placeholder="Search everything..." />
     </div>
-    <div class="toolbar">
-      <input id="globalSearch" type="text" placeholder="🔍 Search database (All Statuses)..." style="max-width:240px; border-color:var(--accent)">
-      
-      <button class="btn secondary" id="btnStats" title="View Statistics">📊 Stats</button>
-      <button class="btn secondary" id="btnShareCSVs" title="Share CSVs (E)">CSVs</button>
-      <button class="btn secondary" id="btnBackupZip" title="Backup ZIP (B)">Backup</button>
-      
-      <div class="grow"></div>
-      
-      <button class="btn primary" id="btnAddTask" title="New Task (N)">+ Task</button>
-      <button class="btn secondary" id="btnDueSoon" title="Due Soon / Overdue (D)">Due Soon <span id="dueSoonCount" class="small" style="margin-left:4px; opacity:.8"></span></button>
-      
-      <select id="csvTarget" class="btn secondary" style="padding:8px 6px; width:auto">
-        <option value="customers">CSV → Cust</option>
-        <option value="tasks">CSV → Task</option>
-        <option value="leads">CSV → Lead</option>
-      </select>
-      <button class="btn secondary" id="btnCsvUpload">📂</button>
-      <input id="csvFile" type="file" accept=".csv,text/csv" hidden />
-    </div>
-    <div class="tabs">
-      <div id="tabActive" class="tab active">Active <span id="countActive" class="small"></span></div>
-      <div id="tabCompleted" class="tab">Completed <span id="countCompleted" class="small"></span></div>
-      <div id="tabLeads" class="tab">Leads <span id="countLeads" class="small"></span></div>
-      <div id="tabGenerator" class="tab" style="color:var(--accent2)">🤖 Bot Gen</div>
-    </div>
+    <button class="icon-btn" id="btnDueSoon" title="Due Soon">
+      🔔<div id="dueBadge" class="badge"></div>
+    </button>
+    <button class="icon-btn" id="btnMenu" title="Settings">⚙️</button>
   </header>
 
-  <div class="container">
-    <div id="activeView">
-      <div class="card">
-        <div class="filters">
-          <button data-filter="Pending" class="chip active">Pending</button>
-          <button data-filter="In Progress" class="chip">In Progress</button>
-          <button data-filter="On Hold" class="chip">On Hold</button>
-          <button data-filter="Cancelled" class="chip">Cancelled</button>
-          <div class="right muted small">Overdue tasks show <span class="pill p-overdue">Overdue</span></div>
-        </div>
-        <div id="activeList" class="list"></div>
-      </div>
-    </div>
-
-    <div id="completedView" class="hidden">
-      <div class="card">
-        <div class="filters"><span class="muted">Archived Tasks</span></div>
-        <div id="completedList" class="list"></div>
-      </div>
-    </div>
-
-    <div id="leadsView" class="hidden">
-      <div class="card">
-        <div class="filters">
-          <button id="addLeadBtn" class="btn primary sm">Add Lead</button>
-          <span class="muted" style="margin-left:10px">Filter:</span>
-          <button class="chip lead-filter active" data-leadfilter="All">All</button>
-          <button class="chip lead-filter" data-leadfilter="Talked">Talked</button>
-          <button class="chip lead-filter" data-leadfilter="Interested">Interested</button>
-          <button class="chip lead-filter" data-leadfilter="Waiting Confirmation">Waiting</button>
-          <button class="chip lead-filter" data-leadfilter="Converted">Converted</button>
-        </div>
-        <div id="leadsList" class="list"></div>
-      </div>
-    </div>
-
-    <div id="generatorView" class="hidden">
-      <div class="card" style="max-width:700px; margin:0 auto">
-         <div class="inline" style="justify-content:space-between; margin-bottom:12px">
-            <h2 style="margin:0;">Scheduled Queue</h2>
-            <button class="btn primary" id="btnOpenGenModal">➕ New Command</button>
-         </div>
-         <div class="muted small" style="margin-bottom:10px">Sorted by Date: Present → Future</div>
-         <div id="genHistoryList" class="list" style="border:none"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="genModal" class="backdrop">
-    <div class="card modal" style="max-width:500px">
-        <div class="inline" style="justify-content:space-between">
-          <h3 style="margin:0">Create Reminder</h3>
-          <button class="btn secondary sm" id="btnResetGen">Reset</button>
-        </div>
-        <div class="hr"></div>
-
-        <span class="gen-label">Quick Time</span>
-        <div class="gen-grid">
-            <button class="btn secondary sm" onclick="CT.gen.setSmartTime(10,0)">10:00 AM</button>
-            <button class="btn secondary sm" onclick="CT.gen.setSmartTime(11,0)">11:00 AM</button>
-            <button class="btn secondary sm" onclick="CT.gen.setSmartTime(15,30)">03:30 PM</button>
-            <button class="btn secondary sm" onclick="CT.gen.setSmartTime(16,0)">04:00 PM</button>
-        </div>
-
-        <div class="inline wrap" style="gap:10px">
-            <div class="grow">
-                <span class="gen-label">Date</span>
-                <input type="date" id="genDate">
-            </div>
-            <div class="grow">
-                <span class="gen-label">Time</span>
-                <input type="time" id="genTime">
-            </div>
-        </div>
-
-        <div class="inline wrap" style="margin-top:8px; gap:8px">
-            <button class="btn secondary sm" onclick="CT.gen.addWorkingDays(1)">+1 Work Day</button>
-            <button class="btn secondary sm" onclick="CT.gen.addWorkingDays(2)">+2 Work Days</button>
-            <button class="btn secondary sm" onclick="CT.gen.addWorkingDays(3)">+3 Work Days</button>
-        </div>
-
-        <span class="gen-label">Message</span>
-        <input type="text" id="genMsg" placeholder="Reminder message..." />
-
-        <button class="btn primary" style="width:100%; margin-top:20px" id="btnGenerateCmd">GENERATE & SAVE</button>
-
-        <div id="genResultArea" class="hidden" style="margin-top:20px; border-top:1px solid var(--border); padding-top:10px">
-            <span class="gen-label">Bot Command</span>
-            <div class="copy-row">
-                <div id="outBot" class="gen-output grow"></div>
-                <button class="btn secondary sm" onclick="CT.copy('#outBot')">Copy</button>
-            </div>
-            <span class="gen-label">Clean Text (+10m)</span>
-            <div class="copy-row">
-                <div id="outClean" class="gen-output grow"></div>
-                <button class="btn secondary sm" onclick="CT.copy('#outClean')">Copy</button>
-            </div>
-        </div>
-
-        <div class="hr"></div>
-        <button class="btn secondary" style="width:100%" onclick="q('#genModal').style.display='none'">Close</button>
-    </div>
-  </div>
-
-  <div id="taskModal" class="backdrop">
-    <div class="card modal">
-      <h3 id="taskModalTitle" style="margin:0 0 10px 0">Add Task</h3>
-      <div class="inline wrap" style="gap:16px">
-        <div class="grow">
-          <label class="small muted">Customer Name</label>
-          <input id="taskCustomerName" type="text" placeholder="Type name (new or existing)" />
-        </div>
-        <div class="grow">
-          <label class="small muted">Customer Mobile(s)</label>
-          <input id="taskCustomerMobile" type="text" placeholder="Any number(s), comma-separated" />
-        </div>
-      </div>
-      <div class="hr"></div>
-      <div class="inline wrap" style="gap:16px; margin-top:10px">
-        <div class="grow">
-          <div class="inline" style="justify-content:space-between; margin-bottom:4px">
-            <label class="small muted">Task Description</label>
-            <button class="btn secondary sm" id="btnAppendTimestampTask">🕒 Stamp</button>
-          </div>
-          <textarea id="taskDesc" placeholder="What needs to be done?"></textarea>
-        </div>
-        <div style="min-width:240px; flex:1">
-          <label class="small muted">Due Date</label>
-          <input id="taskDue" type="date" />
-          <div class="hr"></div>
-          <label class="small muted">Status</label>
-          <select id="taskStatus">
-            <option>Pending</option>
-            <option>In Progress</option>
-            <option>On Hold</option>
-            <option>Cancelled</option>
-            <option>Completed</option>
-          </select>
-        </div>
-      </div>
-      <div class="inline wrap" style="gap:8px; margin-top:10px">
-        <button id="saveTaskBtn" class="btn ok">Save</button>
-        <button id="cancelTaskBtn" class="btn secondary">Cancel</button>
-        <button id="deleteTaskBtn" class="btn danger hidden">Delete</button>
-        <div class="right small muted" id="taskTimestamps"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="leadModal" class="backdrop">
-    <div class="card modal">
-      <h3 id="leadModalTitle" style="margin:0 0 10px 0">Add Lead</h3>
-      <div class="inline wrap" style="gap:16px">
-        <div class="grow">
-          <label class="small muted">Name</label>
-          <input id="leadName" type="text" placeholder="Name" />
-        </div>
-        <div class="grow">
-          <label class="small muted">Mobile(s)</label>
-          <input id="leadNumbers" type="text" placeholder="Any number(s), comma-separated" />
-        </div>
-      </div>
-      <div class="inline wrap" style="gap:16px; margin-top:10px">
-        <div class="grow">
-          <label class="small muted">Product</label>
-          <input id="leadProduct" type="text" placeholder="Product name" />
-        </div>
-        <div style="min-width:240px; flex:1">
-          <label class="small muted">Status</label>
-          <select id="leadStatus">
-            <option>Talked</option>
-            <option>Interested</option>
-            <option>Waiting Confirmation</option>
-            <option>Converted</option>
-          </select>
-        </div>
-      </div>
-      <div class="inline wrap" style="gap:16px; margin-top:10px">
-        <div class="grow">
-          <div class="inline" style="justify-content:space-between; margin-bottom:4px">
-            <label class="small muted">Notes</label>
-            <button class="btn secondary sm" id="btnAppendTimestampLead">🕒 Stamp</button>
-          </div>
-          <textarea id="leadDesc" placeholder="Context, requirements..."></textarea>
-        </div>
-      </div>
-      <div class="inline wrap" style="gap:8px; margin-top:10px">
-        <button id="saveLeadBtn" class="btn ok">Save</button>
-        <button id="cancelLeadBtn" class="btn secondary">Cancel</button>
-        <button id="deleteLeadBtn" class="btn danger hidden">Delete</button>
-        <div class="right small muted" id="leadTimestamps"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="dueSoonModal" class="backdrop">
-    <div class="card modal">
-      <div class="inline wrap" style="gap:8px">
-        <h3 class="grow" style="margin:0">Due Soon & Overdue</h3>
-        <div class="inline" style="gap:6px">
-          <button id="btnSnooze1d" class="btn secondary sm">Snooze All 1d</button>
-          <button id="btnDueSoonClose" class="btn secondary sm">Close</button>
-        </div>
-      </div>
-      <div class="muted small" style="margin-top:6px">Showing pending tasks overdue or due within 3 days.</div>
-      <div class="hr"></div>
-      <div class="inline wrap" style="gap:8px">
-        <input id="customSnoozeDT" type="datetime-local" />
-        <button id="applyCustomSnooze" class="btn secondary sm">Custom Snooze</button>
-      </div>
-      <div id="dueSoonList" class="list" style="margin-top:10px; max-height:60vh; overflow:auto"></div>
-    </div>
-  </div>
-
-  <div id="completeModal" class="backdrop">
-    <div class="card modal">
-      <h3 style="margin:0 0 10px 0">Mark Task as Completed</h3>
-      <div id="completeContext" class="muted small"></div>
-      <div class="hr"></div>
-      <label class="small muted">How completed? (Notes)</label>
-      <textarea id="completeNotes" placeholder="What was done / remarks?"></textarea>
+  <main>
+    <div class="container">
       
-      <div class="hr"></div>
-      <div class="inline wrap">
-        <input type="checkbox" id="chkFollowUp" style="width:auto; margin:0; accent-color:var(--accent2)">
-        <label for="chkFollowUp" style="cursor:pointer; select:none"><strong>Create Follow-up Task?</strong></label>
-      </div>
-      <div id="followUpOptions" class="hidden" style="margin-top:8px; padding-left:14px; border-left:3px solid var(--border)">
-         <div class="inline wrap" style="gap:10px; margin-bottom:6px">
-           <label class="small muted">Due in:</label>
-           <select id="followUpDelay" style="width:auto">
-             <option value="1">1 Day</option>
-             <option value="3" selected>3 Days</option>
-             <option value="7">1 Week</option>
-             <option value="30">1 Month</option>
-           </select>
-         </div>
-         <input type="text" id="followUpDesc" placeholder="Follow up description" />
-      </div>
-
-      <div class="inline wrap" style="gap:8px; margin-top:14px">
-        <button id="btnCompleteOnly" class="btn ok">Mark Completed</button>
-        <button id="btnCompleteAndEmail" class="btn primary">Mark & Email</button>
-        <button id="btnCompleteCancel" class="btn secondary">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="msgModal" class="backdrop">
-    <div class="card modal" style="max-width:400px">
-      <h3>Choose WhatsApp Template</h3>
-      <div class="muted small" style="margin-bottom:10px">Click to open WhatsApp</div>
-      <div id="msgTemplatesList" class="list" style="margin-bottom:10px"></div>
-      <button class="btn secondary" onclick="document.getElementById('msgModal').style.display='none'">Cancel</button>
-    </div>
-  </div>
-
-  <div id="statsModal" class="backdrop">
-    <div class="card modal" style="max-width:700px">
-      <h3>Statistics Dashboard</h3>
-      <div id="statsContent" class="stats-grid" style="margin:16px 0"></div>
-      <div style="text-align:right">
-        <button class="btn secondary" onclick="document.getElementById('statsModal').style.display='none'">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="smartDeleteModal" class="backdrop">
-     <div class="card modal" style="max-width:400px">
-        <h3>Delete Schedule?</h3>
-        <p>You are about to delete the schedule for <strong id="sdDate"></strong>.</p>
-        <div class="hr"></div>
-        <div style="display:grid; gap:10px">
-            <button class="btn primary" id="btnSD_EmailDelete">📧 Email then Delete (Safe)</button>
-            <button class="btn danger" id="btnSD_JustDelete">🗑️ Just Delete</button>
-            <button class="btn secondary" onclick="q('#smartDeleteModal').style.display='none'">Cancel</button>
+      <div id="viewTasks">
+        <div class="filters">
+          <button class="chip active" data-filter="Pending">Pending</button>
+          <button class="chip" data-filter="In Progress">In Progress</button>
+          <button class="chip" data-filter="On Hold">On Hold</button>
+          <button class="chip" data-filter="Completed">Completed</button>
         </div>
-     </div>
+        <div id="taskList"></div>
+      </div>
+
+      <div id="viewLeads" class="hidden">
+        <div class="filters">
+          <button class="chip active" data-lfilter="All">All</button>
+          <button class="chip" data-lfilter="Talked">Talked</button>
+          <button class="chip" data-lfilter="Interested">Interested</button>
+          <button class="chip" data-lfilter="Converted">Converted</button>
+        </div>
+        <div id="leadList"></div>
+      </div>
+
+      <div id="viewBot" class="hidden">
+        <div class="inline" style="justify-content:space-between; margin-bottom:10px">
+           <h3 style="margin:0">Timeline Queue</h3>
+           <div class="muted">Pres → Fut</div>
+        </div>
+        <div id="botHistoryList"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <button id="fab" class="fab">+</button>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active" data-target="viewTasks">
+      <span class="nav-icon">📝</span> Tasks
+    </div>
+    <div class="nav-item" data-target="viewLeads">
+      <span class="nav-icon">👥</span> Leads
+    </div>
+    <div class="nav-item" data-target="viewBot">
+      <span class="nav-icon">🤖</span> Bot Gen
+    </div>
+  </nav>
+
+  <div id="modalSettings" class="backdrop">
+    <div class="modal">
+      <div class="inline" style="justify-content:space-between">
+        <h3>Tools & Settings</h3>
+        <button class="btn secondary sm" onclick="closeModals()">✕</button>
+      </div>
+      <div class="hr"></div>
+      <div class="settings-grid">
+        <div class="settings-btn" id="btnStats"><span>📊</span>Stats</div>
+        <div class="settings-btn" id="btnTheme"><span>🌗</span>Theme</div>
+        <div class="settings-btn" id="btnBackup"><span>💾</span>Backup</div>
+        <div class="settings-btn" id="btnCSVs"><span>📤</span>Export CSV</div>
+      </div>
+      <div id="statsPanel" class="hidden card" style="margin-top:15px; text-align:center"></div>
+    </div>
   </div>
 
-  <div id="toaster"></div>
+  <div id="modalTask" class="backdrop">
+    <div class="modal">
+      <h3>Add/Edit Task</h3>
+      <label>Customer Name</label>
+      <input id="tName" type="text" placeholder="John Doe">
+      <label>Mobile</label>
+      <input id="tMobile" type="tel" placeholder="9876543210">
+      <label>Description</label>
+      <textarea id="tDesc" placeholder="Task details..."></textarea>
+      <div class="inline">
+        <div class="grow"><label>Due Date</label><input id="tDue" type="date"></div>
+        <div class="grow">
+            <label>Status</label>
+            <select id="tStatus">
+                <option>Pending</option><option>In Progress</option><option>On Hold</option>
+                <option>Cancelled</option><option>Completed</option>
+            </select>
+        </div>
+      </div>
+      <div class="inline" style="margin-top:10px">
+        <button id="btnSaveTask" class="btn primary grow">Save</button>
+        <button id="btnDelTask" class="btn danger hidden">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalLead" class="backdrop">
+    <div class="modal">
+      <h3>Add/Edit Lead</h3>
+      <label>Name</label><input id="lName" type="text">
+      <label>Mobile</label><input id="lMobile" type="tel">
+      <label>Product</label><input id="lProd" type="text">
+      <label>Status</label>
+      <select id="lStatus">
+        <option>Talked</option><option>Interested</option>
+        <option>Waiting Confirmation</option><option>Converted</option>
+      </select>
+      <label>Notes</label><textarea id="lNotes"></textarea>
+      <div class="inline" style="margin-top:10px">
+        <button id="btnSaveLead" class="btn primary grow">Save</button>
+        <button id="btnDelLead" class="btn danger hidden">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalBot" class="backdrop">
+    <div class="modal">
+      <div class="inline" style="justify-content:space-between">
+          <h3>New Command</h3>
+          <button class="btn secondary sm" id="btnResetBot">Reset</button>
+      </div>
+      <div class="hr"></div>
+      <div class="time-grid">
+         <button class="btn secondary sm" onclick="CT.bot.smartTime(10,0)">10 AM</button>
+         <button class="btn secondary sm" onclick="CT.bot.smartTime(11,0)">11 AM</button>
+         <button class="btn secondary sm" onclick="CT.bot.smartTime(15,30)">3:30 PM</button>
+         <button class="btn secondary sm" onclick="CT.bot.smartTime(16,0)">4 PM</button>
+      </div>
+      <div class="inline">
+          <div class="grow"><label>Date</label><input id="bDate" type="date"></div>
+          <div class="grow"><label>Time</label><input id="bTime" type="time"></div>
+      </div>
+      <div class="inline" style="margin-bottom:10px">
+         <button class="btn secondary sm grow" onclick="CT.bot.addDays(1)">+1 Day</button>
+         <button class="btn secondary sm grow" onclick="CT.bot.addDays(2)">+2 Days</button>
+      </div>
+      <label>Message</label>
+      <input id="bMsg" type="text" placeholder="Reminder text...">
+      
+      <button id="btnGenBot" class="btn primary" style="width:100%; padding:12px; margin-top:10px">GENERATE & SAVE</button>
+      
+      <div id="botOutput" class="hidden" style="margin-top:15px; background:var(--bg); padding:10px; border-radius:8px; font-family:monospace; font-size:12px; word-break:break-all"></div>
+    </div>
+  </div>
+
+  <div id="modalDue" class="backdrop">
+      <div class="modal">
+          <h3>Due Soon / Overdue</h3>
+          <div id="dueList" style="max-height:300px; overflow-y:auto; margin-bottom:10px"></div>
+          <button class="btn secondary" style="width:100%" onclick="closeModals()">Close</button>
+      </div>
+  </div>
+
+  <div id="modalSmartDel" class="backdrop">
+      <div class="modal" style="text-align:center">
+          <h3>Delete Schedule?</h3>
+          <p class="muted">For <span id="sdDate"></span></p>
+          <div class="hr"></div>
+          <button id="btnEmailDel" class="btn primary" style="width:100%; margin-bottom:8px">📧 Email then Delete</button>
+          <button id="btnJustDel" class="btn danger" style="width:100%">🗑️ Just Delete</button>
+      </div>
+  </div>
+
+  <div id="toaster" style="position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px"></div>
 
   <script>
-  (function(){
-    'use strict';
-    /* ===== App Namespace & Utils ===== */
-    const CT = window.CT = window.CT || {};
-    const q = sel => document.querySelector(sel);
-    const qAll = sel => Array.from(document.querySelectorAll(sel));
+    /* --- CORE SYSTEM --- */
+    const CT = window.CT || {};
+    const q = s => document.querySelector(s);
+    const qAll = s => document.querySelectorAll(s);
+    const uuid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
     const nowISO = () => new Date().toISOString();
-    const fmtDate = d => d ? new Date(d).toLocaleString() : "";
-    const escapeHtml = s => String(s??"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] || c));
-    const uuid = ()=> ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16));
+    
+    // State
+    let tasks = JSON.parse(localStorage.getItem('ct_tasks') || '[]');
+    let customers = JSON.parse(localStorage.getItem('ct_cust') || '[]');
+    let leads = JSON.parse(localStorage.getItem('ct_leads') || '[]');
+    let botHist = JSON.parse(localStorage.getItem('ct_bot') || '[]');
+    let currentView = 'viewTasks';
+    let taskFilter = 'Pending';
+    let leadFilter = 'All';
+    let editId = null;
+    let delTargetDate = null; // for smart delete
 
-    /* ===== Templates (WhatsApp) ===== */
-    const MSG_TEMPLATES = [
-      { label: "👋 Intro / Greeting", text: "Hi {name}, thanks for your interest in our products. Is now a good time to chat?" },
-      { label: "📄 Send Brochure", text: "Hi {name}, sharing the product details as requested. Let me know if you have questions." },
-      { label: "📞 Missed Call", text: "Hi {name}, I tried calling but missed you. When are you free for a quick call?" },
-      { label: "🗓️ Meeting Confirm", text: "Hi {name}, confirming our meeting for tomorrow. See you then!" },
-      { label: "✅ Payment Received", text: "Hi {name}, payment received. Thank you! We are processing your order." }
-    ];
-
-    /* ===== Theme ===== */
-    const LS_THEME = 'ct_theme';
-    function applyTheme(t){ document.documentElement.setAttribute('data-theme', t); localStorage.setItem(LS_THEME, t); }
-    (function initTheme(){
-      const saved = localStorage.getItem(LS_THEME);
-      applyTheme(saved ? saved : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
-    })();
-    q('#btnTheme')?.addEventListener('click', ()=>{
-      const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-      applyTheme(cur==='dark'?'light':'dark');
-    });
-
-    /* ===== Toasts ===== */
-    const elToaster = q('#toaster');
-    function showToast(type, msg, ms=3000){
-      try{
-        const el = document.createElement('div');
-        el.className = `toast ${type}`;
-        el.innerHTML = `<span>${escapeHtml(msg)}</span><button onclick="this.parentElement.remove()">✕</button>`;
-        elToaster.appendChild(el);
-        setTimeout(()=>{ el.remove(); }, ms);
-      }catch(e){ alert(msg); }
-    }
-    CT.copy = function(sel) {
-        const txt = q(sel).textContent;
-        navigator.clipboard.writeText(txt).then(() => showToast('success', 'Copied!'));
-    };
-
-    /* ===== Persistence ===== */
-    const LS_CUSTOMERS = "ct_customers_v1";
-    const LS_TASKS = "ct_tasks_v1";
-    const LS_LEADS = "ct_leads_v1";
-    const LS_SNOOZE_TASKS = "ct_task_snoozes_v1";
-    const LS_GEN_HISTORY = "ct_gen_history_v1";
-
-    function loadJSON(key, fallback){ try{ const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }catch{ return fallback; } }
-
-    let customers = loadJSON(LS_CUSTOMERS, []);
-    let tasks = loadJSON(LS_TASKS, []);
-    let leads = loadJSON(LS_LEADS, []);
-    if (!Array.isArray(leads)) leads = [];
-    let taskSnoozes = loadJSON(LS_SNOOZE_TASKS, {});
-    let genHistory = loadJSON(LS_GEN_HISTORY, []);
-
-    function saveAll(){
-      localStorage.setItem(LS_CUSTOMERS, JSON.stringify(customers));
-      localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
-      localStorage.setItem(LS_LEADS, JSON.stringify(leads));
-      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-      localStorage.setItem(LS_GEN_HISTORY, JSON.stringify(genHistory)); 
-      render();
-      refreshDueSoonBadge();
-    }
-
-    /* ===== State ===== */
-    const STATUS = { PENDING: "Pending", INPROG: "In Progress", ONHOLD: "On Hold", CANCELLED: "Cancelled", COMPLETED: "Completed" };
-    // Rank for search sorting (1 = highest priority)
-    const STATUS_RANK = { "Pending": 1, "In Progress": 2, "On Hold": 3, "Cancelled": 4, "Completed": 5 };
-
-    let activeTab = "Active";
-    let activeFilter = STATUS.PENDING;
-    let leadFilter = "All";
-    let searchTerm = ""; 
-    let selectedTaskForCustomSnooze = null;
-    let smartDeleteTargetDate = null; // For the Smart Delete Modal
-
-    /* ===== Helpers ===== */
-    function isOverdue(t){
-      if(!t.dueDate || t.status===STATUS.COMPLETED) return false;
-      const today = new Date(); today.setHours(0,0,0,0);
-      const due = new Date(t.dueDate); due.setHours(0,0,0,0);
-      return due < today;
-    }
-    function pillClass(status){
-      switch(status){
-        case STATUS.PENDING: return "p-pending";
-        case STATUS.INPROG: return "p-inprog";
-        case STATUS.ONHOLD: return "p-onhold";
-        case STATUS.CANCELLED: return "p-cancel";
-        case STATUS.COMPLETED: return "p-complete";
-        default: return "p-pending";
-      }
-    }
-    function leadPillClass(s){
-      return s==="Converted"?"p-complete": s==="Waiting Confirmation"?"p-onhold": s==="Interested"?"p-inprog": "p-pending";
-    }
-    function makePhoneLink(num){
-      const clean = num.replace(/[^\d]/g,'');
-      return `<a href="tel:${clean}" onclick="event.stopPropagation()">${escapeHtml(num)}</a>`;
-    }
-
-    /* ===== Search & Render Logic ===== */
-    q('#globalSearch').addEventListener('input', (e)=>{
-      searchTerm = e.target.value.toLowerCase().trim();
-      render();
-    });
-
-    const elViews = { Active: q("#activeView"), Completed: q("#completedView"), Leads: q("#leadsView"), Generator: q("#generatorView") };
-    const elActiveList = q("#activeList"), elCompletedList = q("#completedList"), elLeadsList = q("#leadsList");
-
-    function render(){
-      q("#countActive").textContent = `(${tasks.filter(t=>t.status!==STATUS.COMPLETED).length})`;
-      q("#countCompleted").textContent = `(${tasks.filter(t=>t.status===STATUS.COMPLETED).length})`;
-      q("#countLeads").textContent = `(${leads.length})`;
-
-      Object.keys(elViews).forEach(k => elViews[k].classList.add("hidden"));
-      if(elViews[activeTab]) elViews[activeTab].classList.remove("hidden");
-
-      if(activeTab==="Active") renderActive();
-      else if(activeTab==="Completed") renderCompleted();
-      else if(activeTab==="Leads") renderLeads();
-      else if(activeTab==="Generator") renderGenHistory(); 
-    }
-
-    /* ===== Render Functions ===== */
-    function quickActionsHTML(t, c){
-      const waNum = c && (c.numbers||[])[0] ? c.numbers[0] : null;
-      return `
-        <div class="actions" data-actions="${t.id}">
-          <button class="iconbtn" data-act="edit" title="Edit">✏️ Edit</button>
-          ${t.status!==STATUS.COMPLETED ? `<button class="iconbtn" data-act="complete" title="Mark Complete">✅ Done</button>` : ``}
-          <button class="iconbtn" data-act="snooze1d" title="Snooze 1 day">😴 1d</button>
-          <button class="iconbtn" data-act="snooze3d" title="Snooze 3 days">😴 3d</button>
-          <button class="iconbtn" data-act="snoozeToday" title="Snooze Today">😴 Today</button>
-          ${waNum ? `<button class="iconbtn" onclick="event.stopPropagation(); CT.openMsg('${waNum}', '${escapeHtml(c.name)}')">💬 WA</button>` : `<button class="iconbtn" disabled title="No number">WA</button>`}
-        </div>
-      `;
-    }
-
-    // Unified Render Helper for Tasks
-    function renderTaskList(targetEl, filterFn) {
-       targetEl.innerHTML = "";
-       let pool = tasks.slice();
-       
-       // Apply filters
-       pool = pool.filter(filterFn);
-       
-       // Search Logic (Unified Hierarchy)
-       if(searchTerm){
-          // If searching, grab ALL tasks (ignore tab filter slightly) so user finds everything
-          pool = tasks.filter(t => {
-             const c = customers.find(x=>x.id===t.customerId);
-             const txt = ((c?c.name:"") + " " + (c?(c.numbers||[]).join(" "):"") + " " + (t.description||"")).toLowerCase();
-             return txt.includes(searchTerm);
-          });
-          // Sort by Hierarchy (Rank)
-          pool.sort((a,b)=> (STATUS_RANK[a.status]||9) - (STATUS_RANK[b.status]||9));
-       } else {
-          // Default Sort: Updated Date
-          pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-       }
-
-       if(pool.length===0){
-          targetEl.innerHTML = `<div class="row"><div class="meta">No tasks found.</div></div>`;
-          return;
-       }
-       
-       for(const t of pool){
-          const c = customers.find(c=>c.id===t.customerId);
-          const name = c ? c.name : "(missing)";
-          const nums = c ? (c.numbers||[]).map(makePhoneLink).join(", ") : "";
-          const overdue = isOverdue(t);
-          const row = document.createElement("div");
-          row.className = "row"; row.dataset.taskId = t.id; row.tabIndex = 0;
-          row.innerHTML = `
-            <div class="meta">
-              <div class="inline wrap">
-                <strong>${escapeHtml(name)}</strong>
-                ${nums ? `<span class="muted small">(${nums})</span>` : ""}
-                <span class="pill ${pillClass(t.status)}" style="margin-left:8px">${t.status}</span>
-                ${t.dueDate && t.status!==STATUS.COMPLETED ? `<span class="pill ${overdue? 'p-overdue':'p-due'}" style="margin-left:8px">${overdue? 'Overdue:':'Due:'} ${t.dueDate}</span>` : ""}
-              </div>
-              <div class="muted small" style="margin-top:4px; white-space:pre-wrap">${escapeHtml(t.description||"(no description)")}</div> 
-              ${quickActionsHTML(t, c)}
-            </div>
-          `;
-          targetEl.appendChild(row);
-       }
-    }
-
-    function renderActive(){
-       renderTaskList(elActiveList, t => {
-          if(searchTerm) return true; // Search overrides status filter
-          if(t.status === STATUS.COMPLETED) return false;
-          return [STATUS.PENDING, STATUS.INPROG, STATUS.ONHOLD, STATUS.CANCELLED].includes(activeFilter) ? t.status === activeFilter : true;
-       });
-    }
-
-    function renderCompleted(){
-       renderTaskList(elCompletedList, t => {
-          if(searchTerm) return t.status === STATUS.COMPLETED; // In completed tab, prefer completed
-          return t.status === STATUS.COMPLETED;
-       });
-    }
-
-    function renderLeads(){
-      elLeadsList.innerHTML = "";
-      let pool = leads.slice();
-      if (leadFilter!=="All") pool = pool.filter(l=>l.status===leadFilter);
-      if(searchTerm){
-        pool = pool.filter(l => {
-          const txt = ((l.name||"") + " " + (l.numbers||[]).join(" ") + " " + (l.description||"") + " " + (l.product||"")).toLowerCase();
-          return txt.includes(searchTerm);
-        });
-      }
-      pool.sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
-      
-      if (pool.length===0){
-        elLeadsList.innerHTML = `<div class="row"><div class="meta">No leads found.</div><button class="btn primary sm" onclick="CT.openLeadAdd()">Add Lead</button></div>`;
-        return;
-      }
-      for(const l of pool){
-        const isConverted = l.status === "Converted";
-        const row = document.createElement("div");
-        row.className = "row"; row.dataset.leadId = l.id; row.tabIndex = 0;
-        const nums = (l.numbers||[]).map(makePhoneLink).join(", ");
-        const waNum = (l.numbers||[])[0] || null;
-        row.innerHTML = `
-          <div class="meta">
-            <div class="inline wrap">
-              <strong>${escapeHtml(l.name||"(unnamed)")}</strong>
-              ${nums ? `<span class="muted small">(${nums})</span>` : ""}
-              <span class="pill ${leadPillClass(l.status)}" style="margin-left:8px">${l.status}</span>
-              ${l.product ? `<span class="pill p-due" style="margin-left:8px">${escapeHtml(l.product)}</span>` : ""}
-            </div>
-            ${l.description ? `<div class="muted small" style="margin-top:4px; white-space:pre-wrap">${escapeHtml(l.description)}</div>` : ""}
-            <div class="actions" style="margin-top:8px">
-               <button class="iconbtn" onclick="event.stopPropagation(); CT.openLeadModal('${l.id}')">✏️ Edit</button>
-               ${waNum ? `<button class="iconbtn" onclick="event.stopPropagation(); CT.openMsg('${waNum}', '${escapeHtml(l.name)}')">💬 WA</button>` : ``}
-               ${!isConverted ? `<button class="iconbtn" style="border-color:var(--accent2); color:var(--accent2)" onclick="event.stopPropagation(); CT.convert('${l.id}')">⭐ Promote to Customer</button>` : ``}
-            </div>
-          </div>
-        `;
-        elLeadsList.appendChild(row);
-      }
-    }
-
-    // NEW: Render Generator History (Timeline & Accordion)
-    function renderGenHistory() {
-      const list = q('#genHistoryList'); list.innerHTML = "";
-      if(genHistory.length === 0) { list.innerHTML = `<div class="muted small" style="padding:20px; text-align:center">No scheduled commands yet.</div>`; return; }
-      
-      // Group by date
-      const grouped = {};
-      genHistory.forEach(item => { if(!grouped[item.date]) grouped[item.date]=[]; grouped[item.date].push(item); });
-      
-      // Sort keys ASCENDING (Present -> Future)
-      const dates = Object.keys(grouped).sort(); 
-      
-      dates.forEach(date => {
-          const div = document.createElement('div');
-          div.className = "history-group";
-          // Header
-          div.innerHTML = `
-            <div class="history-header" onclick="this.parentElement.classList.toggle('expanded')">
-               <div><span class="arrow">▼</span> ${date} <span class="muted small">(${grouped[date].length})</span></div>
-               <div style="display:flex; gap:8px" onclick="event.stopPropagation()">
-                   <button class="iconbtn sm" onclick="CT.gen.emailDay('${date}')" title="Email Schedule">✉️</button>
-                   <button class="iconbtn sm" style="color:var(--danger); border-color:var(--danger)" onclick="CT.gen.promptDelete('${date}')" title="Delete Schedule">🗑️</button>
-               </div>
-            </div>
-            <div class="history-group-content"></div>
-          `;
-          // Content
-          const contentDiv = div.querySelector('.history-group-content');
-          grouped[date].forEach(item => {
-              const row = document.createElement('div');
-              row.className = "row";
-              row.style.padding = "8px 14px";
-              row.innerHTML = `
-                 <div class="meta" style="font-family:monospace; font-size:13px">
-                    <span style="color:var(--accent2); font-weight:bold">${item.time}</span> 
-                    <span style="opacity:0.8">${escapeHtml(item.msg || '(No msg)')}</span>
-                 </div>
-                 <button class="iconbtn sm" title="Reuse / Edit" onclick="CT.gen.reuse('${item.id}')">🔄</button>
-              `;
-              contentDiv.appendChild(row);
-          });
-          list.appendChild(div);
-      });
-    }
-
-    /* ===== Tab Switching ===== */
-    function setTab(which){
-      activeTab = which;
-      q("#tabActive").classList.toggle("active", which==="Active");
-      q("#tabCompleted").classList.toggle("active", which==="Completed");
-      q("#tabLeads").classList.toggle("active", which==="Leads");
-      q("#tabGenerator").classList.toggle("active", which==="Generator");
-      render();
-    }
-    q("#tabActive").addEventListener('click', ()=> setTab('Active'));
-    q("#tabCompleted").addEventListener('click', ()=> setTab('Completed'));
-    q("#tabLeads").addEventListener('click', ()=> setTab('Leads'));
-    q("#tabGenerator").addEventListener('click', ()=> setTab('Generator'));
-
-    qAll('.filters .chip[data-filter]').forEach(ch=>{
-      ch.addEventListener("click", ()=>{
-        qAll('.filters .chip[data-filter]').forEach(x=>x.classList.remove("active"));
-        ch.classList.add("active");
-        activeFilter = ch.getAttribute("data-filter");
+    // Save
+    const save = () => {
+        localStorage.setItem('ct_tasks', JSON.stringify(tasks));
+        localStorage.setItem('ct_cust', JSON.stringify(customers));
+        localStorage.setItem('ct_leads', JSON.stringify(leads));
+        localStorage.setItem('ct_bot', JSON.stringify(botHist));
         render();
-      });
-    });
-    qAll('.lead-filter').forEach(ch=>{
-      ch.addEventListener("click", ()=>{
-        qAll('.lead-filter').forEach(x=>x.classList.remove('active'));
-        ch.classList.add('active');
-        leadFilter = ch.getAttribute('data-leadfilter');
-        renderLeads();
-      });
-    });
-
-    /* ===== Logic: Lead Conversion ===== */
-    CT.convert = function(leadId){
-      const lead = leads.find(l => l.id === leadId);
-      if (!lead) return;
-      const leadNums = new Set((lead.numbers || []).map(n => n.trim()));
-      let customer = customers.find(c => (c.numbers || []).some(n => leadNums.has(n)));
-      if (customer) {
-        if(!confirm(`Customer "${customer.name}" already exists with this number. Link this lead to them?`)) return;
-      } else {
-        customer = { id: uuid(), name: lead.name, numbers: lead.numbers, createdAt: nowISO(), updatedAt: nowISO() };
-        customers.push(customer);
-      }
-      tasks.push({
-        id: uuid(), customerId: customer.id,
-        description: `Converted from Lead: ${lead.product || 'General'}. \n${lead.description || ''}`,
-        dueDate: new Date().toISOString().split('T')[0],
-        status: STATUS.PENDING, createdAt: nowISO(), updatedAt: nowISO()
-      });
-      lead.status = "Converted";
-      lead.updatedAt = nowISO();
-      saveAll();
-      showToast('success', 'Lead promoted to Customer & Task created!');
-      setTab('Active');
     };
 
-    /* ===== Logic: Timestamps & Notes ===== */
-    function appendTimestampTo(sel) {
-      const el = q(sel);
-      const now = new Date();
-      const stamp = `\n\n[${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}] - `;
-      el.value += stamp; el.focus(); el.scrollTop = el.scrollHeight;
-    }
-    q('#btnAppendTimestampTask').addEventListener('click', (e)=>{ e.preventDefault(); appendTimestampTo('#taskDesc'); });
-    q('#btnAppendTimestampLead').addEventListener('click', (e)=>{ e.preventDefault(); appendTimestampTo('#leadDesc'); });
-
-    /* ===== Task Modal ===== */
-    const elTaskModal = q("#taskModal");
-    let editingTaskId = null, editingTaskCustomerId = null;
-    function openTaskModal(customerId=null, taskId=null){
-      editingTaskId = taskId; editingTaskCustomerId = customerId;
-      const elDel = q('#deleteTaskBtn');
-      if(taskId){
-        const t = tasks.find(x=>x.id===taskId);
-        const c = customers.find(x=>x.id===t.customerId);
-        q("#taskModalTitle").textContent = "Edit Task";
-        q("#taskCustomerName").value = c?.name || "";
-        q("#taskCustomerMobile").value = (c?.numbers || []).join(", ");
-        q("#taskDesc").value = t.description || "";
-        q("#taskDue").value = t.dueDate || "";
-        q("#taskStatus").value = t.status || STATUS.PENDING;
-        q("#taskTimestamps").textContent = `Updated: ${fmtDate(t.updatedAt)}`;
-        elDel.classList.remove('hidden');
-      }else{
-        q("#taskModalTitle").textContent = "Add Task";
-        q("#taskCustomerName").value = "";
-        q("#taskCustomerMobile").value = "";
-        q("#taskDesc").value = "";
-        q("#taskDue").value = "";
-        q("#taskStatus").value = STATUS.PENDING;
-        q("#taskTimestamps").textContent = "";
-        elDel.classList.add('hidden');
-      }
-      elTaskModal.style.display = "flex";
-    }
-    CT.openAdd = ()=> openTaskModal(null, null);
-    CT.editTask = (id)=>{ const t = tasks.find(x=>x.id===id); if(t) openTaskModal(t.customerId, id); };
-
-    q("#saveTaskBtn").addEventListener("click", ()=>{
-      const name = (q("#taskCustomerName").value||"").trim();
-      const numbersRaw = (q("#taskCustomerMobile").value||"").split(",").map(s=>s.trim()).filter(Boolean);
-      const desc = q("#taskDesc").value.trim();
-      const due = q("#taskDue").value || "";
-      const st = q("#taskStatus").value;
-      if (!name && numbersRaw.length===0){ showToast('error','Name or number required'); return; }
-
-      let customer = editingTaskCustomerId ? customers.find(c=>c.id===editingTaskCustomerId) : null;
-      if(!customer && name) customer = customers.find(c=> (c.name||"") === name);
-      if(!customer && numbersRaw.length) customer = customers.find(c => (c.numbers||[]).some(m => numbersRaw.includes(m)));
-      
-      if(!customer){
-        customer = { id: uuid(), name, numbers: numbersRaw, createdAt: nowISO(), updatedAt: nowISO() };
-        customers.push(customer);
-      }else{
-        const exist = new Set((customer.numbers||[]));
-        numbersRaw.forEach(n=>exist.add(n));
-        customer.numbers = Array.from(exist);
-        customer.updatedAt = nowISO();
-      }
-
-      if(editingTaskId){
-        const t = tasks.find(x=>x.id===editingTaskId);
-        t.customerId = customer.id; t.description = desc; t.dueDate = due; t.status = st; t.updatedAt = nowISO();
-      }else{
-        tasks.push({ id: uuid(), customerId: customer.id, description: desc, dueDate: due, status: st, createdAt: nowISO(), updatedAt: nowISO() });
-      }
-      saveAll(); elTaskModal.style.display = "none"; showToast('success','Task saved');
-    });
-    q("#cancelTaskBtn").addEventListener("click", ()=>elTaskModal.style.display="none");
-    q("#deleteTaskBtn").addEventListener("click", ()=>{
-      if(editingTaskId && confirm("Delete this task permanently?")){
-        tasks = tasks.filter(t=>t.id!==editingTaskId);
-        saveAll(); elTaskModal.style.display="none"; showToast('success','Task deleted');
-      }
-    });
-    q('#btnAddTask').addEventListener('click', ()=> openTaskModal());
-
-    /* ===== Row Actions ===== */
-    function snoozeTask(taskId, ms){
-      taskSnoozes[taskId] = Date.now() + ms;
-      localStorage.setItem(LS_SNOOZE_TASKS, JSON.stringify(taskSnoozes));
-      refreshDueSoonBadge(); renderDueSoonModal();
-    }
-    function handleRowActions(e){
-      const actionHost = e.target.closest('.actions');
-      if (!actionHost) {
-        const row = e.target.closest('.row[data-task-id]');
-        if (row) CT.editTask(row.dataset.taskId);
-        return;
-      }
-      e.stopPropagation();
-      const taskId = actionHost.getAttribute('data-actions');
-      const act = e.target.closest('[data-act]')?.getAttribute('data-act');
-      if (!act) return;
-      
-      selectedTaskForCustomSnooze = taskId;
-      if (act==='edit') CT.editTask(taskId);
-      else if (act==='complete') openCompleteModal(taskId);
-      else if (act==='snooze1d') snoozeTask(taskId, 86400000);
-      else if (act==='snooze3d') snoozeTask(taskId, 259200000);
-      else if (act==='snoozeToday') { const eod=new Date(); eod.setHours(23,59,59,999); taskSnoozes[taskId]=+eod; saveAll(); }
-    }
-    elActiveList.addEventListener('click', handleRowActions);
-    elCompletedList.addEventListener('click', handleRowActions);
-
-    /* ===== Due Soon & Stats ===== */
-    const DUE_WINDOW_DAYS = 3;
-    function collectDueSoon(){
-      const now = Date.now();
-      for (const [tid, ts] of Object.entries(taskSnoozes)) if (!ts || ts <= now) delete taskSnoozes[tid];
-      const out = [];
-      const today = new Date(); today.setHours(0,0,0,0);
-      for (const t of tasks){
-        if (![STATUS.PENDING,STATUS.INPROG,STATUS.ONHOLD].includes(t.status)) continue;
-        if (!t.dueDate || taskSnoozes[t.id]) continue;
-        const due = new Date(t.dueDate); due.setHours(0,0,0,0);
-        const diff = Math.round((due - today) / 86400000);
-        if (diff <= DUE_WINDOW_DAYS) out.push({ t, diff });
-      }
-      return out.sort((a,b)=> new Date(a.t.dueDate) - new Date(b.t.dueDate));
-    }
-    function refreshDueSoonBadge(){ const n = collectDueSoon().length; q('#dueSoonCount').textContent = n ? `(${n})` : ''; }
-    function renderDueSoonModal(){
-      const list = q('#dueSoonList'); list.innerHTML = "";
-      const items = collectDueSoon();
-      if(!items.length) { list.innerHTML = `<div class="row"><div class="meta">No overdue tasks 🎉</div></div>`; return; }
-      for(const {t, diff} of items){
-          const c = customers.find(x=>x.id===t.customerId);
-          const row = document.createElement('div'); row.className = 'row';
-          row.innerHTML = `<div class="meta"><strong>${c?.name||'Unknown'}</strong> <span class="pill ${diff<0?'p-overdue':'p-due'}">${diff<0?'Overdue':'Due'} ${t.dueDate}</span><div class="small muted">${t.description}</div>${quickActionsHTML(t,c)}</div>`;
-          list.appendChild(row);
-      }
-      list.onclick = handleRowActions;
-    }
-    q('#btnDueSoon').addEventListener('click', ()=>{ renderDueSoonModal(); q('#dueSoonModal').style.display='flex'; });
-    q('#btnDueSoonClose').addEventListener('click', ()=>{ q('#dueSoonModal').style.display='none'; });
-    q('#btnSnooze1d').addEventListener('click', ()=>{ 
-       // Snooze all visible in due soon list
-       collectDueSoon().forEach(i => taskSnoozes[i.t.id] = Date.now() + 86400000);
-       saveAll(); renderDueSoonModal();
-    });
-    q('#applyCustomSnooze').addEventListener('click', ()=>{
-      const val = q('#customSnoozeDT').value;
-      if(val && selectedTaskForCustomSnooze){
-        taskSnoozes[selectedTaskForCustomSnooze] = new Date(val).getTime();
-        saveAll(); renderDueSoonModal(); showToast('success','Snoozed');
-      }
-    });
-
-    /* ===== Complete + Follow Up Logic ===== */
-    const elCompleteModal = q('#completeModal');
-    let completingTaskId = null;
-    function openCompleteModal(tid){
-       completingTaskId = tid;
-       const t = tasks.find(x=>x.id===tid);
-       const c = customers.find(x=>x.id===t.customerId);
-       q('#completeContext').innerHTML = `<strong>${c?.name||''}</strong> — ${t?.description||''}`;
-       q('#completeNotes').value = "";
-       q('#chkFollowUp').checked = false;
-       q('#followUpOptions').classList.add('hidden');
-       elCompleteModal.style.display = 'flex';
-    }
-    q('#chkFollowUp').addEventListener('change', (e)=> q('#followUpOptions').classList.toggle('hidden', !e.target.checked));
-    
-    function completeAndFollowUp(email){
-       if(!completingTaskId) return;
-       const notes = q('#completeNotes').value.trim();
-       const t = tasks.find(x=>x.id===completingTaskId);
-       t.status = STATUS.COMPLETED; t.updatedAt = nowISO();
-       
-       if(q('#chkFollowUp').checked){
-         const days = parseInt(q('#followUpDelay').value);
-         const newDate = new Date(); newDate.setDate(newDate.getDate() + days);
-         tasks.push({
-           id: uuid(), customerId: t.customerId,
-           description: q('#followUpDesc').value || "Follow up",
-           dueDate: newDate.toISOString().split('T')[0],
-           status: STATUS.PENDING, createdAt: nowISO(), updatedAt: nowISO()
-         });
-         showToast('success','Task Completed & Follow-up Created');
-       } else {
-         showToast('success','Task Completed');
-       }
-       saveAll(); elCompleteModal.style.display='none';
-       
-       if(email){
-         const c = customers.find(x=>x.id===t.customerId);
-         const body = `Task Completed\nCustomer: ${c?.name}\nNotes: ${notes}`;
-         window.location.href = `mailto:?subject=Task Completed&body=${encodeURIComponent(body)}`;
-       }
-    }
-    q('#btnCompleteOnly').addEventListener('click', ()=> completeAndFollowUp(false));
-    q('#btnCompleteAndEmail').addEventListener('click', ()=> completeAndFollowUp(true));
-    q('#btnCompleteCancel').addEventListener('click', ()=> elCompleteModal.style.display='none');
-
-    /* ===== Lead Modal ===== */
-    const elLeadModal = q('#leadModal');
-    let editingLeadId = null;
-    function openLeadModal(lid=null){
-      editingLeadId = lid;
-      const elDel = q('#deleteLeadBtn');
-      if(lid){
-        const l = leads.find(x=>x.id===lid);
-        q('#leadModalTitle').textContent = "Edit Lead";
-        q('#leadName').value = l.name||"";
-        q('#leadNumbers').value = (l.numbers||[]).join(", ");
-        q('#leadProduct').value = l.product||"";
-        q('#leadStatus').value = l.status||"Talked";
-        q('#leadDesc').value = l.description||"";
-        q('#leadTimestamps').textContent = `Updated: ${fmtDate(l.updatedAt)}`;
-        elDel.classList.remove('hidden');
-      }else{
-        q('#leadModalTitle').textContent = "Add Lead";
-        q('#leadName').value = ""; q('#leadNumbers').value = "";
-        q('#leadProduct').value = ""; q('#leadStatus').value = "Talked"; q('#leadDesc').value = "";
-        q('#leadTimestamps').textContent = "";
-        elDel.classList.add('hidden');
-      }
-      elLeadModal.style.display = 'flex';
-    }
-    CT.openLeadModal = openLeadModal;
-    CT.openLeadAdd = ()=> openLeadModal(null);
-    q('#addLeadBtn').addEventListener('click', ()=> openLeadModal(null));
-    q('#cancelLeadBtn').addEventListener('click', ()=> elLeadModal.style.display='none');
-    
-    q('#saveLeadBtn').addEventListener('click', ()=>{
-       const name = q('#leadName').value.trim();
-       const nums = q('#leadNumbers').value.split(',').map(s=>s.trim()).filter(Boolean);
-       if(!name && !nums.length) return showToast('error','Name or number required');
-       
-       if(editingLeadId){
-         const l = leads.find(x=>x.id===editingLeadId);
-         l.name=name; l.numbers=nums; l.product=q('#leadProduct').value; l.status=q('#leadStatus').value; l.description=q('#leadDesc').value; l.updatedAt=nowISO();
-       }else{
-         leads.push({ id:uuid(), name, numbers:nums, product:q('#leadProduct').value, status:q('#leadStatus').value, description:q('#leadDesc').value, createdAt:nowISO(), updatedAt:nowISO() });
-       }
-       saveAll(); elLeadModal.style.display='none'; showToast('success','Lead Saved');
-    });
-    q('#deleteLeadBtn').addEventListener('click', ()=>{
-      if(editingLeadId){ leads = leads.filter(l=>l.id!==editingLeadId); saveAll(); elLeadModal.style.display='none'; showToast('success','Lead Deleted'); }
-    });
-    elLeadsList.addEventListener('click', (e)=>{
-       const row = e.target.closest('.row[data-lead-id]');
-       if(row && !e.target.closest('button')) openLeadModal(row.dataset.leadId);
-    });
-
-    /* ===== WhatsApp Modal ===== */
-    let currentMsgNumber = "", currentMsgName = "";
-    function openMsgModal(number, name) {
-      if (!number) return showToast('error', 'No number available');
-      currentMsgNumber = number.replace(/[^\d]/g, ''); 
-      currentMsgName = name;
-      const list = q('#msgTemplatesList');
-      list.innerHTML = "";
-      MSG_TEMPLATES.forEach(tmpl => {
-        const btn = document.createElement('div');
-        btn.className = "row"; 
-        btn.style.padding = "10px";
-        btn.innerHTML = `<strong>${tmpl.label}</strong>`;
-        btn.onclick = () => {
-          const finalTxt = tmpl.text.replace("{name}", (currentMsgName||"").split(' ')[0]);
-          const url = `https://wa.me/${currentMsgNumber}?text=${encodeURIComponent(finalTxt)}`;
-          window.open(url, '_blank');
-          q('#msgModal').style.display = 'none';
-        };
-        list.appendChild(btn);
-      });
-      q('#msgModal').style.display = 'flex';
-    }
-    CT.openMsg = openMsgModal;
-
-    /* ===== Stats Modal ===== */
-    q('#btnStats').addEventListener('click', ()=>{
-      const totLeads = leads.length;
-      const conv = leads.filter(l=>l.status==='Converted').length;
-      const rate = totLeads ? Math.round((conv/totLeads)*100) : 0;
-      const pending = tasks.filter(t=>t.status===STATUS.PENDING).length;
-      const overdue = tasks.filter(t=>isOverdue(t)).length;
-      const thisMonth = new Date().getMonth();
-      const newThisMonth = customers.filter(c=>new Date(c.createdAt).getMonth() === thisMonth).length;
-
-      const card = (t,v,s,c) => `<div class="card" style="text-align:center; padding:12px; border-color:${c||'var(--border)'}">
-        <div class="sub">${t}</div><div style="font-size:24px; font-weight:bold; color:${c||'inherit'}">${v}</div><div class="small muted">${s}</div></div>`;
-      
-      q('#statsContent').innerHTML = 
-        card('Conversion Rate', rate+'%', `${conv}/${totLeads} Leads`, 'var(--accent2)') +
-        card('Pending Tasks', pending, 'Active Workload', 'var(--accent)') +
-        card('Attention', overdue, 'Overdue Tasks', 'var(--danger)') +
-        card('Growth', newThisMonth, 'New Customers (Month)', 'var(--text)');
-      q('#statsModal').style.display = 'flex';
-    });
-
-    /* ===== CSV Export/Import & Backup ===== */
-    function csvFromRows(rows){ return rows.map(r=>r.map(c=> `"${String(c||'').replace(/"/g,'""')}"`).join(",")).join("\n"); }
-    function dl(blob, name){ const u=URL.createObjectURL(blob), a=document.createElement('a'); a.href=u; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
-    
-    q('#btnShareCSVs').addEventListener('click', ()=>{
-      const c = "\uFEFF"+csvFromRows([['ID','Name','Numbers','Created'],...customers.map(x=>[x.id,x.name,x.numbers.join(','),x.createdAt])]);
-      const t = "\uFEFF"+csvFromRows([['ID','CustID','Desc','Due','Status'],...tasks.map(x=>[x.id,x.customerId,x.description,x.dueDate,x.status])]);
-      const l = "\uFEFF"+csvFromRows([['ID','Name','Numbers','Product','Status','Desc'],...leads.map(x=>[x.id,x.name,x.numbers.join(','),x.product,x.status,x.description])]);
-      dl(new Blob([c],{type:'text/csv'}), 'Customers.csv');
-      dl(new Blob([t],{type:'text/csv'}), 'Tasks.csv');
-      dl(new Blob([l],{type:'text/csv'}), 'Leads.csv');
-    });
-
-    q('#btnBackupZip').addEventListener('click', async ()=>{
-      if(!window.JSZip) return alert('JSZip not loaded yet');
-      const zip = new JSZip();
-      zip.file('backup.json', JSON.stringify({customers,tasks,leads,taskSnoozes}));
-      const blob = await zip.generateAsync({type:'blob'});
-      dl(blob, `CRM_Backup_${new Date().toISOString().slice(0,10)}.zip`);
-    });
-
-    /* ===== BOT GENERATOR LOGIC ===== */
-    CT.gen = {};
-    const elGenDate = q('#genDate'), elGenTime = q('#genTime'), elGenMsg = q('#genMsg');
-    
-    function initGenInputs(d = new Date()) {
-       const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
-       elGenDate.value = `${y}-${m}-${day}`;
-       const h = String(d.getHours()).padStart(2,'0'); const min = String(d.getMinutes()).padStart(2,'0');
-       elGenTime.value = `${h}:${min}`;
-       elGenMsg.value = "";
-       q('#genResultArea').classList.add('hidden');
-    }
-
-    CT.gen.setSmartTime = function(h, m) {
-       let d = new Date(); d.setHours(h, m, 0, 0);
-       if (d < new Date()) { d.setDate(d.getDate() + 1); d = getNextWorkingDay(d); }
-       updateGenInputs(d);
+    // Toaster
+    const toast = (msg, type='info') => {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.style.background = type==='error'?'var(--danger)':'var(--panel2)';
+        d.style.color = '#fff'; d.style.padding='8px 16px'; d.textContent = msg;
+        q('#toaster').appendChild(d);
+        setTimeout(()=>d.remove(), 2500);
     };
 
-    function updateGenInputs(d) {
-       const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
-       elGenDate.value = `${y}-${m}-${day}`;
-       const h = String(d.getHours()).padStart(2,'0'); const min = String(d.getMinutes()).padStart(2,'0');
-       elGenTime.value = `${h}:${min}`;
-    }
-
-    function isWorkingDay(d) {
-       const day = d.getDay(); const date = d.getDate();
-       if (day === 0) return false; 
-       if (day === 6) { const wn = Math.ceil(date / 7); if (wn === 2 || wn === 4) return false; }
-       return true;
-    }
-    
-    function getNextWorkingDay(d) { while (!isWorkingDay(d)) d.setDate(d.getDate() + 1); return d; }
-
-    CT.gen.addWorkingDays = function(days) {
-       const val = elGenDate.value;
-       const [y, M, D] = val.split('-').map(Number);
-       let d = new Date(y, M - 1, D);
-       let added = 0;
-       while (added < days) {
-           d.setDate(d.getDate() + 1);
-           if (isWorkingDay(d)) added++;
-       }
-       d.setHours(10, 0, 0, 0);
-       updateGenInputs(d);
-    };
-
-    // --- Helper for Emailing ---
-    function sendScheduleEmail(dateKey) {
-        const items = genHistory.filter(i => i.date === dateKey);
-        let text = `SCHEDULE FOR ${dateKey}:\n\n`;
-        items.forEach(i => text += `• ${i.time} - ${i.clean}\n`);
-        if (window.AppInventor) window.AppInventor.setWebViewString(text);
-        else window.location.href = `mailto:?subject=Schedule ${dateKey}&body=${encodeURIComponent(text)}`;
-    }
-
-    // --- History Actions ---
-    CT.gen.emailDay = function(dateKey) {
-        sendScheduleEmail(dateKey);
-    };
-
-    CT.gen.promptDelete = function(dateKey) {
-        smartDeleteTargetDate = dateKey;
-        q('#sdDate').textContent = dateKey;
-        q('#smartDeleteModal').style.display='flex';
-    };
-
-    // Smart Delete Logic
-    q('#btnSD_EmailDelete').addEventListener('click', () => {
-        if(!smartDeleteTargetDate) return;
-        sendScheduleEmail(smartDeleteTargetDate); // 1. Email
-        // 2. Delete after short delay (to allow email trigger)
-        setTimeout(()=>{
-            genHistory = genHistory.filter(i => i.date !== smartDeleteTargetDate);
-            saveAll();
-            q('#smartDeleteModal').style.display='none';
-            showToast('success', 'Emailed & Deleted');
-        }, 1000);
-    });
-    
-    q('#btnSD_JustDelete').addEventListener('click', () => {
-        if(!smartDeleteTargetDate) return;
-        genHistory = genHistory.filter(i => i.date !== smartDeleteTargetDate);
-        saveAll();
-        q('#smartDeleteModal').style.display='none';
-        showToast('success', 'Deleted');
+    /* --- NAVIGATION --- */
+    qAll('.nav-item').forEach(el => {
+        el.addEventListener('click', () => {
+            qAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+            currentView = el.dataset.target;
+            q('#viewTasks').classList.add('hidden');
+            q('#viewLeads').classList.add('hidden');
+            q('#viewBot').classList.add('hidden');
+            q('#' + currentView).classList.remove('hidden');
+            render();
+            window.scrollTo(0,0);
+        });
     });
 
-    // Reuse Logic
-    CT.gen.reuse = function(id) {
-        const item = genHistory.find(i => String(i.id) === String(id));
-        if(item) {
-            elGenDate.value = item.date;
-            elGenTime.value = item.time;
-            elGenMsg.value = item.msg;
-            q('#genResultArea').classList.add('hidden');
-            q('#genModal').style.display='flex'; // Open Modal
-        }
-    };
+    // FAB Logic
+    q('#fab').addEventListener('click', () => {
+        if(currentView === 'viewTasks') openTaskModal();
+        else if(currentView === 'viewLeads') openLeadModal();
+        else if(currentView === 'viewBot') openBotModal();
+    });
 
-    // Generate Button Logic
-    q('#btnGenerateCmd').addEventListener('click', ()=>{
-        const dStr = elGenDate.value;
-        const tStr = elGenTime.value;
-        const msg = elGenMsg.value.trim();
+    /* --- RENDERING --- */
+    function render(){
+        const term = q('#globalSearch').value.toLowerCase().trim();
+        checkDue();
 
-        const botCmd = `!remind ${dStr} ${tStr} ${msg}`;
-        q('#outBot').textContent = botCmd;
-        
-        let cleanCmd = "Invalid Date/Time";
-        if(dStr && tStr) {
-            const [y, M, D] = dStr.split('-').map(Number);
-            const [h, m] = tStr.split(':').map(Number);
-            let cDate = new Date(y, M - 1, D, h, m);
-            cDate.setMinutes(cDate.getMinutes() + 10);
-            
-            const cY = cDate.getFullYear(); const cM = String(cDate.getMonth() + 1).padStart(2, '0');
-            const cD = String(cDate.getDate()).padStart(2, '0'); const cH = String(cDate.getHours()).padStart(2, '0');
-            const cMin = String(cDate.getMinutes()).padStart(2, '0');
-            
-            cleanCmd = `remind ${cY}-${cM}-${cD} ${cH}:${cMin} ${msg}`;
-            q('#outClean').textContent = cleanCmd;
-            
-            // Add to History
-            const safeMsg = msg || "(No Message)";
-            const exists = genHistory.some(i => i.date===dStr && i.time===tStr && i.msg===safeMsg);
-            if(!exists){
-                genHistory.push({ id: Date.now(), date: dStr, time: tStr, msg: safeMsg, clean: cleanCmd });
-                genHistory.sort((a, b) => {
-                     if (a.date !== b.date) return a.date.localeCompare(b.date);
-                     return a.time.localeCompare(b.time);
-                });
-                saveAll();
-            }
+        if(currentView === 'viewTasks') renderTasks(term);
+        else if(currentView === 'viewLeads') renderLeads(term);
+        else if(currentView === 'viewBot') renderBotHist();
+    }
+
+    /* 1. TASKS RENDER (Unified Priority) */
+    function renderTasks(term){
+        const list = q('#taskList'); list.innerHTML = '';
+        let pool = tasks.slice();
+
+        if(term){
+            // Search Mode: Show all matching, sorted by Rank
+            const rank = { "Pending":1, "In Progress":2, "On Hold":3, "Cancelled":4, "Completed":5 };
+            pool = pool.filter(t => {
+               const c = customers.find(x=>x.id===t.custId);
+               return ((c?.name||'') + (t.desc||'')).toLowerCase().includes(term);
+            });
+            pool.sort((a,b) => (rank[a.status]||9) - (rank[b.status]||9));
         } else {
-            q('#outClean').textContent = cleanCmd;
+            // Filter Mode
+            pool = pool.filter(t => t.status === taskFilter);
+            pool.sort((a,b) => new Date(b.updated||0) - new Date(a.updated||0));
         }
-        q('#genResultArea').classList.remove('hidden');
-    });
 
-    q('#btnOpenGenModal').addEventListener('click', ()=> {
-        initGenInputs();
-        q('#genModal').style.display='flex';
-    });
+        if(!pool.length) return list.innerHTML = `<div class="muted" style="text-align:center; padding:20px">No tasks found.</div>`;
+
+        pool.forEach(t => {
+            const c = customers.find(x=>x.id===t.custId);
+            const div = document.createElement('div'); div.className = 'row';
+            div.innerHTML = `
+               <div class="grow" onclick="openTaskModal('${t.id}')">
+                  <div class="inline">
+                     <strong>${c?.name||'Unknown'}</strong>
+                     <span class="pill p-${t.status.replace(' ','')}">${t.status}</span>
+                  </div>
+                  <div class="muted">${t.desc || ''}</div>
+                  ${t.due ? `<div class="muted" style="color:${isOverdue(t)?'var(--danger)':'var(--warn)'}">Due: ${t.due}</div>` : ''}
+               </div>
+               <button class="btn secondary sm" onclick="wa('${c?.mobile}','${c?.name}')">💬</button>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    /* 2. LEADS RENDER */
+    function renderLeads(term){
+        const list = q('#leadList'); list.innerHTML = '';
+        let pool = leads.slice();
+        
+        if(term){
+             pool = pool.filter(l => (l.name+l.prod).toLowerCase().includes(term));
+        } else if(leadFilter !== 'All'){
+             pool = pool.filter(l => l.status === leadFilter);
+        }
+
+        if(!pool.length) return list.innerHTML = `<div class="muted" style="text-align:center; padding:20px">No leads found.</div>`;
+
+        pool.forEach(l => {
+            const div = document.createElement('div'); div.className = 'row';
+            div.innerHTML = `
+               <div class="grow" onclick="openLeadModal('${l.id}')">
+                  <div class="inline"><strong>${l.name}</strong> <span class="pill" style="background:var(--panel); border:1px solid var(--border)">${l.status}</span></div>
+                  <div class="muted">${l.prod}</div>
+               </div>
+               <button class="btn secondary sm" onclick="wa('${l.mobile}','${l.name}')">💬</button>
+               ${l.status!=='Converted' ? `<button class="btn primary sm" onclick="convertLead('${l.id}')">⭐</button>` : ''}
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    /* 3. BOT GEN RENDER (Timeline) */
+    function renderBotHist(){
+        const list = q('#botHistoryList'); list.innerHTML = '';
+        if(!botHist.length) return list.innerHTML = `<div class="muted" style="text-align:center; padding:20px">History empty.</div>`;
+
+        // Group by Date
+        const grouped = {};
+        botHist.forEach(i => { if(!grouped[i.date]) grouped[i.date]=[]; grouped[i.date].push(i); });
+        
+        // Sort keys ASC (Present -> Future)
+        Object.keys(grouped).sort().forEach(date => {
+            const items = grouped[date];
+            const div = document.createElement('div');
+            div.innerHTML = `
+              <div class="hist-group-header" onclick="this.parentElement.classList.toggle('expanded')">
+                 <span>📅 ${date} <span class="muted">(${items.length})</span></span>
+                 <div class="inline">
+                    <button class="btn secondary sm" onclick="event.stopPropagation(); promptSmartDel('${date}')">🗑️</button>
+                 </div>
+              </div>
+              <div class="hist-content">
+                 ${items.map(i => `
+                    <div class="row" style="padding:6px 0">
+                       <div class="muted" style="font-family:monospace; min-width:50px">${i.time}</div>
+                       <div class="grow muted">${i.msg}</div>
+                       <button class="btn secondary sm" onclick="reuseBot('${i.id}')">🔄</button>
+                    </div>
+                 `).join('')}
+              </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    /* --- MODAL LOGIC --- */
+    function closeModals(){ qAll('.backdrop').forEach(e => e.style.display='none'); }
+    qAll('.backdrop').forEach(b => { if(b.id!=='modalSettings') b.addEventListener('click', (e)=>{if(e.target===b) closeModals()}); });
+
+    /* Tasks Logic */
+    function openTaskModal(id=null){
+        editId = id;
+        q('#tName').value = ''; q('#tMobile').value = ''; q('#tDesc').value = ''; q('#tDue').value = '';
+        q('#btnDelTask').classList.add('hidden');
+        if(id){
+            const t = tasks.find(x=>x.id===id);
+            const c = customers.find(x=>x.id===t.custId);
+            q('#tName').value = c.name; q('#tMobile').value = c.mobile;
+            q('#tDesc').value = t.desc; q('#tDue').value = t.due; q('#tStatus').value = t.status;
+            q('#btnDelTask').classList.remove('hidden');
+        }
+        q('#modalTask').style.display = 'flex';
+    }
+    q('#btnSaveTask').onclick = () => {
+        const name = q('#tName').value; const mob = q('#tMobile').value;
+        if(!name) return toast('Name required', 'error');
+        
+        // Find/Create Customer
+        let cid = editId ? tasks.find(x=>x.id===editId).custId : null;
+        if(!cid) {
+             const exist = customers.find(c=>c.name===name || (mob && c.mobile===mob));
+             cid = exist ? exist.id : uuid();
+             if(!exist) customers.push({id:cid, name, mobile:mob});
+        }
+        
+        if(editId){
+            const t = tasks.find(x=>x.id===editId);
+            t.desc = q('#tDesc').value; t.due = q('#tDue').value; t.status = q('#tStatus').value; t.updated = nowISO();
+        } else {
+            tasks.push({id:uuid(), custId:cid, desc:q('#tDesc').value, due:q('#tDue').value, status:q('#tStatus').value, created:nowISO(), updated:nowISO()});
+        }
+        save(); closeModals(); toast('Task Saved');
+    };
+    q('#btnDelTask').onclick = () => { tasks = tasks.filter(t=>t.id!==editId); save(); closeModals(); };
+
+    /* Leads Logic */
+    function openLeadModal(id=null){
+        editId = id;
+        q('#lName').value=''; q('#lMobile').value=''; q('#lProd').value=''; q('#lNotes').value='';
+        q('#btnDelLead').classList.add('hidden');
+        if(id){
+            const l = leads.find(x=>x.id===id);
+            q('#lName').value=l.name; q('#lMobile').value=l.mobile; q('#lProd').value=l.prod; q('#lNotes').value=l.notes; q('#lStatus').value=l.status;
+            q('#btnDelLead').classList.remove('hidden');
+        }
+        q('#modalLead').style.display='flex';
+    }
+    q('#btnSaveLead').onclick = () => {
+        const o = { name: q('#lName').value, mobile: q('#lMobile').value, prod: q('#lProd').value, status: q('#lStatus').value, notes: q('#lNotes').value };
+        if(!o.name) return toast('Name required','error');
+        if(editId){
+            const l = leads.find(x=>x.id===editId);
+            Object.assign(l, o);
+        } else {
+            leads.push({id:uuid(), ...o});
+        }
+        save(); closeModals(); toast('Lead Saved');
+    };
+    q('#btnDelLead').onclick = () => { leads = leads.filter(l=>l.id!==editId); save(); closeModals(); };
+
+    /* Bot Gen Logic */
+    function openBotModal(){ q('#bDate').value=new Date().toISOString().split('T')[0]; q('#bTime').value='10:00'; q('#bMsg').value=''; q('#botOutput').classList.add('hidden'); q('#modalBot').style.display='flex'; }
     
-    q('#btnResetGen').addEventListener('click', ()=> initGenInputs());
-    initGenInputs(); // Run once on load
+    CT.bot = {
+        smartTime: (h,m) => { q('#bTime').value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; },
+        addDays: (d) => { 
+            const cur = new Date(q('#bDate').value); cur.setDate(cur.getDate()+d); 
+            q('#bDate').value = cur.toISOString().split('T')[0]; 
+        }
+    };
+    q('#btnGenBot').onclick = () => {
+        const d = q('#bDate').value; const t = q('#bTime').value; const m = q('#bMsg').value;
+        if(!d || !t) return toast('Date/Time required','error');
+        
+        // Logic for +10 mins clean command
+        const [hh,mm] = t.split(':').map(Number);
+        const dateObj = new Date(d); dateObj.setHours(hh,mm+10);
+        const cleanStr = `remind ${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')} ${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')} ${m}`;
+        
+        const botCmd = `!remind ${d} ${t} ${m}`;
+        q('#botOutput').textContent = botCmd;
+        q('#botOutput').classList.remove('hidden');
+        
+        // Save to History (if unique)
+        if(!botHist.find(x => x.date===d && x.time===t && x.msg===m)){
+            botHist.push({id:uuid(), date:d, time:t, msg:m, clean:cleanStr});
+            save();
+        }
+    };
+    window.reuseBot = (id) => {
+        const i = botHist.find(x=>x.id===id);
+        if(i) { q('#bDate').value=i.date; q('#bTime').value=i.time; q('#bMsg').value=i.msg; q('#modalBot').style.display='flex'; }
+    };
+    window.promptSmartDel = (date) => { delTargetDate = date; q('#sdDate').innerText = date; q('#modalSmartDel').style.display='flex'; };
+    q('#btnJustDel').onclick = () => { botHist=botHist.filter(i=>i.date!==delTargetDate); save(); closeModals(); };
+    q('#btnEmailDel').onclick = () => {
+        const items = botHist.filter(i=>i.date===delTargetDate);
+        const body = items.map(i => i.clean).join('\n');
+        window.location.href = `mailto:?subject=Schedule ${delTargetDate}&body=${encodeURIComponent(body)}`;
+        setTimeout(()=>{ botHist=botHist.filter(i=>i.date!==delTargetDate); save(); closeModals(); }, 2000);
+    };
 
-    /* ===== Keyboard & Init ===== */
-    document.addEventListener('keydown', (e)=>{
-      if (e.target.matches('input, textarea')) return;
-      if (e.key.toLowerCase()==='n') { e.preventDefault(); CT.openAdd(); }
-      if (e.key.toLowerCase()==='d') { e.preventDefault(); q('#btnDueSoon').click(); }
-      if (e.key==='Escape') qAll('.backdrop').forEach(el=>el.style.display='none');
+    /* --- HELPERS --- */
+    function checkDue(){
+        const today = new Date().setHours(0,0,0,0);
+        const count = tasks.filter(t => {
+            if(t.status==='Completed') return false;
+            if(!t.due) return false;
+            const d = new Date(t.due).setHours(0,0,0,0);
+            return (d - today) < (3*86400000); // 3 days
+        }).length;
+        q('#dueBadge').classList.toggle('show', count>0);
+    }
+    q('#btnDueSoon').onclick = () => {
+        const l = q('#dueList'); l.innerHTML='';
+        tasks.filter(t=>t.status!=='Completed' && t.due).forEach(t=>{
+             // Simple logic for popup list
+             const c = customers.find(x=>x.id===t.custId);
+             l.innerHTML += `<div class="row"><div class="grow"><strong>${c?.name}</strong>: ${t.desc}</div><div class="pill p-due">${t.due}</div></div>`;
+        });
+        q('#modalDue').style.display='flex';
+    };
+    window.wa = (num, name) => {
+        if(!num) return toast('No Number');
+        window.open(`https://wa.me/${num.replace(/\D/g,'')}?text=Hi ${name.split(' ')[0]}, `, '_blank');
+    };
+    window.isOverdue = (t) => { return new Date(t.due) < new Date().setHours(0,0,0,0); };
+    
+    // Filters Click
+    qAll('.filters .chip').forEach(c => c.onclick = (e) => {
+        e.target.parentElement.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+        e.target.classList.add('active');
+        if(e.target.dataset.filter) taskFilter = e.target.dataset.filter;
+        if(e.target.dataset.lfilter) leadFilter = e.target.dataset.lfilter;
+        render();
     });
+    // Search listener
+    q('#globalSearch').addEventListener('input', render);
 
-    render(); refreshDueSoonBadge();
+    // Settings Menu
+    q('#btnMenu').onclick = () => q('#modalSettings').style.display='flex';
+    q('#btnTheme').onclick = () => { 
+        const t = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+        document.documentElement.setAttribute('data-theme', t); localStorage.setItem('ct_theme', t);
+        closeModals();
+    };
+    q('#btnBackup').onclick = async () => {
+        if(!window.JSZip) return alert('JSZip loading...');
+        const zip = new JSZip();
+        zip.file('backup.json', JSON.stringify({tasks,customers,leads,botHist}));
+        const blob = await zip.generateAsync({type:'blob'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='crm_backup.zip'; a.click();
+    };
+
+    // Convert Lead
+    window.convertLead = (lid) => {
+        const l = leads.find(x=>x.id===lid);
+        openTaskModal(); 
+        q('#tName').value = l.name; q('#tMobile').value = l.mobile; q('#tDesc').value = `From Lead: ${l.prod}. ${l.notes||''}`;
+        l.status = 'Converted'; save();
+    };
+
+    // Init
+    const savedTheme = localStorage.getItem('ct_theme');
+    if(savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    render();
+
   })();
   </script>
 </body>
