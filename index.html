@@ -43,7 +43,7 @@
       padding:8px; display:flex; align-items:center; justify-content:center;
     }
 
-    /* --- SIDEBAR DRAWER (New Vertical Menu) --- */
+    /* --- SIDEBAR DRAWER --- */
     .sidebar-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 140;
       opacity: 0; pointer-events: none; transition: opacity 0.3s;
@@ -88,14 +88,13 @@
     /* --- MAIN CONTENT --- */
     main{
       flex:1; overflow-y:auto; padding:16px; 
-      /* Clean bottom area */
       padding-bottom: 100px;
       -webkit-overflow-scrolling: touch;
       position: relative; z-index: 10;
     }
     .container{max-width:800px; margin:0 auto}
 
-    /* --- FAB (Action Button) --- */
+    /* --- FAB --- */
     .fab{
       position:fixed; 
       bottom: calc(20px + env(safe-area-inset-bottom)); 
@@ -160,7 +159,7 @@
     .hist-content{display:none; padding-left:8px; margin-bottom:12px}
     .expanded .hist-content{display:block}
     
-    /* Modals (High Z-Index) */
+    /* Modals */
     .backdrop{
       position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(3px); z-index:200;
       display:none; align-items:center; justify-content:center; padding:16px;
@@ -497,7 +496,9 @@
         </div>
         <label>Message</label>
         <input id="bMsg" type="text" placeholder="Reminder text...">
-        <div id="botOutput" class="hidden" style="margin-top:15px; background:var(--bg); padding:10px; border-radius:8px; font-family:monospace; font-size:12px; word-break:break-all"></div>
+        
+        <div id="botOutput" class="hidden" style="margin-top:15px; display:flex; flex-direction:column; gap:8px"></div>
+
       </div>
       <div class="modal-foot">
         <button class="btn secondary grow" onclick="closeModals()">Close</button>
@@ -678,6 +679,37 @@
     }
     window.isOverdue = isOverdue;
 
+    // Helper: Copy Text
+    window.copyText = (txt) => {
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(() => toast('Copied!', 'success')).catch(()=>toast('Failed to copy', 'error'));
+      } else {
+        // Fallback
+        const el = document.createElement('textarea');
+        el.value = txt; document.body.appendChild(el); el.select();
+        document.execCommand('copy'); document.body.removeChild(el);
+        toast('Copied!', 'success');
+      }
+    };
+
+    // Helper: Email
+    window.emailTask = (tid) => {
+      const t = tasks.find(x => x.id === tid);
+      if(!t) return;
+      const c = customers.find(x => x.id === t.custId) || {};
+      const subject = `Task: ${c.name || 'Unknown'} - ${t.status}`;
+      const body = `Customer: ${c.name || 'N/A'}\nMobile: ${c.mobile || 'N/A'}\n\nDescription:\n${t.desc || ''}\n\nDue: ${t.due || 'N/A'}\nStatus: ${t.status}`;
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+
+    window.emailLead = (lid) => {
+      const l = leads.find(x => x.id === lid);
+      if(!l) return;
+      const subject = `Lead: ${l.name} - ${l.status}`;
+      const body = `Name: ${l.name}\nMobile: ${l.mobile || 'N/A'}\nProduct: ${l.prod || 'N/A'}\n\nNotes:\n${l.notes || ''}\n\nStatus: ${l.status}`;
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+
     /* --- SIDEBAR TOGGLE LOGIC --- */
     window.toggleSidebar = function() {
       q('#sbMenu').classList.toggle('open');
@@ -757,7 +789,10 @@
             <div class="muted" style="margin-top:4px">${t.desc || ''}</div>
             ${t.due ? `<div class="pill ${isOverdue(t)?'p-overdue':'p-due'}" style="margin-top:4px; display:inline-block">${t.due}</div>` : ''}
           </div>
-          <button class="btn secondary sm" onclick="wa('${c?.mobile||''}','${c?.name||''}')">💬</button>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-left:8px">
+            <button class="btn secondary sm" onclick="wa('${c?.mobile||''}','${c?.name||''}')">💬</button>
+            <button class="btn secondary sm" onclick="emailTask('${t.id}')">📧</button>
+          </div>
         `;
         list.appendChild(div);
       });
@@ -789,8 +824,13 @@
             </div>
             <div class="muted">${l.prod||''}</div>
           </div>
-          <button class="btn secondary sm" onclick="wa('${l.mobile||''}','${l.name||''}')">💬</button>
-          ${l.status!=='Converted' ? `<button class="btn primary sm" onclick="convertLead('${l.id}')">⭐</button>` : ''}
+          <div style="display:flex; flex-direction:column; gap:6px; margin-left:8px; align-items:flex-end">
+             <div class="inline" style="gap:6px">
+               <button class="btn secondary sm" onclick="wa('${l.mobile||''}','${l.name||''}')">💬</button>
+               <button class="btn secondary sm" onclick="emailLead('${l.id}')">📧</button>
+             </div>
+             ${l.status!=='Converted' ? `<button class="btn primary sm" style="width:100%" onclick="convertLead('${l.id}')">⭐</button>` : ''}
+          </div>
         `;
         list.appendChild(div);
       });
@@ -967,18 +1007,33 @@
       if(!d || !t) return toast('Date/Time required','error');
       
       const [hh,mm] = t.split(':').map(Number);
-      const dateObj = new Date(d); dateObj.setHours(hh,mm+10);
-      const cleanStr = `remind ${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')} ${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')} ${m}`;
+      const dateObj = new Date(d); dateObj.setHours(hh,mm);
       
+      const cleanStr = `remind ${d} ${t} ${m}`;
       const botCmd = `!remind ${d} ${t} ${m}`;
-      q('#botOutput').textContent = botCmd;
-      q('#botOutput').classList.remove('hidden');
+      
+      const out = q('#botOutput');
+      out.innerHTML = '';
+      out.classList.remove('hidden');
+
+      const createRow = (txt) => {
+        const d = document.createElement('div');
+        d.style.cssText = 'background:var(--bg); padding:10px; border-radius:8px; display:flex; align-items:center; gap:10px; font-family:monospace; font-size:12px; border:1px solid var(--border)';
+        d.innerHTML = `
+          <div style="flex:1; word-break:break-all">${txt}</div>
+          <button class="btn secondary sm" onclick="copyText('${txt.replace(/'/g, "\\'")}')">📋</button>
+        `;
+        return d;
+      };
+
+      out.appendChild(createRow(botCmd));
+      out.appendChild(createRow(cleanStr));
       
       if(!botHist.find(x => x.date===d && x.time===t && x.msg===m)){
         botHist.push({id:uuid(), date:d, time:t, msg:m, clean:cleanStr});
         save();
       }
-      toast('Command Saved','success');
+      toast('Commands Generated','success');
     };
 
     q('#btnResetBot').onclick = () => {
