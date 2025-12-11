@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Super CRM + Diary</title>
+  <title>Super CRM + Diary + Notes</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <style>
@@ -202,21 +202,9 @@
     }
     .settings-btn span{font-size:26px; margin-bottom:8px}
 
-    /* --- Diary-specific styles --- */
+    /* --- Diary/Notes specific styles --- */
     .small{font-size:12px}
     .wrap{flex-wrap:wrap}
-
-    .menu-wrap{position:relative}
-    .menu-btn{background:transparent;color:var(--text);border:1px solid var(--border)}
-    .menu-dropdown{
-      position:absolute;top:100%;right:0;margin-top:8px;width:200px;
-      background:var(--panel2);border:1px solid var(--border);border-radius:8px;
-      box-shadow:0 10px 25px rgba(0,0,0,0.5);display:none;flex-direction:column;overflow:hidden;z-index:150;
-    }
-    .menu-wrap.open .menu-dropdown{display:flex}
-    .menu-item{padding:10px 14px;text-align:left;background:none;border:none;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border);font-size:13px}
-    .menu-item:hover{background:var(--panel)}
-    .menu-item:last-child{border-bottom:none}
 
     .date-header{
       position:sticky; top:72px; z-index:15;
@@ -230,27 +218,16 @@
       background:rgba(30,41,59,0.5); margin-bottom:10px; cursor:pointer; transition:all .2s;
     }
     .entry:hover{background:var(--panel2);border-color:var(--accent)}
-    .entry.important{border-left:3px solid var(--warn)}
-    
     .entry-body{
       font-size:14px;color:#cbd5e1;margin-top:6px;line-height:1.5;
       overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
     }
-    .md-bold{font-weight:700;color:#fff}
-    .md-list{display:block;padding-left:10px;border-left:2px solid var(--border);margin:4px 0}
-
-    details.qa-box{margin-bottom:16px;border:1px solid var(--border);border-radius:8px;background:var(--panel);overflow:hidden}
-    details.qa-box summary{padding:10px 14px;cursor:pointer;font-weight:600;font-size:13px;list-style:none;display:flex;align-items:center;justify-content:space-between}
-    details.qa-box summary::-webkit-details-marker{display:none}
-    details.qa-box summary::after{content:'+';font-size:16px;font-weight:bold}
-    details.qa-box[open] summary::after{content:'-'}
-    details.qa-box[open] summary{border-bottom:1px solid var(--border)}
-    .qa-content{padding:12px}
-
-    .pill.p-pro{background:rgba(91,140,255,0.15);color:#c7d5ff;border:1px solid rgba(91,140,255,0.35)}
-    .pill.p-pers{background:rgba(168,85,247,0.15);color:#e9d5ff;border:1px solid rgba(168,85,247,0.35)}
-    .pill.p-link{background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.35)}
-    .pill.p-imp{background:rgba(245,158,11,0.2);color:#fcd34d;border:1px solid rgba(245,158,11,0.4)}
+    
+    /* New Notes Style */
+    .note-entry{
+      padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;
+      background:var(--panel2);
+    }
   </style>
 </head>
 <body>
@@ -267,6 +244,7 @@
       <button class="nav-row" data-target="viewLeads"><span>👥</span> Leads</button>
       <button class="nav-row" data-target="viewBot"><span>🤖</span> Bot Gen</button>
       <button class="nav-row" data-target="viewDiary"><span>📔</span> Diary</button>
+      <button class="nav-row" data-target="viewNotes"><span>🗒️</span> Notes</button>
       <div class="hr"></div>
       <button class="nav-row" onclick="q('#modalSettings').style.display='flex'; toggleSidebar()"><span>⚙️</span> Settings</button>
     </div>
@@ -277,7 +255,7 @@
     
     <div class="search-bar">
       <span class="search-icon">🔍</span>
-      <input type="text" id="globalSearch" placeholder="Search tasks/leads..." />
+      <input type="text" id="globalSearch" placeholder="Search tasks/leads/notes..." />
     </div>
     <button class="icon-btn" id="btnMenu" title="Settings">⚙️</button>
   </header>
@@ -317,56 +295,24 @@
         <div class="inline wrap" style="justify-content:space-between; margin-bottom:10px">
           <div class="inline" style="gap:6px">
             <h3 style="margin:0">Diary</h3>
-            <span class="muted small">Companion to Tasks</span>
+            <span class="muted small">Personal Journal</span>
           </div>
-          <div class="inline" style="gap:6px">
-            <button class="btn primary sm" onclick="CT.diary.openEntry()">+ New</button>
-            <div class="menu-wrap" id="diaryMenu">
-              <button class="btn secondary icon" onclick="this.parentElement.classList.toggle('open')">☰</button>
-              <div class="menu-dropdown">
-                <button class="menu-item" onclick="CT.diary.exportTXT('all')">Export All TXT</button>
-                <button class="menu-item" onclick="CT.diary.exportTXT('professional')">Export Pro TXT</button>
-                <button class="menu-item" onclick="CT.diary.exportTXT('personal')">Export Personal TXT</button>
-                <button class="menu-item" onclick="CT.diary.exportCSV()">Export CSV</button>
-                <button class="menu-item" onclick="CT.diary.backupJSON()">Backup Diary JSON</button>
-                <button class="menu-item" onclick="CT.diary.importJSON()">Import Diary JSON</button>
-              </div>
-            </div>
-          </div>
+          <button class="btn primary sm" onclick="CT.diary.openEntry()">+ New Entry</button>
         </div>
-
-        <div class="inline wrap" style="margin-bottom:16px">
-          <input id="diarySearch" class="grow" type="text" placeholder="Search entries..." style="background:var(--panel);border-color:transparent">
-          <select id="diaryTypeFilter" class="btn secondary sm" style="width:auto">
-            <option value="any">All Types</option>
-            <option value="professional">Professional</option>
-            <option value="personal">Personal</option>
-          </select>
-          <button id="diaryFilterImp" class="btn secondary sm" data-active="false" onclick="CT.diary.toggleImp(this)">★ Only</button>
-        </div>
-
-        <details class="qa-box">
-          <summary>Quick Add</summary>
-          <div class="qa-content">
-            <div class="inline wrap" style="gap:8px; margin-bottom:8px">
-              <input id="qaTitle" class="grow" type="text" placeholder="Title...">
-              <select id="qaType" style="width:auto; min-width:100px">
-                <option value="professional">Pro</option>
-                <option value="personal">Pers</option>
-              </select>
-            </div>
-            <div class="inline wrap" style="gap:8px">
-              <input id="qaTags" class="grow" type="text" placeholder="#tags...">
-              <button id="qaSave" class="btn primary sm">Add Note</button>
-            </div>
-          </div>
-        </details>
 
         <div id="diaryStatus" class="small muted" style="margin-bottom:10px; text-align:right"></div>
         <div id="diaryList"></div>
         <div style="height:80px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px">
           &mdash; End of Diary &mdash;
         </div>
+      </div>
+      
+      <div id="viewNotes" class="hidden">
+        <div class="inline wrap" style="justify-content:space-between; margin-bottom:10px">
+          <h3 style="margin:0">Notes</h3>
+          <button class="btn primary sm" onclick="CT.notes.openNote()">+ New Note</button>
+        </div>
+        <div id="noteList"></div>
       </div>
 
     </div>
@@ -557,42 +503,18 @@
         <button class="btn secondary sm" onclick="CT.diary.closeEntry()">Esc</button>
       </div>
       <div class="modal-body">
-        <div class="inline wrap" style="gap:10px; margin-bottom:12px">
-          <div style="flex:1">
-            <label class="small muted">Date</label>
-            <input id="enDate" type="date">
-          </div>
-          <div style="flex:1">
-            <label class="small muted">Type</label>
-            <select id="enType">
-              <option value="professional">Professional</option>
-              <option value="personal">Personal</option>
-            </select>
-          </div>
+        <div style="margin-bottom:12px">
+          <label>Date</label>
+          <input id="enDate" type="date">
         </div>
 
         <div style="margin-bottom:12px">
-          <input id="enTitle" type="text" placeholder="Title (e.g. Meeting with...)" style="font-weight:bold; font-size:16px">
+          <input id="enTitle" type="text" placeholder="Title" style="font-weight:bold; font-size:16px">
         </div>
         
-        <div class="inline" style="margin-bottom:12px; gap:8px">
-          <input id="enTags" type="text" placeholder="Tags (comma separated)...">
-          <label class="btn secondary sm" style="cursor:pointer; user-select:none">
-            <input id="enImportant" type="checkbox" style="width:auto;margin:0 4px 0 0"> ★
-          </label>
-        </div>
-
         <div style="margin-bottom:12px">
+          <label>Note</label>
           <textarea id="enBody" placeholder="Write your notes here..." oninput="CT.diary.autoGrow(this)"></textarea>
-        </div>
-
-        <div class="card" style="padding:10px; background:rgba(0,0,0,0.2)">
-          <div class="inline" style="justify-content:space-between; margin-bottom:6px">
-            <span class="small muted">Link to Task (Optional)</span>
-            <button id="prefillFromTask" class="btn secondary sm" style="padding:2px 8px">Copy Task Info</button>
-          </div>
-          <select id="enTaskLink" style="font-size:12px"></select>
-          <div id="enTaskMeta" class="small muted" style="margin-top:6px; font-style:italic"></div>
         </div>
       </div>
       <div class="modal-foot">
@@ -604,6 +526,29 @@
         <div class="inline">
           <button class="btn secondary sm" onclick="CT.diary.closeEntry()">Cancel</button>
           <button id="saveDiaryBtn" class="btn primary">Save Entry</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="modalNote" class="backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalNoteTitle" style="margin:0">Temporary Note</h3>
+        <button class="btn secondary sm" onclick="closeModals()">Esc</button>
+      </div>
+      <div class="modal-body">
+        <label>Note Text</label>
+        <textarea id="nBody" placeholder="Jot down a quick thought or number..." oninput="CT.diary.autoGrow(this)"></textarea>
+      </div>
+      <div class="modal-foot">
+        <div class="inline">
+          <button id="deleteNoteBtn" class="btn danger sm hidden">Delete</button>
+          <button id="emailNoteBtn" class="btn secondary sm">Email Note</button>
+        </div>
+        <div class="inline">
+          <button class="btn secondary sm" onclick="closeModals()">Cancel</button>
+          <button id="saveNoteBtn" class="btn primary">Save Note</button>
         </div>
       </div>
     </div>
@@ -622,9 +567,9 @@
     const todayISO = () => nowISO().slice(0,10);
     const fmtDate = d => new Date(d).toLocaleDateString(undefined, {weekday:'short', year:'numeric', month:'short', day:'numeric'});
 
-    // Email config for diary
-    const EMAIL_PRO = "diary4mathew@gmail.com";
-    const EMAIL_PERSONAL = "mathewfederal3@hotmail.com";
+    // Email config for diary (simplified)
+    const EMAIL_TARGET_DIARY = "my_diary_email@example.com";
+    const EMAIL_TARGET_NOTES = "my_notes_email@example.com";
 
     // State
     let tasks = JSON.parse(localStorage.getItem('ct_tasks') || '[]');
@@ -632,19 +577,9 @@
     let leads = JSON.parse(localStorage.getItem('ct_leads') || '[]');
     let botHist = JSON.parse(localStorage.getItem('ct_bot') || '[]');
     let diary = JSON.parse(localStorage.getItem('ct_diary') || '[]');
+    let notes = JSON.parse(localStorage.getItem('ct_notes') || '[]'); // NEW STATE: Notes
 
-    // Optional migration from legacy diary key
-    try {
-      const legacy = localStorage.getItem('ct_diary_v1');
-      if (legacy && !localStorage.getItem('ct_diary_migrated')) {
-        const old = JSON.parse(legacy);
-        if (Array.isArray(old) && old.length) {
-          diary = diary.concat(old);
-          localStorage.setItem('ct_diary', JSON.stringify(diary));
-        }
-        localStorage.setItem('ct_diary_migrated','1');
-      }
-    } catch(e){}
+    // Optional migration from legacy diary key (removed for cleaner code)
 
     let currentView = 'viewTasks';
     let taskFilter = 'Pending';
@@ -652,7 +587,7 @@
     let editId = null;
     let delTargetDate = null;
     let diaryEditingId = null;
-    let diaryShowImpOnly = false;
+    let noteEditingId = null; // NEW
 
     const save = () => {
       localStorage.setItem('ct_tasks', JSON.stringify(tasks));
@@ -660,6 +595,7 @@
       localStorage.setItem('ct_leads', JSON.stringify(leads));
       localStorage.setItem('ct_bot', JSON.stringify(botHist));
       localStorage.setItem('ct_diary', JSON.stringify(diary));
+      localStorage.setItem('ct_notes', JSON.stringify(notes)); // Save Notes
       render();
     };
 
@@ -684,7 +620,6 @@
       if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(txt).then(() => toast('Copied!', 'success')).catch(()=>toast('Failed to copy', 'error'));
       } else {
-        // Fallback
         const el = document.createElement('textarea');
         el.value = txt; document.body.appendChild(el); el.select();
         document.execCommand('copy'); document.body.removeChild(el);
@@ -727,7 +662,7 @@
           btn.classList.add('active');
           
           currentView = target;
-          ['viewTasks','viewLeads','viewBot','viewDiary'].forEach(id=>{
+          ['viewTasks','viewLeads','viewBot','viewDiary', 'viewNotes'].forEach(id=>{
             q('#'+id).classList.add('hidden');
           });
           q('#' + currentView).classList.remove('hidden');
@@ -744,6 +679,7 @@
       else if(currentView === 'viewLeads') openLeadModal();
       else if(currentView === 'viewBot') openBotModal();
       else if(currentView === 'viewDiary') CT.diary.openEntry();
+      else if(currentView === 'viewNotes') CT.notes.openNote();
     });
 
     /* --- RENDER DISPATCH --- */
@@ -752,7 +688,8 @@
       if(currentView === 'viewTasks') renderTasks(term);
       else if(currentView === 'viewLeads') renderLeads(term);
       else if(currentView === 'viewBot') renderBotHist();
-      else if(currentView === 'viewDiary') CT.diary.renderList();
+      else if(currentView === 'viewDiary') CT.diary.renderList(term);
+      else if(currentView === 'viewNotes') CT.notes.renderList(term);
     }
 
     /* --- TASKS --- */
@@ -1144,7 +1081,7 @@
     q('#btnBackup').onclick = async () => {
       if(!window.JSZip) return alert('JSZip loading...');
       const zip = new JSZip();
-      zip.file('backup.json', JSON.stringify({tasks,customers,leads,botHist,diary}));
+      zip.file('backup.json', JSON.stringify({tasks,customers,leads,botHist,diary,notes}));
       const blob = await zip.generateAsync({type:'blob'});
       const a = document.createElement('a'); 
       a.href = URL.createObjectURL(blob); 
@@ -1175,37 +1112,34 @@
     const savedTheme = localStorage.getItem('ct_theme');
     if(savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
 
-    /* --- DIARY MODULE --- */
+    /* --- COMMON AUTOGROW FUNCTION --- */
+    // Replaced CT.diary.autoGrow
+    CT.autoGrow = function(el){
+      if(!el) return;
+      el.style.height = 'auto';
+      el.style.height = (el.scrollHeight) + 'px';
+    };
+    
+    // Apply autogrow to new textareas
+    q('#nBody').oninput = (e) => CT.autoGrow(e.target);
+
+    /* --- SIMPLIFIED DIARY MODULE --- */
     CT.diary = {};
 
-    function diaryMarkdown(text){
-      if(!text) return '';
-      let html = text
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/\*\*(.*?)\*\*/g, '<span class="md-bold">$1</span>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/- (.*?)(\n|$)/g, '<span class="md-list">• $1</span>');
-      return html.replace(/\n/g, '<br>');
-    }
+    // Removed diaryMarkdown
 
-    CT.diary.renderList = function(){
+    CT.diary.renderList = function(term){
       const elList = q('#diaryList');
       const statusEl = q('#diaryStatus');
       elList.innerHTML = '';
-
-      const term = (q('#diarySearch')?.value || '').toLowerCase();
-      const typeF = q('#diaryTypeFilter')?.value || 'any';
-
+      
       let pool = diary.slice().sort((a,b) => (b.date||"").localeCompare(a.date||"") || (b.createdAt||"").localeCompare(a.createdAt||""));
+      if(term) pool = pool.filter(e => ((e.title||'')+(e.body||'')).toLowerCase().includes(term));
 
-      if(diaryShowImpOnly) pool = pool.filter(e => e.important);
-      if(typeF !== 'any') pool = pool.filter(e => (e.etype||'professional') === typeF);
-      if(term) pool = pool.filter(e => ((e.title||'')+(e.body||'')+((e.tags||[]).join(''))).toLowerCase().includes(term));
-
-      statusEl.textContent = `Entries: ${diary.length} • Filtered: ${pool.length}`;
+      statusEl.textContent = `Total Entries: ${diary.length} / Displaying: ${pool.length}`;
 
       if(pool.length === 0){
-        elList.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">No entries found.</div>`;
+        elList.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">No diary entries found.</div>`;
         return;
       }
 
@@ -1227,24 +1161,15 @@
         }
 
         const div = document.createElement('div');
-        div.className = `entry ${e.important?'important':''}`;
+        div.className = `entry`;
         div.onclick = (ev) => { if(!ev.target.closest('button')) CT.diary.openEntry(e.id); };
-        
-        const typeLabel = (e.etype||'professional') === 'professional' ? 'PRO' : 'PERS';
-        const typeClass = (e.etype||'professional') === 'professional' ? 'p-pro' : 'p-pers';
-        const linkedTask = e.linkTaskId ? tasks.find(t=>t.id===e.linkTaskId) : null;
 
         div.innerHTML = `
           <div class="inline" style="justify-content:space-between">
-            <div class="inline" style="gap:6px">
-              <span class="pill ${typeClass}">${typeLabel}</span>
-              ${e.important ? '<span class="pill p-imp">IMP</span>' : ''}
-              ${linkedTask ? '<span class="pill p-link">LINKED</span>' : ''}
-              <strong style="font-size:15px">${e.title || '(No Title)'}</strong>
-            </div>
-            <div class="small muted">${(e.tags||[]).join(', ')}</div>
+            <strong style="font-size:15px">${e.title || '(No Title)'}</strong>
+            <div class="small muted">${dRaw}</div>
           </div>
-          ${e.body ? `<div class="entry-body">${diaryMarkdown(e.body)}</div>` : ''}
+          ${e.body ? `<div class="entry-body">${e.body}</div>` : ''}
         `;
         elList.appendChild(div);
       });
@@ -1254,45 +1179,23 @@
       diaryEditingId = id;
       const modal = q('#modalDiary');
       const modalTitle = q('#modalDiaryTitle');
-
-      // Populate task select
-      const sel = q('#enTaskLink');
-      sel.innerHTML = '<option value="">-- No Link --</option>';
-      const sortedTasks = tasks.slice().sort((a,b)=> (b.updated||"").localeCompare(a.updated||""));
-      sortedTasks.forEach(t => {
-        const c = customers.find(x => x.id === t.custId);
-        const opt = document.createElement('option');
-        const cname = c ? c.name.substring(0,15) : 'Unknown';
-        const desc = (t.desc||'').substring(0,30);
-        opt.value = t.id;
-        opt.textContent = `${cname} - ${desc}${t.desc && t.desc.length>30?'...':''}`;
-        sel.appendChild(opt);
-      });
+      
+      q('#enDate').value = todayISO(); // Default value
 
       if(id){
         const e = diary.find(x=>x.id===id);
         modalTitle.textContent = "Edit Entry";
         q('#enDate').value = e.date || todayISO();
-        q('#enType').value = e.etype || 'professional';
         q('#enTitle').value = e.title || '';
-        q('#enTags').value = (e.tags||[]).join(', ');
-        q('#enImportant').checked = !!e.important;
         q('#enBody').value = e.body || '';
-        q('#enTaskLink').value = e.linkTaskId || '';
         q('#deleteDiaryBtn').classList.remove('hidden');
       } else {
         modalTitle.textContent = "New Entry";
-        q('#enDate').value = todayISO();
-        q('#enType').value = 'professional';
         q('#enTitle').value = '';
-        q('#enTags').value = '';
-        q('#enImportant').checked = false;
         q('#enBody').value = '';
-        q('#enTaskLink').value = '';
         q('#deleteDiaryBtn').classList.add('hidden');
       }
-      CT.diary.updateTaskMeta();
-      CT.diary.autoGrow(q('#enBody'));
+      CT.autoGrow(q('#enBody'));
       modal.style.display='flex';
     };
 
@@ -1300,37 +1203,16 @@
       q('#modalDiary').style.display='none';
     };
 
-    CT.diary.autoGrow = function(el){
-      if(!el) return;
-      el.style.height = 'auto';
-      el.style.height = (el.scrollHeight) + 'px';
-    };
-
-    CT.diary.updateTaskMeta = function(){
-      const tid = q('#enTaskLink').value;
-      const div = q('#enTaskMeta');
-      if(!tid) { div.textContent = ''; return; }
-      const t = tasks.find(x=>x.id===tid);
-      if(!t) { div.textContent = 'Task not found'; return; }
-      const c = customers.find(x=>x.id===t.custId);
-      div.textContent = `Customer: ${c?c.name:'N/A'} • Status: ${t.status} • Due: ${t.due||'N/A'}`;
-    };
-
-    q('#enTaskLink').onchange = () => CT.diary.updateTaskMeta();
-
     q('#saveDiaryBtn').onclick = () => {
       const title = q('#enTitle').value.trim();
-      if(!title) return toast('Title required','error');
+      const body = q('#enBody').value.trim();
+      if(!title && !body) return toast('Entry is empty','error');
 
       const base = {
         id: diaryEditingId || uuid(),
         date: q('#enDate').value || todayISO(),
         title,
-        etype: q('#enType').value,
-        tags: q('#enTags').value.split(',').map(s=>s.trim()).filter(Boolean),
-        important: q('#enImportant').checked,
-        body: q('#enBody').value,
-        linkTaskId: q('#enTaskLink').value || null,
+        body,
         updatedAt: nowISO()
       };
 
@@ -1339,8 +1221,10 @@
         diary.push(base);
       } else {
         const idx = diary.findIndex(x=>x.id===diaryEditingId);
-        base.createdAt = diary[idx].createdAt;
-        diary[idx] = base;
+        if (idx !== -1) {
+            base.createdAt = diary[idx].createdAt;
+            diary[idx] = base;
+        }
       }
       save();
       CT.diary.closeEntry();
@@ -1356,122 +1240,10 @@
       toast('Entry Deleted','error');
     };
 
-    q('#qaSave').onclick = () => {
-      const title = q('#qaTitle').value.trim();
-      if(!title) return toast('Title required','error');
-      const entry = {
-        id: uuid(),
-        date: todayISO(),
-        title,
-        etype: q('#qaType').value,
-        tags: q('#qaTags').value.split(',').map(s=>s.trim()).filter(Boolean),
-        important: false,
-        body: '',
-        linkTaskId: null,
-        createdAt: nowISO(),
-        updatedAt: nowISO()
-      };
-      diary.push(entry);
-      save();
-      q('#qaTitle').value = '';
-      q('#qaTags').value = '';
-      q('details.qa-box')?.removeAttribute('open');
-      toast('Quick Note Added','success');
-    };
-
-    q('#diarySearch').oninput = () => CT.diary.renderList();
-    q('#diaryTypeFilter').onchange = () => CT.diary.renderList();
-
-    CT.diary.toggleImp = function(btn){
-      diaryShowImpOnly = !diaryShowImpOnly;
-      btn.dataset.active = diaryShowImpOnly;
-      btn.style.background = diaryShowImpOnly ? 'var(--warn)' : 'var(--panel)';
-      btn.style.color = diaryShowImpOnly ? '#000' : 'var(--text)';
-      CT.diary.renderList();
-    };
-
-    q('#prefillFromTask').onclick = () => {
-      const tid = q('#enTaskLink').value;
-      if(!tid) return toast('Select a task first','error');
-      const t = tasks.find(x=>x.id===tid);
-      const c = customers.find(x=>x.id===t.custId);
-      const txt = `\n\n--- Linked Task ---\nCustomer: ${c?c.name:'N/A'}\nDesc: ${t.desc||''}\nStatus: ${t.status}\nDue: ${t.due||'N/A'}`;
-      q('#enBody').value += txt;
-      CT.diary.autoGrow(q('#enBody'));
-      if(!q('#enTitle').value) q('#enTitle').value = `Update on ${c?c.name:'Task'}`;
-    };
-
+    // Helper for TXT/Email export
     function diaryEntryToTxt(e){
-      return `DATE: ${e.date}\nTITLE: ${e.title} [${e.etype}]\nTAGS: ${(e.tags||[]).join(', ')}\n----------------\n${e.body||''}\n\n`;
+      return `DATE: ${e.date}\nTITLE: ${e.title || '(No Title)'}\n----------------\n${e.body||''}\n\n`;
     }
-
-    CT.diary.exportTXT = function(mode){
-      let pool = diary.slice().sort((a,b)=> (a.date||"").localeCompare(b.date||""));
-      if(mode !== 'all') pool = pool.filter(e => (e.etype||'professional') === mode);
-      if(!pool.length) { toast('No entries to export','error'); return; }
-      const txt = pool.map(diaryEntryToTxt).join('================================\n');
-      const blob = new Blob([txt], {type:'text/plain'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `Diary_${mode}_${todayISO()}.txt`;
-      a.click();
-    };
-
-    CT.diary.exportCSV = function(){
-      if(!diary.length){ toast('No entries to export','error'); return; }
-      const h = ["ID","Date","Title","Type","Body","Tags","Important","LinkTaskId"];
-      const rows = diary.map(e => [
-        e.id,
-        e.date,
-        `"${(e.title||'').replace(/"/g,'""')}"`,
-        e.etype||'professional',
-        `"${(e.body||'').replace(/\n/g,' ').replace(/"/g,'""')}"`,
-        `"${(e.tags||[]).join(',').replace(/"/g,'""')}"`,
-        e.important ? 1 : 0,
-        e.linkTaskId || ''
-      ]);
-      const csv = [h.join(',')].concat(rows.map(r=>r.join(','))).join('\n');
-      const blob = new Blob([csv], {type:'text/csv'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `Diary_${todayISO()}.csv`;
-      a.click();
-    };
-
-    CT.diary.backupJSON = function(){
-      const payload = { diary };
-      const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `DiaryBackup_${todayISO()}.json`;
-      a.click();
-    };
-
-    CT.diary.importJSON = function(){
-      const inp = q('#jsonFile');
-      inp.value = '';
-      inp.onchange = (e) => {
-        const f = e.target.files[0];
-        if(!f) return;
-        const r = new FileReader();
-        r.onload = (res) => {
-          try{
-            const json = JSON.parse(res.target.result);
-            if(json.diary && Array.isArray(json.diary)){
-              diary = json.diary;
-              save();
-              toast('Diary imported','success');
-            } else {
-              toast('Invalid JSON format','error');
-            }
-          }catch(err){
-            toast('Invalid JSON','error');
-          }
-        };
-        r.readAsText(f);
-      };
-      inp.click();
-    };
 
     q('#shareDiaryBtn').onclick = () => {
       const e = diary.find(x=>x.id===diaryEditingId);
@@ -1481,20 +1253,99 @@
       a.href = URL.createObjectURL(blob);
       a.download = `${(e.title||'entry').replace(/[^a-z0-9]/gi,'_')}.txt`;
       a.click();
+      toast('Entry exported as TXT','success');
     };
 
     q('#emailDiaryBtn').onclick = () => {
       const e = diary.find(x=>x.id===diaryEditingId);
-      const to = (e && e.etype === 'personal') ? EMAIL_PERSONAL : EMAIL_PRO;
-      const subject = `Diary: ${e ? e.title : 'New Entry'}`;
+      const subject = `Diary Entry: ${e ? e.title : 'New Entry'}`;
       const body = e ? diaryEntryToTxt(e) : '';
-      window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = `mailto:${EMAIL_TARGET_DIARY}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      toast('Email draft opened','info');
     };
 
-    // Close diary menu when clicking outside
-    document.addEventListener('click', (e) => {
-      if(!e.target.closest('#diaryMenu')) q('#diaryMenu')?.classList.remove('open');
-    });
+    /* --- NEW NOTES MODULE --- */
+    CT.notes = {};
+
+    CT.notes.renderList = function(term){
+      const list = q('#noteList'); list.innerHTML = '';
+      let pool = notes.slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      if(term){
+        pool = pool.filter(n => (n.body||'').toLowerCase().includes(term));
+      }
+
+      if(!pool.length){
+        list.innerHTML = `<div class="muted" style="text-align:center; padding:20px">No temporary notes.</div>`;
+        return;
+      }
+
+      pool.forEach(n => {
+        const div = document.createElement('div'); div.className = 'note-entry';
+        const dateStr = new Date(n.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ' - ' + new Date(n.createdAt).toLocaleDateString();
+        div.innerHTML = `
+          <div class="muted" style="font-size:11px; margin-bottom:4px; display:flex; justify-content:space-between">
+            <span>${dateStr}</span>
+            <button class="btn secondary sm icon" onclick="CT.notes.openNote('${n.id}')" style="padding:4px">✏️</button>
+          </div>
+          <div onclick="CT.notes.openNote('${n.id}')" style="cursor:pointer; white-space:pre-wrap;">${n.body}</div>
+        `;
+        list.appendChild(div);
+      });
+    };
+
+    CT.notes.openNote = function(id=null){
+      noteEditingId = id;
+      q('#nBody').value = '';
+      q('#deleteNoteBtn').classList.add('hidden');
+      if(id){
+        const n = notes.find(x=>x.id===id);
+        q('#modalNoteTitle').textContent = "Edit Note";
+        q('#nBody').value = n.body || '';
+        q('#deleteNoteBtn').classList.remove('hidden');
+      } else {
+        q('#modalNoteTitle').textContent = "New Note";
+      }
+      CT.autoGrow(q('#nBody'));
+      q('#modalNote').style.display='flex';
+    };
+
+    q('#saveNoteBtn').onclick = () => {
+      const body = q('#nBody').value.trim();
+      if(!body) return toast('Note cannot be empty','error');
+      
+      const newNote = {
+        id: noteEditingId || uuid(),
+        body: body,
+        createdAt: nowISO(),
+      };
+
+      if(noteEditingId){
+        const idx = notes.findIndex(x=>x.id===noteEditingId);
+        if (idx !== -1) {
+            notes[idx] = {...notes[idx], body: body, createdAt: notes[idx].createdAt};
+        }
+      } else {
+        notes.push(newNote);
+      }
+      
+      save(); closeModals(); toast('Note Saved','success');
+    };
+
+    q('#deleteNoteBtn').onclick = () => {
+      if(!noteEditingId) return;
+      if(!confirm('Delete this temporary note?')) return;
+      notes = notes.filter(n=>n.id!==noteEditingId);
+      save(); closeModals(); toast('Note Deleted','error');
+    };
+    
+    q('#emailNoteBtn').onclick = () => {
+      const body = q('#nBody').value.trim();
+      if(!body) return toast('Note is empty','error');
+      const subject = "Temporary Note from App";
+      window.location.href = `mailto:${EMAIL_TARGET_NOTES}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      toast('Email draft opened','info');
+    };
 
     // Initial render
     render();
