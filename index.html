@@ -181,13 +181,16 @@
       flex-wrap:wrap;
     }
 
-    /* --- DIARY MODAL SIZE INCREASE --- */
-    #modalDiary .modal {
+    /* --- MODAL SIZE INCREASE FOR CRUD FORMS (Tasks, Leads, Diary, Notes) --- */
+    #modalDiary .modal,
+    #modalTask .modal,
+    #modalLead .modal,
+    #modalNote .modal {
       width: 95%; /* Make it wider */
       max-width: 600px; /* Cap width for very large screens */
       height: 90dvh; /* Make it taller */
       max-height: 90dvh; /* Ensure it stays within viewport height */
-      /* Note: The inner .modal-body is already set to flex: 1 and overflow-y: auto */
+      display: flex; /* Ensure inner structure uses flex */
     }
 
     /* Toaster */
@@ -353,13 +356,13 @@
         <h3 style="margin:0">Add/Edit Task</h3>
         <button class="btn secondary sm" onclick="closeModals()">Esc</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="display: flex; flex-direction: column;"> 
         <label>Customer Name</label>
         <input id="tName" type="text" placeholder="John Doe">
         <label>Mobile</label>
         <input id="tMobile" type="tel" placeholder="9876543210">
         <label>Description</label>
-        <textarea id="tDesc" placeholder="Task details..."></textarea>
+        <textarea id="tDesc" placeholder="Task details..." oninput="CT.autoGrow(this)" style="min-height: 100px; flex: 1;"></textarea>
         <div class="inline">
           <div class="grow">
             <label>Due Date</label>
@@ -395,7 +398,7 @@
         <h3 style="margin:0">Add/Edit Lead</h3>
         <button class="btn secondary sm" onclick="closeModals()">Esc</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="display: flex; flex-direction: column;">
         <label>Name</label><input id="lName" type="text">
         <label>Mobile</label><input id="lMobile" type="tel">
         <label>Product</label><input id="lProd" type="text">
@@ -406,7 +409,8 @@
           <option>Waiting Confirmation</option>
           <option>Converted</option>
         </select>
-        <label>Notes</label><textarea id="lNotes"></textarea>
+        <label>Notes</label>
+        <textarea id="lNotes" oninput="CT.autoGrow(this)" style="min-height: 100px; flex: 1;"></textarea>
       </div>
       <div class="modal-foot">
         <div class="inline">
@@ -511,7 +515,7 @@
         <h3 id="modalDiaryTitle" style="margin:0">Entry</h3>
         <button class="btn secondary sm" onclick="CT.diary.closeEntry()">Esc</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="display: flex; flex-direction: column;">
         <div style="margin-bottom:12px">
           <label>Date</label>
           <input id="enDate" type="date">
@@ -546,9 +550,9 @@
         <h3 id="modalNoteTitle" style="margin:0">Temporary Note</h3>
         <button class="btn secondary sm" onclick="closeModals()">Esc</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="display: flex; flex-direction: column;">
         <label>Note Text</label>
-        <textarea id="nBody" placeholder="Jot down a quick thought or number..." oninput="CT.autoGrow(this)"></textarea>
+        <textarea id="nBody" placeholder="Jot down a quick thought or number..." oninput="CT.autoGrow(this)" style="min-height: 100px; flex: 1;"></textarea>
       </div>
       <div class="modal-foot">
         <div class="inline">
@@ -844,7 +848,10 @@
       } else {
         q('#tStatus').value = 'Pending';
       }
+      
       q('#modalTask').style.display = 'flex';
+      // Use autoGrow to set initial textarea size
+      CT.autoGrow(q('#tDesc'));
     }
     window.openTaskModal = openTaskModal;
 
@@ -900,6 +907,8 @@
         q('#lStatus').value='Talked';
       }
       q('#modalLead').style.display='flex';
+      // Use autoGrow to set initial textarea size
+      CT.autoGrow(q('#lNotes'));
     }
     window.openLeadModal = openLeadModal;
 
@@ -1126,8 +1135,11 @@
       el.style.height = (el.scrollHeight) + 'px';
     };
     
-    // Apply autogrow to new textareas
+    // Apply autogrow to the Task and Lead textareas on input (Diary and Notes already handled)
+    q('#tDesc').oninput = (e) => CT.autoGrow(e.target);
+    q('#lNotes').oninput = (e) => CT.autoGrow(e.target);
     q('#nBody').oninput = (e) => CT.autoGrow(e.target);
+
 
     /* --- SIMPLIFIED DIARY MODULE --- */
     CT.diary = {};
