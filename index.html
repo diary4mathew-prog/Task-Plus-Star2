@@ -230,7 +230,6 @@
       background:rgba(30,41,59,0.5); margin-bottom:10px; cursor:pointer; transition:all .2s;
     }
     .entry:hover{background:var(--panel2);border-color:var(--accent)}
-    .entry.important{border-left:3px solid var(--warn)}
     
     .entry-body{
       font-size:14px;color:#cbd5e1;margin-top:6px;line-height:1.5;
@@ -238,19 +237,6 @@
     }
     .md-bold{font-weight:700;color:#fff}
     .md-list{display:block;padding-left:10px;border-left:2px solid var(--border);margin:4px 0}
-
-    details.qa-box{margin-bottom:16px;border:1px solid var(--border);border-radius:8px;background:var(--panel);overflow:hidden}
-    details.qa-box summary{padding:10px 14px;cursor:pointer;font-weight:600;font-size:13px;list-style:none;display:flex;align-items:center;justify-content:space-between}
-    details.qa-box summary::-webkit-details-marker{display:none}
-    details.qa-box summary::after{content:'+';font-size:16px;font-weight:bold}
-    details.qa-box[open] summary::after{content:'-'}
-    details.qa-box[open] summary{border-bottom:1px solid var(--border)}
-    .qa-content{padding:12px}
-
-    .pill.p-pro{background:rgba(91,140,255,0.15);color:#c7d5ff;border:1px solid rgba(91,140,255,0.35)}
-    .pill.p-pers{background:rgba(168,85,247,0.15);color:#e9d5ff;border:1px solid rgba(168,85,247,0.35)}
-    .pill.p-link{background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.35)}
-    .pill.p-imp{background:rgba(245,158,11,0.2);color:#fcd34d;border:1px solid rgba(245,158,11,0.4)}
   </style>
 </head>
 <body>
@@ -326,16 +312,14 @@
         <div class="inline wrap" style="justify-content:space-between; margin-bottom:10px">
           <div class="inline" style="gap:6px">
             <h3 style="margin:0">Diary</h3>
-            <span class="muted small">Companion to Tasks</span>
+            <span class="muted small">Simple notes</span>
           </div>
           <div class="inline" style="gap:6px">
             <button class="btn primary sm" onclick="CT.diary.openEntry()">+ New</button>
             <div class="menu-wrap" id="diaryMenu">
               <button class="btn secondary icon" onclick="this.parentElement.classList.toggle('open')">☰</button>
               <div class="menu-dropdown">
-                <button class="menu-item" onclick="CT.diary.exportTXT('all')">Export All TXT</button>
-                <button class="menu-item" onclick="CT.diary.exportTXT('professional')">Export Pro TXT</button>
-                <button class="menu-item" onclick="CT.diary.exportTXT('personal')">Export Personal TXT</button>
+                <button class="menu-item" onclick="CT.diary.exportTXT()">Export TXT</button>
                 <button class="menu-item" onclick="CT.diary.exportCSV()">Export CSV</button>
                 <button class="menu-item" onclick="CT.diary.backupJSON()">Backup Diary JSON</button>
                 <button class="menu-item" onclick="CT.diary.importJSON()">Import Diary JSON</button>
@@ -346,30 +330,7 @@
 
         <div class="inline wrap" style="margin-bottom:16px">
           <input id="diarySearch" class="grow" type="text" placeholder="Search entries..." style="background:var(--panel);border-color:transparent">
-          <select id="diaryTypeFilter" class="btn secondary sm" style="width:auto">
-            <option value="any">All Types</option>
-            <option value="professional">Professional</option>
-            <option value="personal">Personal</option>
-          </select>
-          <button id="diaryFilterImp" class="btn secondary sm" data-active="false" onclick="CT.diary.toggleImp(this)">★ Only</button>
         </div>
-
-        <details class="qa-box">
-          <summary>Quick Add</summary>
-          <div class="qa-content">
-            <div class="inline wrap" style="gap:8px; margin-bottom:8px">
-              <input id="qaTitle" class="grow" type="text" placeholder="Title...">
-              <select id="qaType" style="width:auto; min-width:100px">
-                <option value="professional">Pro</option>
-                <option value="personal">Pers</option>
-              </select>
-            </div>
-            <div class="inline wrap" style="gap:8px">
-              <input id="qaTags" class="grow" type="text" placeholder="#tags...">
-              <button id="qaSave" class="btn primary sm">Add Note</button>
-            </div>
-          </div>
-        </details>
 
         <div id="diaryStatus" class="small muted" style="margin-bottom:10px; text-align:right"></div>
         <div id="diaryList"></div>
@@ -599,6 +560,7 @@
     </div>
   </div>
 
+  <!-- Simplified Diary Modal -->
   <div id="modalDiary" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -606,52 +568,26 @@
         <button class="btn secondary sm" onclick="CT.diary.closeEntry()">Esc</button>
       </div>
       <div class="modal-body">
-        <div class="inline wrap" style="gap:10px; margin-bottom:12px">
-          <div style="flex:1">
-            <label class="small muted">Date</label>
-            <input id="enDate" type="date">
-          </div>
-          <div style="flex:1">
-            <label class="small muted">Type</label>
-            <select id="enType">
-              <option value="professional">Professional</option>
-              <option value="personal">Personal</option>
-            </select>
-          </div>
-        </div>
-
         <div style="margin-bottom:12px">
-          <input id="enTitle" type="text" placeholder="Title (e.g. Meeting with...)" style="font-weight:bold; font-size:16px">
+          <label class="small muted">Date</label>
+          <input id="enDate" type="date">
         </div>
-        
-        <div class="inline" style="margin-bottom:12px; gap:8px">
-          <input id="enTags" type="text" placeholder="Tags (comma separated)...">
-          <label class="btn secondary sm" style="cursor:pointer; user-select:none">
-            <input id="enImportant" type="checkbox" style="width:auto;margin:0 4px 0 0"> ★
-          </label>
-        </div>
-
         <div style="margin-bottom:12px">
+          <label class="small muted">Title</label>
+          <input id="enTitle" type="text" placeholder="Title (e.g. Meeting with...)">
+        </div>
+        <div>
+          <label class="small muted">Notes</label>
           <textarea id="enBody" placeholder="Write your notes here..." oninput="CT.diary.autoGrow(this)"></textarea>
-        </div>
-
-        <div class="card" style="padding:10px; background:rgba(0,0,0,0.2)">
-          <div class="inline" style="justify-content:space-between; margin-bottom:6px">
-            <span class="small muted">Link to Task (Optional)</span>
-            <button id="prefillFromTask" class="btn secondary sm" style="padding:2px 8px">Copy Task Info</button>
-          </div>
-          <select id="enTaskLink" style="font-size:12px"></select>
-          <div id="enTaskMeta" class="small muted" style="margin-top:6px; font-style:italic"></div>
         </div>
       </div>
       <div class="modal-foot">
         <div class="inline">
           <button id="deleteDiaryBtn" class="btn danger sm hidden">Delete</button>
-          <button id="shareDiaryBtn" class="btn secondary sm">TXT</button>
-          <button id="emailDiaryBtn" class="btn secondary sm">Email</button>
         </div>
         <div class="inline">
           <button class="btn secondary sm" onclick="CT.diary.closeEntry()">Cancel</button>
+          <button id="emailDiaryBtn" class="btn secondary sm">Send Email</button>
           <button id="saveDiaryBtn" class="btn primary">Save Entry</button>
         </div>
       </div>
@@ -673,7 +609,6 @@
 
     // Email config for diary
     const EMAIL_PRO = "diary4mathew@gmail.com";
-    const EMAIL_PERSONAL = "mathewfederal3@hotmail.com";
 
     // State
     let tasks = JSON.parse(localStorage.getItem('ct_tasks') || '[]');
@@ -702,7 +637,6 @@
     let editId = null;
     let delTargetDate = null;
     let diaryEditingId = null;
-    let diaryShowImpOnly = false;
 
     const save = () => {
       localStorage.setItem('ct_tasks', JSON.stringify(tasks));
@@ -1381,7 +1315,7 @@
     const savedTheme = localStorage.getItem('ct_theme');
     if(savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
 
-    /* --- DIARY MODULE --- */
+    /* --- DIARY MODULE (DECLUTTERED) --- */
     CT.diary = {};
 
     function diaryMarkdown(text){
@@ -1400,15 +1334,14 @@
       elList.innerHTML = '';
 
       const term = (q('#diarySearch')?.value || '').toLowerCase();
-      const typeF = q('#diaryTypeFilter')?.value || 'any';
 
       let pool = diary.slice().sort((a,b) => (b.date||"").localeCompare(a.date||"") || (b.createdAt||"").localeCompare(a.createdAt||""));
 
-      if(diaryShowImpOnly) pool = pool.filter(e => e.important);
-      if(typeF !== 'any') pool = pool.filter(e => (e.etype||'professional') === typeF);
-      if(term) pool = pool.filter(e => ((e.title||'')+(e.body||'')+((e.tags||[]).join(''))).toLowerCase().includes(term));
+      if(term) pool = pool.filter(e => ((e.title||'')+(e.body||'')).toLowerCase().includes(term));
 
-      statusEl.textContent = `Entries: ${diary.length} • Filtered: ${pool.length}`;
+      const total = diary.length;
+      const shown = pool.length;
+      statusEl.textContent = shown === total ? `Entries: ${total}` : `Entries: ${total} • Showing: ${shown}`;
 
       if(pool.length === 0){
         elList.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">No entries found.</div>`;
@@ -1433,22 +1366,12 @@
         }
 
         const div = document.createElement('div');
-        div.className = `entry ${e.important?'important':''}`;
+        div.className = 'entry';
         div.onclick = (ev) => { if(!ev.target.closest('button')) CT.diary.openEntry(e.id); };
         
-        const typeLabel = (e.etype||'professional') === 'professional' ? 'PRO' : 'PERS';
-        const typeClass = (e.etype||'professional') === 'professional' ? 'p-pro' : 'p-pers';
-        const linkedTask = e.linkTaskId ? tasks.find(t=>t.id===e.linkTaskId) : null;
-
         div.innerHTML = `
           <div class="inline" style="justify-content:space-between">
-            <div class="inline" style="gap:6px">
-              <span class="pill ${typeClass}">${typeLabel}</span>
-              ${e.important ? '<span class="pill p-imp">IMP</span>' : ''}
-              ${linkedTask ? '<span class="pill p-link">LINKED</span>' : ''}
-              <strong style="font-size:15px">${e.title || '(No Title)'}</strong>
-            </div>
-            <div class="small muted">${(e.tags||[]).join(', ')}</div>
+            <strong style="font-size:15px">${e.title || '(No Title)'}</strong>
           </div>
           ${e.body ? `<div class="entry-body">${diaryMarkdown(e.body)}</div>` : ''}
         `;
@@ -1461,42 +1384,20 @@
       const modal = q('#modalDiary');
       const modalTitle = q('#modalDiaryTitle');
 
-      const sel = q('#enTaskLink');
-      sel.innerHTML = '<option value="">-- No Link --</option>';
-      const sortedTasks = tasks.slice().sort((a,b)=> (b.updated||"").localeCompare(a.updated||""));
-      sortedTasks.forEach(t => {
-        const c = customers.find(x => x.id === t.custId);
-        const opt = document.createElement('option');
-        const cname = c ? c.name.substring(0,15) : 'Unknown';
-        const desc = (t.desc||'').substring(0,30);
-        opt.value = t.id;
-        opt.textContent = `${cname} - ${desc}${t.desc && t.desc.length>30?'...':''}`;
-        sel.appendChild(opt);
-      });
-
       if(id){
         const e = diary.find(x=>x.id===id);
         modalTitle.textContent = "Edit Entry";
         q('#enDate').value = e.date || todayISO();
-        q('#enType').value = e.etype || 'professional';
         q('#enTitle').value = e.title || '';
-        q('#enTags').value = (e.tags||[]).join(', ');
-        q('#enImportant').checked = !!e.important;
         q('#enBody').value = e.body || '';
-        q('#enTaskLink').value = e.linkTaskId || '';
         q('#deleteDiaryBtn').classList.remove('hidden');
       } else {
         modalTitle.textContent = "New Entry";
         q('#enDate').value = todayISO();
-        q('#enType').value = 'professional';
         q('#enTitle').value = '';
-        q('#enTags').value = '';
-        q('#enImportant').checked = false;
         q('#enBody').value = '';
-        q('#enTaskLink').value = '';
         q('#deleteDiaryBtn').classList.add('hidden');
       }
-      CT.diary.updateTaskMeta();
       CT.diary.autoGrow(q('#enBody'));
       modal.style.display='flex';
     };
@@ -1511,129 +1412,29 @@
       el.style.height = (el.scrollHeight) + 'px';
     };
 
-    CT.diary.updateTaskMeta = function(){
-      const tid = q('#enTaskLink').value;
-      const div = q('#enTaskMeta');
-      if(!tid) { div.textContent = ''; return; }
-      const t = tasks.find(x=>x.id===tid);
-      if(!t) { div.textContent = 'Task not found'; return; }
-      const c = customers.find(x=>x.id===t.custId);
-      div.textContent = `Customer: ${c?c.name:'N/A'} • Status: ${t.status} • Due: ${t.due||'N/A'}`;
-    };
-
-    q('#enTaskLink').onchange = () => CT.diary.updateTaskMeta();
-
-    q('#saveDiaryBtn').onclick = () => {
-      const title = q('#enTitle').value.trim();
-      if(!title) return toast('Title required','error');
-
-      const base = {
-        id: diaryEditingId || uuid(),
-        date: q('#enDate').value || todayISO(),
-        title,
-        etype: q('#enType').value,
-        tags: q('#enTags').value.split(',').map(s=>s.trim()).filter(Boolean),
-        important: q('#enImportant').checked,
-        body: q('#enBody').value,
-        linkTaskId: q('#enTaskLink').value || null,
-        updatedAt: nowISO()
-      };
-
-      if(!diaryEditingId){
-        base.createdAt = nowISO();
-        diary.push(base);
-      } else {
-        const idx = diary.findIndex(x=>x.id===diaryEditingId);
-        base.createdAt = diary[idx].createdAt;
-        diary[idx] = base;
-      }
-      save();
-      CT.diary.closeEntry();
-      toast('Entry Saved','success');
-    };
-
-    q('#deleteDiaryBtn').onclick = () => {
-      if(!diaryEditingId) return;
-      if(!confirm('Delete this entry?')) return;
-      diary = diary.filter(x=>x.id!==diaryEditingId);
-      save();
-      CT.diary.closeEntry();
-      toast('Entry Deleted','error');
-    };
-
-    q('#qaSave').onclick = () => {
-      const title = q('#qaTitle').value.trim();
-      if(!title) return toast('Title required','error');
-      const entry = {
-        id: uuid(),
-        date: todayISO(),
-        title,
-        etype: q('#qaType').value,
-        tags: q('#qaTags').value.split(',').map(s=>s.trim()).filter(Boolean),
-        important: false,
-        body: '',
-        linkTaskId: null,
-        createdAt: nowISO(),
-        updatedAt: nowISO()
-      };
-      diary.push(entry);
-      save();
-      q('#qaTitle').value = '';
-      q('#qaTags').value = '';
-      q('details.qa-box')?.removeAttribute('open');
-      toast('Quick Note Added','success');
-    };
-
-    q('#diarySearch').oninput = () => CT.diary.renderList();
-    q('#diaryTypeFilter').onchange = () => CT.diary.renderList();
-
-    CT.diary.toggleImp = function(btn){
-      diaryShowImpOnly = !diaryShowImpOnly;
-      btn.dataset.active = diaryShowImpOnly;
-      btn.style.background = diaryShowImpOnly ? 'var(--warn)' : 'var(--panel)';
-      btn.style.color = diaryShowImpOnly ? '#000' : 'var(--text)';
-      CT.diary.renderList();
-    };
-
-    q('#prefillFromTask').onclick = () => {
-      const tid = q('#enTaskLink').value;
-      if(!tid) return toast('Select a task first','error');
-      const t = tasks.find(x=>x.id===tid);
-      const c = customers.find(x=>x.id===t.custId);
-      const txt = `\n\n--- Linked Task ---\nCustomer: ${c?c.name:'N/A'}\nDesc: ${t.desc||''}\nStatus: ${t.status}\nDue: ${t.due||'N/A'}`;
-      q('#enBody').value += txt;
-      CT.diary.autoGrow(q('#enBody'));
-      if(!q('#enTitle').value) q('#enTitle').value = `Update on ${c?c.name:'Task'}`;
-    };
-
     function diaryEntryToTxt(e){
-      return `DATE: ${e.date}\nTITLE: ${e.title} [${e.etype}]\nTAGS: ${(e.tags||[]).join(', ')}\n----------------\n${e.body||''}\n\n`;
+      return `DATE: ${e.date}\nTITLE: ${e.title}\n----------------\n${e.body||''}\n\n`;
     }
 
-    CT.diary.exportTXT = function(mode){
-      let pool = diary.slice().sort((a,b)=> (a.date||"").localeCompare(b.date||""));
-      if(mode !== 'all') pool = pool.filter(e => (e.etype||'professional') === mode);
-      if(!pool.length) { toast('No entries to export','error'); return; }
+    CT.diary.exportTXT = function(){
+      if(!diary.length){ toast('No entries to export','error'); return; }
+      const pool = diary.slice().sort((a,b)=> (a.date||"").localeCompare(b.date||""));
       const txt = pool.map(diaryEntryToTxt).join('================================\n');
       const blob = new Blob([txt], {type:'text/plain'});
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `Diary_${mode}_${todayISO()}.txt`;
+      a.download = `Diary_${todayISO()}.txt`;
       a.click();
     };
 
     CT.diary.exportCSV = function(){
       if(!diary.length){ toast('No entries to export','error'); return; }
-      const h = ["ID","Date","Title","Type","Body","Tags","Important","LinkTaskId"];
+      const h = ["ID","Date","Title","Body"];
       const rows = diary.map(e => [
         e.id,
         e.date,
         `"${(e.title||'').replace(/"/g,'""')}"`,
-        e.etype||'professional',
         `"${(e.body||'').replace(/\n/g,' ').replace(/"/g,'""')}"`,
-        `"${(e.tags||[]).join(',').replace(/"/g,'""')}"`,
-        e.important ? 1 : 0,
-        e.linkTaskId || ''
       ]);
       const csv = [h.join(',')].concat(rows.map(r=>r.join(','))).join('\n');
       const blob = new Blob([csv], {type:'text/csv'});
@@ -1678,22 +1479,48 @@
       inp.click();
     };
 
-    q('#shareDiaryBtn').onclick = () => {
-      const e = diary.find(x=>x.id===diaryEditingId);
-      if(!e) return;
-      const blob = new Blob([diaryEntryToTxt(e)], {type:'text/plain'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${(e.title||'entry').replace(/[^a-z0-9]/gi,'_')}.txt`;
-      a.click();
+    q('#saveDiaryBtn').onclick = () => {
+      const title = q('#enTitle').value.trim();
+      if(!title) return toast('Title required','error');
+
+      const base = {
+        id: diaryEditingId || uuid(),
+        date: q('#enDate').value || todayISO(),
+        title,
+        body: q('#enBody').value,
+        updatedAt: nowISO()
+      };
+
+      if(!diaryEditingId){
+        base.createdAt = nowISO();
+        diary.push(base);
+      } else {
+        const idx = diary.findIndex(x=>x.id===diaryEditingId);
+        base.createdAt = diary[idx].createdAt;
+        diary[idx] = base;
+      }
+      save();
+      CT.diary.closeEntry();
+      toast('Entry Saved','success');
     };
+
+    q('#deleteDiaryBtn').onclick = () => {
+      if(!diaryEditingId) return;
+      if(!confirm('Delete this entry?')) return;
+      diary = diary.filter(x=>x.id!==diaryEditingId);
+      save();
+      CT.diary.closeEntry();
+      toast('Entry Deleted','error');
+    };
+
+    q('#diarySearch').oninput = () => CT.diary.renderList();
 
     q('#emailDiaryBtn').onclick = () => {
       const e = diary.find(x=>x.id===diaryEditingId);
-      const to = (e && e.etype === 'personal') ? EMAIL_PERSONAL : EMAIL_PRO;
-      const subject = `Diary: ${e ? e.title : 'New Entry'}`;
-      const body = e ? diaryEntryToTxt(e) : '';
-      window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      if(!e) return;
+      const subject = `Diary: ${e.title}`;
+      const body = diaryEntryToTxt(e);
+      window.location.href = `mailto:${EMAIL_PRO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
 
     // Close diary menu when clicking outside
