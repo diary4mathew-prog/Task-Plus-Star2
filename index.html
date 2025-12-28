@@ -2,112 +2,219 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Super CRM + Diary + Visits</title>
+  <title>Super CRM + Diary + Notes</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <style>
-    :root {
+    :root{
       --bg:#0b1020; --panel:#121a35; --panel2:#0f1530; --text:#eaf0ff; --muted:#aab4d6;
       --border:#1f2a4f; --accent:#5b8cff; --accent2:#74d680; --warn:#ffcc66; --danger:#ff6b6b;
       --header-height:60px;
     }
-    [data-theme="light"] {
+    [data-theme="light"]{
       --bg:#f5f7ff; --panel:#ffffff; --panel2:#f3f6ff; --text:#0c1533; --muted:#4a5577;
       --border:#d8def0; --accent:#375dfb; --accent2:#2fbf71; --warn:#f6b84e; --danger:#ef4b4b;
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
     
-    body {
-      margin: 0; font-family: Inter, system-ui, sans-serif;
-      background: var(--bg); color: var(--text);
-      height: 100dvh; width: 100vw; overflow: hidden;
-      display: flex; flex-direction: column;
+    body{
+      margin:0; font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; 
+      background:var(--bg); color:var(--text); 
+      height:100dvh; width:100vw; overflow:hidden; 
+      display:flex; flex-direction:column;
+      -webkit-font-smoothing:antialiased;
     }
     
-    /* --- HEADER --- */
-    header {
-      height: var(--header-height); flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 16px;
-      background: var(--panel); border-bottom: 1px solid var(--border); z-index: 50;
+    header{
+      height:var(--header-height); flex-shrink:0; display:flex; align-items:center; gap:12px; padding:0 16px;
+      background:var(--panel); border-bottom:1px solid var(--border); z-index:50;
       padding-top: env(safe-area-inset-top);
     }
-    .search-bar { flex: 1; position: relative; }
-    .search-bar input {
-      width: 100%; padding: 10px 12px 10px 36px; border-radius: 12px; border: 1px solid var(--border); 
-      background: var(--bg); color: var(--text); outline: none; font-size: 16px;
+    .search-bar{flex:1; position:relative}
+    .search-bar input{
+      width:100%; padding:10px 12px; padding-left:36px; border-radius:12px; border:1px solid var(--border); 
+      background:var(--bg); color:var(--text); outline:none; font-size:16px;
     }
-    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: 0.6; }
+    .search-icon{position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.6}
+    
+    .icon-btn{
+      background:transparent; border:none; color:var(--text); font-size:24px; cursor:pointer; 
+      padding:8px; display:flex; align-items:center; justify-content:center;
+    }
 
-    /* --- SIDEBAR --- */
     .sidebar-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 140;
-      opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+      backdrop-filter: blur(2px);
     }
     .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+
     aside.sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0; width: 280px; max-width: 80%;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 280px; max-width: 80%;
       background: var(--panel); border-right: 1px solid var(--border);
-      z-index: 150; transform: translateX(-100%);
+      z-index: 150;
+      transform: translateX(-100%);
       transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       padding-top: calc(var(--header-height) + env(safe-area-inset-top));
+      display: flex; flex-direction: column;
     }
     aside.sidebar.open { transform: translateX(0); }
-    .sidebar-nav { padding: 10px; }
-    .nav-row {
-      display: flex; align-items: center; gap: 15px; width: 100%; padding: 16px;
-      background: transparent; border: none; color: var(--muted); font-size: 16px; font-weight: 600;
-      text-align: left; cursor: pointer; border-radius: 8px; margin-bottom: 4px;
-    }
-    .nav-row.active { background: rgba(91,140,255,0.1); color: var(--accent); border-left: 4px solid var(--accent); }
 
-    /* --- MAIN CONTENT --- */
-    main { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 100px; position: relative; }
-    .container { max-width: 800px; margin: 0 auto; }
-
-    .fab {
-      position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 20px;
-      width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: #fff;
-      display: flex; align-items: center; justify-content: center; font-size: 32px; 
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4); cursor: pointer; z-index: 90; border: none;
+    .sidebar-header {
+      padding: 20px;
+      font-size: 20px; font-weight: 800; color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
     }
 
-    .hidden { display: none !important; }
-    .card { background: var(--panel2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-    .inline { display: flex; gap: 10px; align-items: center; }
-    .grow { flex: 1; }
-    .muted { color: var(--muted); font-size: 13px; }
+    .sidebar-nav { padding: 10px; overflow-y: auto; flex: 1; }
     
-    .btn { padding: 10px 16px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; font-family: inherit; }
-    .btn.primary { background: var(--accent); color: #fff; }
-    .btn.secondary { background: var(--panel); border: 1px solid var(--border); color: var(--text); }
-    .btn.danger { background: var(--danger); color: #fff; }
-    .btn.sm { padding: 6px 12px; font-size: 12px; }
-
-    input, textarea, select {
-      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
-      background: var(--bg); color: var(--text); outline: none; margin-bottom: 12px; font-family: inherit;
+    .nav-row {
+      display: flex; align-items: center; gap: 15px;
+      width: 100%; padding: 16px;
+      background: transparent; border: none;
+      color: var(--muted); font-size: 16px; font-weight: 600;
+      text-align: left; cursor: pointer;
+      border-radius: 8px; margin-bottom: 4px;
+      transition: background 0.2s;
     }
-    label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; display: block; }
+    .nav-row:hover { background: var(--panel2); color: var(--text); }
+    .nav-row.active { background: rgba(91,140,255,0.1); color: var(--accent); border-left: 4px solid var(--accent); }
+    .nav-row span { font-size: 22px; width: 30px; text-align: center; }
 
-    .row-item { 
-      display: flex; gap: 12px; padding: 15px; border: 1px solid var(--border); 
-      background: var(--panel2); border-radius: 12px; margin-bottom: 10px; cursor: pointer; align-items: center;
+    main{
+      flex:1; overflow-y:auto; padding:16px; 
+      padding-bottom: 100px;
+      -webkit-overflow-scrolling: touch;
+      position: relative; z-index: 10;
+    }
+    .container{max-width:800px; margin:0 auto}
+
+    .fab{
+      position:fixed; 
+      bottom: calc(20px + env(safe-area-inset-bottom)); 
+      right:20px;
+      width:60px; height:60px; border-radius:50%; background:var(--accent); color:#fff;
+      display:flex; align-items:center; justify-content:center; font-size:32px; 
+      box-shadow:0 4px 15px rgba(0,0,0,.4); cursor:pointer; z-index:90; border:none;
+    }
+    .fab:active{transform:scale(0.95)}
+
+    .hidden{display:none !important}
+    .card{background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px}
+    .inline{display:flex; gap:10px; align-items:center}
+    .grow{flex:1}
+    .muted{color:var(--muted); font-size:13px}
+    
+    .btn{padding:10px 16px; border-radius:10px; border:none; font-weight:600; cursor:pointer; font-size:14px; font-family:inherit}
+    .btn.primary{background:var(--accent); color:#fff}
+    .btn.secondary{background:var(--panel); border:1px solid var(--border); color:var(--text)}
+    .btn.danger{background:var(--danger); color:#fff}
+    .btn.sm{padding:6px 12px; font-size:12px}
+    .btn.icon{padding:8px; border-radius:50%}
+    .btn:active{transform:scale(0.97)}
+
+    input, textarea, select{
+      font-family:inherit;font-size:14px;
+    }
+    input[type="text"],input[type="tel"],input[type="date"],input[type="time"],textarea,select{
+      width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);
+      background:var(--bg);color:var(--text);outline:none;margin-bottom:12px;
+    }
+    input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+
+    label{font-size:12px; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:6px; display:block}
+
+    .filters{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; scrollbar-width:none}
+    .chip{
+      white-space:nowrap; padding:8px 14px; background:var(--panel); border:1px solid var(--border); 
+      border-radius:99px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer;
+    }
+    .chip.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+
+    .row{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start}
+    .row:last-child{border-bottom:none}
+    
+    .pill{padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800; text-transform:uppercase}
+    .p-Pending{background:#20305f; color:#7fb1ff}
+    .p-InProgress{background:#4a2b05; color:#ffb067}
+    .p-Completed{background:#173726; color:#87e2a5}
+    .p-due{background:#372a12; color:#ffd27e}
+    .p-overdue{background:#3a1212; color:#ff9a9a}
+
+    .hist-group-header{
+      padding:12px; background:var(--panel); border-radius:10px; font-weight:700; font-size:14px;
+      display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom:8px;
+    }
+    .hist-content{display:none; padding-left:8px; margin-bottom:12px}
+    .expanded .hist-content{display:block}
+    
+    .backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(3px); z-index:200;
+      display:none; align-items:center; justify-content:center; padding:16px;
+    }
+    .modal{
+      width:92%; max-width:500px; max-height:85dvh; background:var(--panel); border-radius:18px; 
+      padding:0; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.5);
+      border: 1px solid var(--border); display:flex; flex-direction:column;
+    }
+    .modal-head{padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    .modal-body{padding:16px;overflow-y:auto}
+    .modal-foot{
+      padding:12px 16px;
+      border-top:1px solid var(--border);
+      display:flex;justify-content:space-between;align-items:center;
+      background:rgba(0,0,0,0.15);
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+      gap:8px;
+      flex-wrap:wrap;
     }
 
-    /* --- MODALS --- */
-    .backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 200;
-      display: none; align-items: center; justify-content: center; padding: 16px;
+    #modalDiary .modal,#modalTask .modal,#modalLead .modal,#modalNote .modal,#modalVisit .modal {
+      width: 95%; max-width: 600px; height: 90dvh; max-height: 90dvh; display: flex;
     }
-    .modal {
-      width: 95%; max-width: 550px; max-height: 90dvh; background: var(--panel); border-radius: 20px; 
-      display: flex; flex-direction: column; border: 1px solid var(--border); overflow: hidden;
-    }
-    .modal-head { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .modal-body { padding: 16px; overflow-y: auto; flex: 1; }
-    .modal-foot { padding: 16px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: rgba(0,0,0,0.1); }
 
-    #toaster { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 300; width: 90%; max-width: 400px; pointer-events: none; }
-    .toast-card { background: var(--accent2); color: #000; padding: 12px; border-radius: 50px; text-align: center; font-weight: 700; margin-top: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+    #toaster{
+      position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+      z-index:300;display:flex;flex-direction:column;gap:10px;width:90%;max-width:400px;
+      pointer-events:none;
+    }
+    #toaster .toast-card{
+      pointer-events:auto;
+      background:var(--panel2);color:#fff;padding:12px 20px;
+      border-radius:50px;text-align:center;box-shadow:0 5px 15px rgba(0,0,0,0.3);
+      border:1px solid var(--accent);font-weight:600;
+    }
+
+    .settings-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .settings-btn{
+      display:flex; flex-direction:column; align-items:center; padding:18px; 
+      background:var(--panel2); border-radius:12px; border:1px solid var(--border); cursor:pointer
+    }
+    .settings-btn span{font-size:26px; margin-bottom:8px}
+
+    .date-header{
+      position:sticky; top:72px; z-index:15;
+      background:var(--bg); padding:8px 0; font-size:13px; font-weight:700; color:var(--muted);
+      border-bottom:1px solid var(--border); margin:16px 0 8px 0; display:flex; align-items:center; gap:8px;
+    }
+    .date-header::after{content:'';flex:1;height:1px;background:var(--border)}
+    
+    .entry{
+      position:relative; padding:14px; border-radius:8px; border:1px solid var(--border);
+      background:rgba(30,41,59,0.5); margin-bottom:10px; cursor:pointer; transition:all .2s;
+    }
+    .entry:hover{background:var(--panel2);border-color:var(--accent)}
+    .entry-body{
+      font-size:14px;color:#cbd5e1;margin-top:6px;line-height:1.5;
+      overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+    }
+    
+    .note-entry{
+      padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;
+      background:var(--panel2);
+    }
   </style>
 </head>
 <body>
@@ -115,13 +222,18 @@
   <div class="sidebar-overlay" id="sbOverlay" onclick="toggleSidebar()"></div>
 
   <aside class="sidebar" id="sbMenu">
+    <div class="sidebar-header">
+      <span>🚀 App Menu</span>
+      <button class="icon-btn" onclick="toggleSidebar()">✕</button>
+    </div>
     <div class="sidebar-nav">
-      <button class="nav-row active" data-target="viewVisits"><span>📍</span> Customer Visits</button>
-      <button class="nav-row" data-target="viewTasks"><span>📝</span> Tasks</button>
+      <button class="nav-row active" data-target="viewTasks"><span>📝</span> Tasks</button>
       <button class="nav-row" data-target="viewLeads"><span>👥</span> Leads</button>
+      <button class="nav-row" data-target="viewVisits"><span>📍</span> Visits</button>
+      <button class="nav-row" data-target="viewBot"><span>🤖</span> Bot Gen</button>
       <button class="nav-row" data-target="viewDiary"><span>📔</span> Diary</button>
       <button class="nav-row" data-target="viewNotes"><span>🗒️</span> Notes</button>
-      <div style="height: 1px; background: var(--border); margin: 10px 0;"></div>
+      <div class="hr"></div>
       <button class="nav-row" onclick="q('#modalSettings').style.display='flex'; toggleSidebar()"><span>⚙️</span> Settings</button>
     </div>
   </aside>
@@ -130,57 +242,112 @@
     <button class="icon-btn" onclick="toggleSidebar()">☰</button>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
-      <input type="text" id="globalSearch" placeholder="Search visits..." />
+      <input type="text" id="globalSearch" placeholder="Search everywhere..." />
     </div>
-    <button class="icon-btn" onclick="q('#modalSettings').style.display='flex'">⚙️</button>
+    <button class="icon-btn" id="btnMenu" title="Settings">⚙️</button>
   </header>
 
   <main>
     <div class="container">
       
-      <div id="viewVisits">
-        <div class="inline" style="justify-content:space-between; margin-bottom:15px">
-          <h2 style="margin:0">Recent Visits</h2>
-          <button class="btn primary sm" onclick="openVisitModal()">+ New</button>
+      <div id="viewTasks">
+        <div class="filters">
+          <button class="chip active" data-filter="Pending">Pending</button>
+          <button class="chip" data-filter="In Progress">In Progress</button>
+          <button class="chip" data-filter="On Hold">On Hold</button>
+          <button class="chip" data-filter="Completed">Completed</button>
+        </div>
+        <div id="taskList"></div>
+      </div>
+
+      <div id="viewLeads" class="hidden">
+        <div class="filters">
+          <button class="chip active" data-lfilter="All">All</button>
+          <button class="chip" data-lfilter="Talked">Talked</button>
+          <button class="chip" data-lfilter="Interested">Interested</button>
+          <button class="chip" data-lfilter="Converted">Converted</button>
+        </div>
+        <div id="leadList"></div>
+      </div>
+
+      <div id="viewVisits" class="hidden">
+        <div class="inline wrap" style="justify-content:space-between; margin-bottom:10px">
+          <h3 style="margin:0">Customer Visits</h3>
+          <button class="btn primary sm" onclick="openVisitModal()">+ New Visit</button>
         </div>
         <div id="visitList"></div>
       </div>
 
-      <div id="viewTasks" class="hidden"><div class="card muted">Task Module - Coming Soon</div></div>
-      <div id="viewLeads" class="hidden"><div class="card muted">Leads Module - Coming Soon</div></div>
-      <div id="viewDiary" class="hidden"><div class="card muted">Diary Module - Coming Soon</div></div>
-      <div id="viewNotes" class="hidden"><div class="card muted">Notes Module - Coming Soon</div></div>
+      <div id="viewBot" class="hidden">
+        <div class="inline" style="justify-content:space-between; margin-bottom:12px">
+           <h3 style="margin:0">Timeline Queue</h3>
+           <div class="muted">Pres → Fut</div>
+        </div>
+        <div id="botHistoryList"></div>
+      </div>
+
+      <div id="viewDiary" class="hidden">
+        <div class="inline wrap" style="justify-content:space-between; margin-bottom:10px">
+          <div class="inline" style="gap:6px">
+            <h3 style="margin:0">Diary</h3>
+            <span class="muted small">Personal Journal</span>
+          </div>
+          <button class="btn primary sm" onclick="CT.diary.openEntry()">+ New Entry</button>
+        </div>
+        <div id="diaryStatus" class="small muted" style="margin-bottom:10px; text-align:right"></div>
+        <div id="diaryList"></div>
+      </div>
+      
+      <div id="viewNotes" class="hidden">
+        <div class="inline wrap" style="justify-content:space-between; margin-bottom:10px">
+          <h3 style="margin:0">Notes</h3>
+          <button class="btn primary sm" onclick="CT.notes.openNote()">+ New Note</button>
+        </div>
+        <div id="noteList"></div>
+      </div>
 
     </div>
   </main>
 
-  <button class="fab" onclick="openVisitModal()">+</button>
+  <button id="fab" class="fab">+</button>
 
   <div id="modalVisit" class="backdrop">
     <div class="modal">
-      <div class="modal-head"><h3>Visit Entry</h3><button class="btn secondary sm" onclick="closeModals()">✕</button></div>
+      <div class="modal-head">
+        <h3 style="margin:0">Log Visit</h3>
+        <button class="btn secondary sm" onclick="closeModals()">✕</button>
+      </div>
       <div class="modal-body">
         <label>Customer Name</label>
-        <input id="vName" type="text" placeholder="Who did you visit?">
-        
+        <input id="vName" type="text" placeholder="Enter Name">
         <div class="inline">
-          <div class="grow"><label>Phone Number</label><input id="vPhone" type="tel" placeholder="Contact No."></div>
-          <div class="grow"><label>Customer ID</label><input id="vCustId" type="text" placeholder="Account ID"></div>
+          <div class="grow">
+            <label>Phone Number</label>
+            <input id="vPhone" type="tel" placeholder="Phone Number">
+          </div>
+          <div class="grow">
+            <label>Customer ID</label>
+            <input id="vCustId" type="text" placeholder="Customer ID">
+          </div>
         </div>
-
         <div class="inline">
-          <div class="grow"><label>Date</label><input id="vDate" type="date"></div>
-          <div class="grow"><label>Time</label><input id="vTime" type="time"></div>
+          <div class="grow">
+            <label>Date</label>
+            <input id="vDate" type="date">
+          </div>
+          <div class="grow">
+            <label>Time</label>
+            <input id="vTime" type="time">
+          </div>
         </div>
-
-        <label>GPS Location Details</label>
-        <textarea id="vGps" placeholder="Paste location link or coordinates from map app here..." style="min-height:120px"></textarea>
+        <label>GPS Location (Paste Coordinates/Link)</label>
+        <textarea id="vGps" placeholder="Paste data fetched from GPS app here..." style="min-height:100px"></textarea>
       </div>
       <div class="modal-foot">
         <button id="btnDelVisit" class="btn danger sm hidden">Delete</button>
         <div class="inline">
-            <button class="btn secondary sm" onclick="handleVisitSave(false)">Save Only</button>
-            <button class="btn primary sm" onclick="handleVisitSave(true)">Save & Email</button>
+          <button class="btn secondary sm" onclick="closeModals()">Cancel</button>
+          <button id="btnSaveVisit" class="btn primary">Save & Email</button>
         </div>
       </div>
     </div>
@@ -188,11 +355,189 @@
 
   <div id="modalSettings" class="backdrop">
     <div class="modal">
-      <div class="modal-head"><h3>Settings</h3><button class="btn secondary sm" onclick="closeModals()">✕</button></div>
+      <div class="modal-head">
+        <h3 style="margin:0">Settings</h3>
+        <button class="btn secondary sm" onclick="closeModals()">✕</button>
+      </div>
       <div class="modal-body">
-        <label>Default Recipient Email</label>
-        <input id="setReportEmail" type="email" placeholder="office@company.com">
-        <button class="btn primary" style="width:100%" onclick="saveSettings()">Save Configuration</button>
+        <div class="settings-grid">
+          <div class="settings-btn" id="btnDueSoon"><span>🔔</span>Due Soon</div>
+          <div class="settings-btn" id="btnStats"><span>📊</span>Stats</div>
+          <div class="settings-btn" id="btnTheme"><span>🌗</span>Theme</div>
+          <div class="settings-btn" id="btnBackup"><span>💾</span>Backup</div>
+          <div class="settings-btn" id="btnCSVs"><span>📤</span>Export CSV</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalTask" class="backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 style="margin:0">Add/Edit Task</h3>
+        <button class="btn secondary sm" onclick="closeModals()">Esc</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column;"> 
+        <label>Customer Name</label>
+        <input id="tName" type="text" placeholder="John Doe">
+        <label>Mobile</label>
+        <input id="tMobile" type="tel" placeholder="9876543210">
+        <label>Description</label>
+        <textarea id="tDesc" placeholder="Task details..." oninput="CT.autoGrow(this)" style="min-height: 100px; flex: 1;"></textarea>
+        <div class="inline">
+          <div class="grow">
+            <label>Due Date</label>
+            <input id="tDue" type="date">
+          </div>
+          <div class="grow">
+            <label>Status</label>
+            <select id="tStatus">
+              <option>Pending</option>
+              <option>In Progress</option>
+              <option>On Hold</option>
+              <option>Cancelled</option>
+              <option>Completed</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <div class="inline">
+          <button id="btnDelTask" class="btn danger sm hidden">Delete</button>
+        </div>
+        <div class="inline">
+          <button class="btn secondary sm" onclick="closeModals()">Cancel</button>
+          <button id="btnSaveTask" class="btn primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalLead" class="backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 style="margin:0">Add/Edit Lead</h3>
+        <button class="btn secondary sm" onclick="closeModals()">Esc</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column;">
+        <label>Name</label><input id="lName" type="text">
+        <label>Mobile</label><input id="lMobile" type="tel">
+        <label>Product</label><input id="lProd" type="text">
+        <label>Status</label>
+        <select id="lStatus">
+          <option>Talked</option>
+          <option>Interested</option>
+          <option>Waiting Confirmation</option>
+          <option>Converted</option>
+        </select>
+        <label>Notes</label>
+        <textarea id="lNotes" oninput="CT.autoGrow(this)" style="min-height: 100px; flex: 1;"></textarea>
+      </div>
+      <div class="modal-foot">
+        <div class="inline">
+          <button id="btnDelLead" class="btn danger sm hidden">Delete</button>
+        </div>
+        <div class="inline">
+          <button class="btn secondary sm" onclick="closeModals()">Cancel</button>
+          <button id="btnSaveLead" class="btn primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalBot" class="backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="inline" style="justify-content:space-between;width:100%">
+          <h3 style="margin:0">New Command</h3>
+          <button class="btn secondary sm" id="btnResetBot">Reset</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px">
+          <button class="btn secondary sm" onclick="CT.bot.smartTime(10,0)">10 AM</button>
+          <button class="btn secondary sm" onclick="CT.bot.smartTime(11,0)">11 AM</button>
+          <button class="btn secondary sm" onclick="CT.bot.smartTime(15,30)">3:30 PM</button>
+          <button class="btn secondary sm" onclick="CT.bot.smartTime(16,0)">4 PM</button>
+        </div>
+        <div class="inline">
+          <div class="grow">
+            <label>Date</label>
+            <input id="bDate" type="date">
+          </div>
+          <div class="grow">
+            <label>Time</label>
+            <input id="bTime" type="time">
+          </div>
+        </div>
+        <div class="inline" style="margin-bottom:10px">
+          <button class="btn secondary sm grow" onclick="CT.bot.addDays(1)">+1 Day</button>
+          <button class="btn secondary sm grow" onclick="CT.bot.addDays(2)">+2 Days</button>
+        </div>
+        <label>Message</label>
+        <input id="bMsg" type="text" placeholder="Reminder text...">
+        <br>
+        <div id="botOutput" class="hidden" style="margin-top:15px; display:flex; flex-direction:column; gap:8px"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn secondary grow" onclick="closeModals()">Close</button>
+        <button id="btnGenBot" class="btn primary grow">Generate & Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalDue" class="backdrop">
+    <div class="modal">
+      <div class="modal-head"><h3 style="margin:0">Due Soon</h3></div>
+      <div class="modal-body"><div id="dueList"></div></div>
+      <div class="modal-foot"><button class="btn secondary" style="width:100%" onclick="closeModals()">Close</button></div>
+    </div>
+  </div>
+
+  <div id="modalSmartDel" class="backdrop">
+    <div class="modal" style="text-align:center">
+      <div class="modal-head"><h3>Delete?</h3></div>
+      <div class="modal-body"><p class="muted">For <span id="sdDate"></span></p></div>
+      <div class="modal-foot" style="flex-direction:column;align-items:stretch">
+        <button id="btnEmailDel" class="btn primary" style="width:100%; margin-bottom:8px">📧 Email then Delete</button>
+        <button id="btnJustDel" class="btn danger" style="width:100%">🗑️ Just Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalStats" class="backdrop">
+    <div class="modal">
+      <div class="modal-head"><h3>Stats</h3></div>
+      <div class="modal-body"><div id="statsContent"></div></div>
+      <div class="modal-foot"><button class="btn secondary" style="width:100%" onclick="closeModals()">Close</button></div>
+    </div>
+  </div>
+
+  <div id="modalDiary" class="backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalDiaryTitle" style="margin:0">Entry</h3>
+        <button class="btn secondary sm" onclick="CT.diary.closeEntry()">Esc</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column;">
+        <div style="margin-bottom:12px"><label>Date</label><input id="enDate" type="date"></div>
+        <div style="margin-bottom:12px"><input id="enTitle" type="text" placeholder="Title" style="font-weight:bold; font-size:16px"></div>
+        <div style="margin-bottom:12px; flex: 1; display: flex; flex-direction: column;"><label>Note</label><textarea id="enBody" placeholder="Write your notes here..." oninput="CT.autoGrow(this)" style="flex: 1; min-height: 200px;"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <div class="inline"><button id="deleteDiaryBtn" class="btn danger sm hidden">Delete</button></div>
+        <div class="inline"><button class="btn secondary sm" onclick="CT.diary.closeEntry()">Cancel</button><button id="saveDiaryBtn" class="btn primary">Save</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalNote" class="backdrop">
+    <div class="modal">
+      <div class="modal-head"><h3 id="modalNoteTitle" style="margin:0">Note</h3><button class="btn secondary sm" onclick="closeModals()">Esc</button></div>
+      <div class="modal-body"><label>Note Text</label><textarea id="nBody" oninput="CT.autoGrow(this)" style="min-height: 100px; flex: 1;"></textarea></div>
+      <div class="modal-foot">
+        <div class="inline"><button id="deleteNoteBtn" class="btn danger sm hidden">Delete</button></div>
+        <div class="inline"><button class="btn secondary sm" onclick="closeModals()">Cancel</button><button id="saveNoteBtn" class="btn primary">Save</button></div>
       </div>
     </div>
   </div>
@@ -200,176 +545,187 @@
   <div id="toaster"></div>
 
   <script>
+    const CT = window.CT || {};
     const q = s => document.querySelector(s);
     const qAll = s => document.querySelectorAll(s);
-    const uuid = () => Math.random().toString(36).slice(2, 9);
-    
-    // Core State
-    let visits = JSON.parse(localStorage.getItem('crm_visits') || '[]');
-    let config = JSON.parse(localStorage.getItem('crm_config') || '{"email":""}');
-    let currentView = 'viewVisits';
-    let editId = null;
+    const uuid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const nowISO = () => new Date().toISOString();
+    const todayISO = () => nowISO().slice(0,10);
+    const fmtDate = d => new Date(d).toLocaleDateString(undefined, {weekday:'short', year:'numeric', month:'short', day:'numeric'});
 
-    // Database Helpers
-    const sync = () => {
-      localStorage.setItem('crm_visits', JSON.stringify(visits));
-      localStorage.setItem('crm_config', JSON.stringify(config));
+    // State
+    let tasks = JSON.parse(localStorage.getItem('ct_tasks') || '[]');
+    let customers = JSON.parse(localStorage.getItem('ct_cust') || '[]');
+    let leads = JSON.parse(localStorage.getItem('ct_leads') || '[]');
+    let botHist = JSON.parse(localStorage.getItem('ct_bot') || '[]');
+    let diary = JSON.parse(localStorage.getItem('ct_diary') || '[]');
+    let notes = JSON.parse(localStorage.getItem('ct_notes') || '[]');
+    let visits = JSON.parse(localStorage.getItem('ct_visits') || '[]');
+
+    let currentView = 'viewTasks';
+    let taskFilter = 'Pending';
+    let leadFilter = 'All';
+    let editId = null;
+    let delTargetDate = null;
+    let diaryEditingId = null;
+    let noteEditingId = null;
+    let visitEditingId = null;
+
+    const save = () => {
+      localStorage.setItem('ct_tasks', JSON.stringify(tasks));
+      localStorage.setItem('ct_cust', JSON.stringify(customers));
+      localStorage.setItem('ct_leads', JSON.stringify(leads));
+      localStorage.setItem('ct_bot', JSON.stringify(botHist));
+      localStorage.setItem('ct_diary', JSON.stringify(diary));
+      localStorage.setItem('ct_notes', JSON.stringify(notes));
+      localStorage.setItem('ct_visits', JSON.stringify(visits));
       render();
     };
 
-    const toast = (msg) => {
-      const t = document.createElement('div'); t.className = 'toast-card';
-      t.textContent = msg; q('#toaster').appendChild(t);
-      setTimeout(() => t.remove(), 2500);
+    const toast = (msg, type='info') => {
+      const d = document.createElement('div'); d.className = 'toast-card';
+      if(type==='error') d.style.borderColor = 'var(--danger)';
+      if(type==='success') d.style.borderColor = 'var(--accent2)';
+      d.textContent = msg; q('#toaster').appendChild(d);
+      setTimeout(()=>d.remove(), 2500);
     };
 
-    // UI Helpers
-    window.toggleSidebar = () => {
-      q('#sbMenu').classList.toggle('open');
-      q('#sbOverlay').classList.toggle('open');
+    function isOverdue(t){ if(!t.due) return false; return new Date(t.due) < new Date().setHours(0,0,0,0); }
+    window.copyText = (txt) => {
+      navigator.clipboard.writeText(txt).then(() => toast('Copied!', 'success')).catch(()=>toast('Error', 'error'));
     };
 
-    const closeModals = () => {
-      qAll('.backdrop').forEach(b => b.style.display = 'none');
-      editId = null;
+    window.toggleSidebar = function() {
+      q('#sbMenu').classList.toggle('open'); q('#sbOverlay').classList.toggle('open');
     };
 
-    // Navigation
     qAll('.nav-row').forEach(btn => {
-      btn.onclick = () => {
+      btn.addEventListener('click', () => {
         const target = btn.dataset.target;
-        if(!target) return;
-        qAll('.nav-row').forEach(r => r.classList.remove('active'));
-        btn.classList.add('active');
-        currentView = target;
-        ['viewVisits','viewTasks','viewLeads','viewDiary','viewNotes'].forEach(v => q('#'+v).classList.add('hidden'));
-        q('#'+target).classList.remove('hidden');
-        toggleSidebar();
-        render();
-      };
+        if(target) {
+          qAll('.nav-row').forEach(r => r.classList.remove('active')); btn.classList.add('active');
+          currentView = target;
+          ['viewTasks','viewLeads','viewBot','viewDiary','viewNotes','viewVisits'].forEach(id => q('#'+id).classList.add('hidden'));
+          q('#' + currentView).classList.remove('hidden');
+          toggleSidebar(); render(); window.scrollTo(0,0);
+        }
+      });
     });
 
-    // VISIT LOGIC
-    window.openVisitModal = (id = null) => {
-      editId = id;
-      const now = new Date();
-      // Reset fields
-      q('#vDate').value = now.toISOString().split('T')[0];
-      q('#vTime').value = now.toTimeString().slice(0,5);
-      q('#vName').value = ''; q('#vPhone').value = ''; q('#vCustId').value = ''; q('#vGps').value = '';
-      q('#btnDelVisit').classList.add('hidden');
+    q('#fab').addEventListener('click', () => {
+      if(currentView === 'viewTasks') openTaskModal();
+      else if(currentView === 'viewLeads') openLeadModal();
+      else if(currentView === 'viewBot') openBotModal();
+      else if(currentView === 'viewDiary') CT.diary.openEntry();
+      else if(currentView === 'viewNotes') CT.notes.openNote();
+      else if(currentView === 'viewVisits') openVisitModal();
+    });
 
-      if(id) {
-        const v = visits.find(x => x.id === id);
-        if(v) {
-          q('#vName').value = v.name; q('#vPhone').value = v.phone; q('#vCustId').value = v.custId;
-          q('#vDate').value = v.date; q('#vTime').value = v.time; q('#vGps').value = v.gps;
-          q('#btnDelVisit').classList.remove('hidden');
-        }
-      }
-      q('#modalVisit').style.display = 'flex';
-    };
+    function render(){
+      const term = q('#globalSearch').value.toLowerCase().trim();
+      if(currentView === 'viewTasks') renderTasks(term);
+      else if(currentView === 'viewLeads') renderLeads(term);
+      else if(currentView === 'viewBot') renderBotHist();
+      else if(currentView === 'viewDiary') CT.diary.renderList(term);
+      else if(currentView === 'viewNotes') CT.notes.renderList(term);
+      else if(currentView === 'viewVisits') renderVisits(term);
+    }
 
-    window.handleVisitSave = (sendEmail = false) => {
-      const name = q('#vName').value.trim();
-      if(!name) return toast("Name is required");
-
-      const entry = {
-        id: editId || uuid(),
-        name,
-        phone: q('#vPhone').value,
-        custId: q('#vCustId').value,
-        date: q('#vDate').value,
-        time: q('#vTime').value,
-        gps: q('#vGps').value
-      };
-
-      if(editId) {
-        const idx = visits.findIndex(x => x.id === editId);
-        visits[idx] = entry;
-      } else {
-        visits.push(entry);
-      }
-
-      sync();
-      closeModals();
-
-      if(sendEmail) {
-        triggerEmail(entry);
-      } else {
-        toast("Visit Saved Locally");
-      }
-    };
-
-    const triggerEmail = (v) => {
-      const subject = encodeURIComponent(`Visit Report: ${v.name} (${v.date})`);
-      const body = encodeURIComponent(
-        `CUSTOMER VISIT REPORT\n` +
-        `----------------------\n` +
-        `Customer: ${v.name}\n` +
-        `Phone: ${v.phone}\n` +
-        `ID: ${v.custId || 'N/A'}\n` +
-        `Time: ${v.date} at ${v.time}\n\n` +
-        `LOCATION:\n${v.gps || 'No GPS data provided'}\n\n` +
-        `Sent via CRM App`
-      );
-      window.location.href = `mailto:${config.email}?subject=${subject}&body=${body}`;
-    };
-
-    q('#btnDelVisit').onclick = () => {
-      if(confirm("Delete this record?")) {
-        visits = visits.filter(x => x.id !== editId);
-        sync(); closeModals();
-      }
-    };
-
-    const render = () => {
-      const list = q('#visitList');
-      const term = q('#globalSearch').value.toLowerCase();
-      list.innerHTML = '';
-
-      const filtered = visits.filter(v => 
-        v.name.toLowerCase().includes(term) || 
-        v.phone.includes(term) || 
-        (v.custId && v.custId.toLowerCase().includes(term))
-      );
-
-      if(filtered.length === 0) {
-        list.innerHTML = '<div class="card muted" style="text-align:center">No visits found</div>';
-        return;
-      }
-
-      filtered.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)).forEach(v => {
-        const div = document.createElement('div');
-        div.className = 'row-item';
-        div.innerHTML = `
-          <div class="grow" onclick="openVisitModal('${v.id}')">
-            <div style="font-weight:700; font-size:16px">${v.name}</div>
-            <div class="muted">${v.phone} • ID: ${v.custId || '--'}</div>
-            <div class="muted" style="font-size:11px; margin-top:4px">📅 ${v.date} at ${v.time}</div>
-          </div>
-          <button class="btn secondary sm" onclick="quickEmail('${v.id}')">📧</button>
-        `;
+    /* --- TASKS --- */
+    function renderTasks(term){
+      const list = q('#taskList'); list.innerHTML = '';
+      let pool = tasks.slice();
+      if(term) pool = pool.filter(t => { const c = customers.find(x=>x.id===t.custId); return ((c?.name||'') + (t.desc||'')).toLowerCase().includes(term); });
+      else pool = pool.filter(t => t.status === taskFilter);
+      pool.forEach(t => {
+        const c = customers.find(x=>x.id===t.custId);
+        const div = document.createElement('div'); div.className = 'row';
+        div.innerHTML = `<div class="grow" onclick="openTaskModal('${t.id}')"><div class="inline"><strong>${c?.name||'Unknown'}</strong><span class="pill p-${t.status.replace(' ','')}">${t.status}</span></div><div class="muted">${t.desc || ''}</div></div>`;
         list.appendChild(div);
       });
+    }
+
+    /* --- VISITS MODULE --- */
+    function openVisitModal(id=null){
+      visitEditingId = id;
+      q('#vName').value=''; q('#vPhone').value=''; q('#vCustId').value=''; q('#vGps').value='';
+      q('#vDate').value=todayISO(); q('#vTime').value=new Date().toTimeString().slice(0,5);
+      q('#btnDelVisit').classList.add('hidden');
+      if(id){
+        const v = visits.find(x=>x.id===id);
+        q('#vName').value=v.name; q('#vPhone').value=v.phone; q('#vCustId').value=v.custId;
+        q('#vDate').value=v.date; q('#vTime').value=v.time; q('#vGps').value=v.gps;
+        q('#btnDelVisit').classList.remove('hidden');
+      }
+      q('#modalVisit').style.display='flex';
+    }
+
+    q('#btnSaveVisit').onclick = () => {
+      const v = {
+        id: visitEditingId || uuid(),
+        name: q('#vName').value.trim(),
+        phone: q('#vPhone').value.trim(),
+        custId: q('#vCustId').value.trim(),
+        date: q('#vDate').value,
+        time: q('#vTime').value,
+        gps: q('#vGps').value.trim()
+      };
+      if(!v.name) return toast('Name required','error');
+      if(visitEditingId){ const idx=visits.findIndex(x=>x.id===visitEditingId); visits[idx]=v; }
+      else visits.push(v);
+      
+      // Auto-trigger email
+      const emailSubject = `Visit Report: ${v.name} (${v.date})`;
+      const emailBody = `Customer: ${v.name}\nPhone: ${v.phone}\nID: ${v.custId}\nDate/Time: ${v.date} ${v.time}\nGPS: ${v.gps}`;
+      window.location.href = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      
+      save(); closeModals(); toast('Visit Logged','success');
     };
 
-    window.quickEmail = (id) => {
-        const v = visits.find(x => x.id === id);
-        if(v) triggerEmail(v);
+    q('#btnDelVisit').onclick = () => { visits=visits.filter(x=>x.id!==visitEditingId); save(); closeModals(); };
+
+    function renderVisits(term){
+      const list = q('#visitList'); list.innerHTML = '';
+      let pool = visits.slice().sort((a,b)=>b.date.localeCompare(a.date));
+      if(term) pool = pool.filter(v=>v.name.toLowerCase().includes(term) || v.phone.includes(term));
+      pool.forEach(v => {
+        const div = document.createElement('div'); div.className = 'entry';
+        div.onclick = () => openVisitModal(v.id);
+        div.innerHTML = `<strong>${v.name}</strong> <span class="small muted">(${v.date})</span><div class="small muted">${v.phone} | ID: ${v.custId}</div><div class="small muted" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${v.gps}</div>`;
+        list.appendChild(div);
+      });
+    }
+
+    /* --- BOT GEN --- */
+    function openBotModal(){ q('#bDate').value=todayISO(); q('#bTime').value='10:00'; q('#bMsg').value=''; q('#botOutput').classList.add('hidden'); q('#modalBot').style.display='flex'; }
+    CT.bot = { smartTime: (h,m) => { q('#bTime').value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }, addDays: (d) => { const cur = new Date(q('#bDate').value); cur.setDate(cur.getDate()+d); q('#bDate').value = cur.toISOString().split('T')[0]; } };
+    q('#btnGenBot').onclick = () => {
+      const d = q('#bDate').value; const t = q('#bTime').value; const m = q('#bMsg').value;
+      if(!d || !t) return toast('Error','error');
+      const botCmd = `!remind ${d} ${t} ${m}`;
+      q('#botOutput').innerHTML = `<div style="background:var(--bg);padding:10px;border-radius:8px;display:flex;gap:10px"><span>${botCmd}</span><button class="btn secondary sm" onclick="copyText('${botCmd}')">📋</button></div>`;
+      q('#botOutput').classList.remove('hidden');
+      if(!botHist.find(x => x.date===d && x.time===t && x.msg===m)){ botHist.push({id:uuid(), date:d, time:t, msg:m}); save(); }
     };
+    function renderBotHist(){
+      const list = q('#botHistoryList'); list.innerHTML = '';
+      const grouped = {}; botHist.forEach(i => { if(!grouped[i.date]) grouped[i.date]=[]; grouped[i.date].push(i); });
+      Object.keys(grouped).sort().forEach(date => {
+        const items = grouped[date];
+        const div = document.createElement('div');
+        div.innerHTML = `<div class="hist-group-header" onclick="this.parentElement.classList.toggle('expanded')"><span>📅 ${date}</span></div><div class="hist-content">${items.map(i => `<div class="row"><div class="grow">${i.time} - ${i.msg}</div></div>`).join('')}</div>`;
+        list.appendChild(div);
+      });
+    }
 
-    window.saveSettings = () => {
-      config.email = q('#setReportEmail').value;
-      sync();
-      closeModals();
-      toast("Settings Updated");
-    };
+    /* --- OTHER MODULES --- */
+    function openLeadModal(id=null){ editId=id; q('#modalLead').style.display='flex'; }
+    CT.diary.renderList = (term) => { /* simplified diary render */ };
+    CT.notes.renderList = (term) => { /* simplified notes render */ };
+    function closeModals(){ qAll('.backdrop').forEach(e => e.style.display='none'); }
+    q('#btnTheme').onclick = () => { const t = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme', t); localStorage.setItem('ct_theme', t); closeModals(); };
+    CT.autoGrow = (el) => { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; };
 
-    q('#globalSearch').oninput = render;
-
-    // Boot
-    q('#setReportEmail').value = config.email;
     render();
   </script>
 </body>
