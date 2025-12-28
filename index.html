@@ -265,6 +265,7 @@
     <div class="sidebar-nav">
       <button class="nav-row active" data-target="viewTasks"><span>📝</span> Tasks</button>
       <button class="nav-row" data-target="viewLeads"><span>👥</span> Leads</button>
+      <button class="nav-row" data-target="viewVisits"><span>📍</span> Visits</button>
       <button class="nav-row" data-target="viewBot"><span>🤖</span> Bot Gen</button>
       <button class="nav-row" data-target="viewDiary"><span>📔</span> Diary</button>
       <div class="hr"></div>
@@ -277,7 +278,7 @@
     
     <div class="search-bar">
       <span class="search-icon">🔍</span>
-      <input type="text" id="globalSearch" placeholder="Search tasks/leads..." />
+      <input type="text" id="globalSearch" placeholder="Search tasks/leads/visits..." />
     </div>
     <button class="icon-btn" id="btnMenu" title="Settings">⚙️</button>
   </header>
@@ -303,6 +304,14 @@
           <button class="chip" data-lfilter="Converted">Converted</button>
         </div>
         <div id="leadList"></div>
+      </div>
+
+      <div id="viewVisits" class="hidden">
+        <div class="inline" style="justify-content:space-between; margin-bottom:12px">
+          <h3 style="margin:0">Customer Visits</h3>
+          <div class="muted small">Log visits + GPS</div>
+        </div>
+        <div id="visitList"></div>
       </div>
 
       <div id="viewBot" class="hidden">
@@ -460,6 +469,46 @@
         <div class="inline">
           <button class="btn secondary sm" onclick="closeModals()">Cancel</button>
           <button id="btnSaveLead" class="btn primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalVisit" class="backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 style="margin:0">Add/Edit Visit</h3>
+        <button class="btn secondary sm" onclick="closeModals()">Esc</button>
+      </div>
+      <div class="modal-body">
+        <label>Customer Name</label>
+        <input id="vName" type="text" placeholder="John Doe">
+        <label>Customer ID</label>
+        <input id="vCustomerId" type="text" placeholder="Internal ID or code">
+        <label>Mobile</label>
+        <input id="vMobile" type="tel" placeholder="9876543210">
+        <div class="inline">
+          <div class="grow">
+            <label>Date</label>
+            <input id="vDate" type="date">
+          </div>
+          <div class="grow">
+            <label>Time</label>
+            <input id="vTime" type="time">
+          </div>
+        </div>
+        <label>GPS Location</label>
+        <input id="vGps" type="text" placeholder="Paste GPS link or lat,long from other app">
+        <label>Notes</label>
+        <textarea id="vNotes" placeholder="Visit details..."></textarea>
+      </div>
+      <div class="modal-foot">
+        <div class="inline">
+          <button id="btnDelVisit" class="btn danger sm hidden">Delete</button>
+        </div>
+        <div class="inline">
+          <button class="btn secondary sm" onclick="closeModals()">Cancel</button>
+          <button id="btnSaveVisit" class="btn primary">Save Visit</button>
         </div>
       </div>
     </div>
@@ -632,6 +681,7 @@
     let leads = JSON.parse(localStorage.getItem('ct_leads') || '[]');
     let botHist = JSON.parse(localStorage.getItem('ct_bot') || '[]');
     let diary = JSON.parse(localStorage.getItem('ct_diary') || '[]');
+    let visits = JSON.parse(localStorage.getItem('ct_visits') || '[]');
 
     // Optional migration from legacy diary key
     try {
@@ -660,6 +710,7 @@
       localStorage.setItem('ct_leads', JSON.stringify(leads));
       localStorage.setItem('ct_bot', JSON.stringify(botHist));
       localStorage.setItem('ct_diary', JSON.stringify(diary));
+      localStorage.setItem('ct_visits', JSON.stringify(visits));
       render();
     };
 
@@ -684,7 +735,6 @@
       if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(txt).then(() => toast('Copied!', 'success')).catch(()=>toast('Failed to copy', 'error'));
       } else {
-        // Fallback
         const el = document.createElement('textarea');
         el.value = txt; document.body.appendChild(el); el.select();
         document.execCommand('copy'); document.body.removeChild(el);
@@ -710,6 +760,27 @@
       window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
 
+    window.emailVisit = (vid) => {
+      const v = visits.find(x => x.id === vid);
+      if(!v) return;
+      const subject = `Customer Visit: ${v.name || 'Unknown'}`;
+      const lines = [
+        `Name: ${v.name || 'N/A'}`,
+        `Customer ID: ${v.customerId || 'N/A'}`,
+        `Mobile: ${v.mobile || 'N/A'}`,
+        '',
+        `Date: ${v.date || 'N/A'}`,
+        `Time: ${v.time || 'N/A'}`,
+        '',
+        `GPS Location: ${v.gps || 'N/A'}`,
+        '',
+        'Notes:',
+        v.notes || ''
+      ];
+      const body = lines.join('\n');
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+
     /* --- SIDEBAR TOGGLE LOGIC --- */
     window.toggleSidebar = function() {
       q('#sbMenu').classList.toggle('open');
@@ -721,18 +792,16 @@
       btn.addEventListener('click', (e) => {
         const target = btn.dataset.target;
         if(target) {
-          // Remove active class from all rows
           qAll('.nav-row').forEach(r => r.classList.remove('active'));
-          // Add active to click
           btn.classList.add('active');
           
           currentView = target;
-          ['viewTasks','viewLeads','viewBot','viewDiary'].forEach(id=>{
+          ['viewTasks','viewLeads','viewVisits','viewBot','viewDiary'].forEach(id=>{
             q('#'+id).classList.add('hidden');
           });
           q('#' + currentView).classList.remove('hidden');
           
-          toggleSidebar(); // Close sidebar
+          toggleSidebar();
           render();
           window.scrollTo(0,0);
         }
@@ -742,6 +811,7 @@
     q('#fab').addEventListener('click', () => {
       if(currentView === 'viewTasks') openTaskModal();
       else if(currentView === 'viewLeads') openLeadModal();
+      else if(currentView === 'viewVisits') openVisitModal();
       else if(currentView === 'viewBot') openBotModal();
       else if(currentView === 'viewDiary') CT.diary.openEntry();
     });
@@ -751,6 +821,7 @@
       const term = q('#globalSearch').value.toLowerCase().trim();
       if(currentView === 'viewTasks') renderTasks(term);
       else if(currentView === 'viewLeads') renderLeads(term);
+      else if(currentView === 'viewVisits') renderVisits(term);
       else if(currentView === 'viewBot') renderBotHist();
       else if(currentView === 'viewDiary') CT.diary.renderList();
     }
@@ -830,6 +901,60 @@
                <button class="btn secondary sm" onclick="emailLead('${l.id}')">📧</button>
              </div>
              ${l.status!=='Converted' ? `<button class="btn primary sm" style="width:100%" onclick="convertLead('${l.id}')">⭐</button>` : ''}
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    /* --- VISITS --- */
+    function renderVisits(term){
+      const list = q('#visitList'); list.innerHTML = '';
+      let pool = visits.slice();
+
+      if(term){
+        pool = pool.filter(v => (
+          (v.name||'') +
+          (v.customerId||'') +
+          (v.mobile||'') +
+          (v.gps||'') +
+          (v.notes||'') +
+          (v.date||'') +
+          (v.time||'')
+        ).toLowerCase().includes(term));
+      }
+
+      pool.sort((a,b) => 
+        (b.date || '').localeCompare(a.date || '') ||
+        (b.time || '').localeCompare(a.time || '') ||
+        (b.updated || '').localeCompare(a.updated || '')
+      );
+
+      if(!pool.length){
+        list.innerHTML = `<div class="muted" style="text-align:center; padding:20px">No visits logged.</div>`;
+        return;
+      }
+
+      pool.forEach(v => {
+        const div = document.createElement('div');
+        div.className = 'row';
+        const safeGps = (v.gps || '').replace(/'/g, "\\'");
+        div.innerHTML = `
+          <div class="grow" onclick="openVisitModal('${v.id}')">
+            <div class="inline">
+              <strong>${v.name || 'Unknown'}</strong>
+              ${v.customerId ? `<span class="pill" style="background:var(--panel); border:1px solid var(--border)">ID: ${v.customerId}</span>` : ''}
+            </div>
+            <div class="muted small" style="margin-top:4px">
+              ${(v.date || '')} ${v.time || ''}
+            </div>
+            ${v.gps ? `<div class="muted small" style="margin-top:4px">📍 ${v.gps}</div>` : ''}
+            ${v.notes ? `<div class="muted" style="margin-top:4px">${v.notes}</div>` : ''}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-left:8px; align-items:flex-end">
+            <button class="btn secondary sm" onclick="wa('${v.mobile||''}','${v.name||''}')">💬</button>
+            ${v.gps ? `<button class="btn secondary sm" onclick="copyText('${safeGps}')">📍</button>` : ''}
+            <button class="btn secondary sm" onclick="emailVisit('${v.id}')">📧</button>
           </div>
         `;
         list.appendChild(div);
@@ -981,6 +1106,87 @@
       leads = leads.filter(l=>l.id!==editId); 
       save(); closeModals(); 
       toast('Lead Deleted','error');
+    };
+
+    /* --- VISITS LOGIC --- */
+    function openVisitModal(id=null){
+      editId = id;
+      q('#vName').value='';
+      q('#vCustomerId').value='';
+      q('#vMobile').value='';
+      q('#vGps').value='';
+      q('#vNotes').value='';
+      q('#vDate').value = todayISO();
+      q('#vTime').value = new Date().toISOString().slice(11,16);
+      q('#btnDelVisit').classList.add('hidden');
+
+      if(id){
+        const v = visits.find(x=>x.id===id);
+        if(v){
+          q('#vName').value = v.name || '';
+          q('#vCustomerId').value = v.customerId || '';
+          q('#vMobile').value = v.mobile || '';
+          q('#vGps').value = v.gps || '';
+          q('#vNotes').value = v.notes || '';
+          if(v.date) q('#vDate').value = v.date;
+          if(v.time) q('#vTime').value = v.time;
+          q('#btnDelVisit').classList.remove('hidden');
+        }
+      }
+      q('#modalVisit').style.display='flex';
+    }
+    window.openVisitModal = openVisitModal;
+
+    q('#btnSaveVisit').onclick = () => {
+      const name = q('#vName').value.trim();
+      const customerId = q('#vCustomerId').value.trim();
+      const mobile = q('#vMobile').value.trim();
+      const gps = q('#vGps').value.trim();
+      const notes = q('#vNotes').value.trim();
+      const date = q('#vDate').value || todayISO();
+      const time = q('#vTime').value || new Date().toISOString().slice(11,16);
+
+      if(!name && !customerId && !mobile){
+        return toast('Enter at least name, ID or mobile','error');
+      }
+
+      if(editId){
+        const v = visits.find(x=>x.id===editId);
+        if(v){
+          v.name = name;
+          v.customerId = customerId;
+          v.mobile = mobile;
+          v.gps = gps;
+          v.notes = notes;
+          v.date = date;
+          v.time = time;
+          v.updated = nowISO();
+        }
+      } else {
+        visits.push({
+          id: uuid(),
+          name,
+          customerId,
+          mobile,
+          gps,
+          notes,
+          date,
+          time,
+          created: nowISO(),
+          updated: nowISO()
+        });
+      }
+      save();
+      closeModals();
+      toast('Visit Saved','success');
+    };
+
+    q('#btnDelVisit').onclick = () => {
+      if(!editId) return;
+      visits = visits.filter(v=>v.id!==editId);
+      save();
+      closeModals();
+      toast('Visit Deleted','error');
     };
 
     /* --- BOT GEN --- */
@@ -1144,7 +1350,7 @@
     q('#btnBackup').onclick = async () => {
       if(!window.JSZip) return alert('JSZip loading...');
       const zip = new JSZip();
-      zip.file('backup.json', JSON.stringify({tasks,customers,leads,botHist,diary}));
+      zip.file('backup.json', JSON.stringify({tasks,customers,leads,botHist,diary,visits}));
       const blob = await zip.generateAsync({type:'blob'});
       const a = document.createElement('a'); 
       a.href = URL.createObjectURL(blob); 
@@ -1255,7 +1461,6 @@
       const modal = q('#modalDiary');
       const modalTitle = q('#modalDiaryTitle');
 
-      // Populate task select
       const sel = q('#enTaskLink');
       sel.innerHTML = '<option value="">-- No Link --</option>';
       const sortedTasks = tasks.slice().sort((a,b)=> (b.updated||"").localeCompare(a.updated||""));
