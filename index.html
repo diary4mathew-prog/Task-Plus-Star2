@@ -151,6 +151,9 @@
     .p-due{background:#372a12; color:#ffd27e}
     .p-overdue{background:#3a1212; color:#ff9a9a}
 
+    .small{font-size:12px}
+    .wrap{flex-wrap:wrap}
+
     /* History */
     .hist-group-header{
       padding:12px; background:var(--panel); border-radius:10px; font-weight:700; font-size:14px;
@@ -203,8 +206,6 @@
     .settings-btn span{font-size:26px; margin-bottom:8px}
 
     /* --- Diary-specific styles --- */
-    .small{font-size:12px}
-    .wrap{flex-wrap:wrap}
 
     .menu-wrap{position:relative}
     .menu-btn{background:transparent;color:var(--text);border:1px solid var(--border)}
@@ -371,13 +372,11 @@
       <div class="modal-body">
         <label>Customer Name</label>
         <div class="inline">
-          <input id="tName" type="text" placeholder="John Doe" class="grow">
-          <button class="btn secondary sm" onclick="CT.smartPaste('#tName','#tMobile')" title="Paste & Split">✂️</button>
+          <input id="tName" type="text" placeholder="Paste from Google Lens" class="grow">
+          <button class="btn secondary sm" onclick="CT.smartPaste('#tName','#tMobile')" title="Split name & mobile">✂️</button>
         </div>
-
         <label>Mobile</label>
         <input id="tMobile" type="tel" placeholder="9876543210">
-
         <label>Description</label>
         <textarea id="tDesc" placeholder="Task details..."></textarea>
         <div class="inline">
@@ -418,13 +417,10 @@
       <div class="modal-body">
         <label>Name</label>
         <div class="inline">
-          <input id="lName" type="text" class="grow">
-          <button class="btn secondary sm" onclick="CT.smartPaste('#lName','#lMobile')" title="Paste & Split">✂️</button>
+          <input id="lName" type="text" class="grow" placeholder="Paste from Google Lens">
+          <button class="btn secondary sm" onclick="CT.smartPaste('#lName','#lMobile')" title="Split name & mobile">✂️</button>
         </div>
-
-        <label>Mobile</label>
-        <input id="lMobile" type="tel">
-
+        <label>Mobile</label><input id="lMobile" type="tel">
         <label>Product</label><input id="lProd" type="text">
         <label>Status</label>
         <select id="lStatus">
@@ -455,7 +451,10 @@
       </div>
       <div class="modal-body">
         <label>Customer Name</label>
-        <input id="vName" type="text" placeholder="John Doe">
+        <div class="inline">
+          <input id="vName" type="text" placeholder="Paste from Google Lens" class="grow">
+          <button class="btn secondary sm" onclick="CT.smartPaste('#vName','#vMobile')" title="Split name & mobile">✂️</button>
+        </div>
         <label>Customer ID</label>
         <input id="vCustomerId" type="text" placeholder="Internal ID or code">
         <label>Mobile</label>
@@ -516,8 +515,16 @@
           <button class="btn secondary sm grow" onclick="CT.bot.addDays(1)">+1 Day</button>
           <button class="btn secondary sm grow" onclick="CT.bot.addDays(2)">+2 Days</button>
         </div>
-        <label>Message</label>
-        <input id="bMsg" type="text" placeholder="Reminder text...">
+
+        <div class="inline" style="margin-top:10px">
+          <div class="grow">
+            <label>Message</label>
+            <input id="bMsg" type="text" placeholder="Paste text (name + mobile + reminder)">
+          </div>
+          <button class="btn secondary sm" style="margin-top:22px" onclick="CT.smartPaste('#bMsg','#bMobile')" title="Split mobile from text">✂️</button>
+        </div>
+        <label>Mobile (optional)</label>
+        <input id="bMobile" type="tel" placeholder="9876543210">
         
         <div id="botOutput" class="hidden" style="margin-top:15px; display:flex; flex-direction:column; gap:8px"></div>
 
@@ -619,6 +626,58 @@
     const todayISO = () => nowISO().slice(0,10);
     const fmtDate = d => new Date(d).toLocaleDateString(undefined, {weekday:'short', year:'numeric', month:'short', day:'numeric'});
 
+    // --- Smart splitter (no clipboard) used in Tasks, Leads, Visits, Bot ---
+    CT.smartPaste = (nameSel, mobileSel) => {
+      const nameEl = q(nameSel);
+      const mobEl  = q(mobileSel);
+
+      if (!nameEl) {
+        toast('Name/text field missing','error');
+        return;
+      }
+
+      let raw = (nameEl.value || '').trim();
+      if (!raw){
+        toast('Paste the text first','error');
+        return;
+      }
+
+      // Find phone-like patterns: +91, spaces, dashes, 10+ digits
+      const matches = raw.match(/(\+?\d[\d\s\-]{8,}\d)/g);
+
+      if (matches && matches.length){
+        let best = matches[0];
+
+        // Prefer 10-digit Indian mobile starting 6-9
+        for (const cand of matches){
+          const dig = cand.replace(/\D/g,'');
+          if (dig.length===10 && /^[6-9]/.test(dig)) { best=cand; break; }
+        }
+
+        let digits = best.replace(/\D/g,'');
+
+        if (digits.length===12 && digits.startsWith('91')){
+          digits = '+' + digits;
+        }
+
+        if (mobEl) mobEl.value = digits;
+
+        // Remove number and common labels from text
+        let cleaned = raw.replace(best,' ');
+        cleaned = cleaned.replace(/Mob:|Mobile:|Phone:|Ph:|Tel:|Cell:/gi,' ');
+        cleaned = cleaned.replace(/\s+/g,' ').trim();
+
+        if (!cleaned){
+          cleaned = raw.replace(/\d/g,'').replace(/\s+/g,' ').trim();
+        }
+
+        nameEl.value = cleaned;
+        toast('Split into text + mobile','success');
+      } else {
+        toast('No phone number detected','info');
+      }
+    };
+
     // Email config for diary
     const EMAIL_PRO = "diary4mathew@gmail.com";
 
@@ -668,86 +727,6 @@
       d.textContent = msg;
       q('#toaster').appendChild(d);
       setTimeout(()=>d.remove(), 2500);
-    };
-
-    // --- Smart Paste (Option B: dedicated button using clipboard text) ---
-    CT.smartPaste = async (nameSel, mobileSel) => {
-      try {
-        if (!navigator.clipboard || !navigator.clipboard.readText) {
-          toast('Clipboard not available. Paste manually.', 'error');
-          return;
-        }
-        const raw = await navigator.clipboard.readText();
-        if (!raw) {
-          toast('Clipboard is empty', 'error');
-          return;
-        }
-
-        let text = raw.trim();
-        // Find possible phone numbers (allow +91, spaces, dashes)
-        const matches = text.match(/(\+?\d[\d\s\-]{8,}\d)/g);
-
-        if (matches && matches.length) {
-          // Choose the "best" candidate (prefer Indian mobile-like numbers)
-          let best = matches[0];
-          for (const cand of matches) {
-            const digits = cand.replace(/\D/g, '');
-            if (digits.length === 10 && /^[6-9]/.test(digits)) {
-              best = cand;
-              break;
-            }
-          }
-
-          let phoneDigits = best.replace(/\D/g, '');
-          // keep +91 if present
-          if (phoneDigits.length === 12 && phoneDigits.startsWith('91')) {
-            phoneDigits = '+'.concat(phoneDigits);
-          }
-
-          // Set mobile
-          const mobEl = q(mobileSel);
-          if (mobEl) mobEl.value = phoneDigits;
-
-          // Remove the chosen number and labels from text
-          text = text.replace(best, ' ');
-          text = text.replace(/Mob:|Mobile:|Phone:|Ph:|Tel:|Cell:/gi, ' ');
-          text = text.replace(/\s+/g, ' ').trim();
-
-          // Use lines to guess name
-          let lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-          // Filter out lines with labels or obvious non-name content
-          let candidates = lines.filter(l => 
-            !/Mob:|Mobile:|Phone:|Ph:|Tel:|Cell:/i.test(l) &&
-            !/\d/.test(l) &&
-            !/@/.test(l)
-          );
-
-          let name = '';
-          if (candidates.length) {
-            // pick a line with reasonable length (closest to ~15 chars)
-            name = candidates.reduce((bestLine, cur) => {
-              if (!bestLine) return cur;
-              const target = 15;
-              return (Math.abs(cur.length - target) < Math.abs(bestLine.length - target)) ? cur : bestLine;
-            }, '');
-          } else {
-            // fallback to remaining cleaned text
-            name = text.split(/\r?\n/)[0] || text;
-          }
-
-          const nameEl = q(nameSel);
-          if (nameEl) nameEl.value = name.trim();
-
-          toast('Pasted & split into name + mobile','success');
-        } else {
-          // No phone number detected → just paste text into name
-          const nameEl = q(nameSel);
-          if (nameEl) nameEl.value = raw.trim();
-          toast('No number found. Pasted into name only.','info');
-        }
-      } catch (err) {
-        toast('Clipboard blocked. Paste manually into name.','error');
-      }
     };
 
     function isOverdue(t){
@@ -1012,7 +991,10 @@
             ${items.map(i => `
               <div class="row" style="padding:8px 0">
                 <div class="muted" style="font-family:monospace; min-width:50px; font-weight:bold; color:var(--accent)">${i.time}</div>
-                <div class="grow muted">${i.msg}</div>
+                <div class="grow muted">
+                  ${i.msg || ''}
+                  ${i.mobile ? `<div class="small">📱 ${i.mobile}</div>` : ''}
+                </div>
                 <button class="btn secondary sm" onclick="reuseBot('${i.id}')">🔄</button>
               </div>
             `).join('')}
@@ -1052,8 +1034,6 @@
         q('#tStatus').value = 'Pending';
       }
       q('#modalTask').style.display = 'flex';
-      // Autofocus name for quick paste
-      setTimeout(()=>q('#tName')?.focus(), 50);
     }
     window.openTaskModal = openTaskModal;
 
@@ -1068,6 +1048,7 @@
       }
       if(editId){
         const t = tasks.find(x=>x.id===editId);
+        t.custId = cid;
         t.desc = q('#tDesc').value; 
         t.due = q('#tDue').value; 
         t.status = q('#tStatus').value; 
@@ -1109,7 +1090,6 @@
         q('#lStatus').value='Talked';
       }
       q('#modalLead').style.display='flex';
-      setTimeout(()=>q('#lName')?.focus(), 50);
     }
     window.openLeadModal = openLeadModal;
 
@@ -1221,7 +1201,9 @@
     /* --- BOT GEN --- */
     function openBotModal(){ 
       q('#bDate').value=new Date().toISOString().split('T')[0]; 
-      q('#bTime').value='10:00'; q('#bMsg').value=''; 
+      q('#bTime').value='10:00'; 
+      q('#bMsg').value='';
+      q('#bMobile').value='';
       q('#botOutput').classList.add('hidden'); 
       q('#modalBot').style.display='flex'; 
     }
@@ -1238,14 +1220,18 @@
     };
 
     q('#btnGenBot').onclick = () => {
-      const d = q('#bDate').value; const t = q('#bTime').value; const m = q('#bMsg').value;
+      const d = q('#bDate').value; 
+      const t = q('#bTime').value; 
+      const msgRaw = q('#bMsg').value.trim();
+      const mobile = q('#bMobile').value.trim();
+
       if(!d || !t) return toast('Date/Time required','error');
+      if(!msgRaw && !mobile) return toast('Enter message or mobile','error');
       
-      const [hh,mm] = t.split(':').map(Number);
-      const dateObj = new Date(d); dateObj.setHours(hh,mm);
-      
-      const cleanStr = `remind ${d} ${t} ${m}`;
-      const botCmd = `!remind ${d} ${t} ${m}`;
+      const msgCombined = (msgRaw + ' ' + mobile).trim();
+
+      const cleanStr = `remind ${d} ${t} ${msgCombined}`;
+      const botCmd = `!remind ${d} ${t} ${msgCombined}`;
       
       const out = q('#botOutput');
       out.innerHTML = '';
@@ -1264,8 +1250,8 @@
       out.appendChild(createRow(botCmd));
       out.appendChild(createRow(cleanStr));
       
-      if(!botHist.find(x => x.date===d && x.time===t && x.msg===m)){
-        botHist.push({id:uuid(), date:d, time:t, msg:m, clean:cleanStr});
+      if(!botHist.find(x => x.date===d && x.time===t && (x.msg||'')===msgRaw && (x.mobile||'')===mobile)){
+        botHist.push({id:uuid(), date:d, time:t, msg:msgRaw, mobile, clean:cleanStr});
         save();
       }
       toast('Commands Generated','success');
@@ -1275,6 +1261,7 @@
       q('#bDate').value=new Date().toISOString().split('T')[0]; 
       q('#bTime').value='10:00'; 
       q('#bMsg').value='';
+      q('#bMobile').value='';
       q('#botOutput').classList.add('hidden');
     };
 
@@ -1283,7 +1270,8 @@
       if(i) { 
         q('#bDate').value=i.date; 
         q('#bTime').value=i.time; 
-        q('#bMsg').value=i.msg; 
+        q('#bMsg').value=i.msg || ''; 
+        q('#bMobile').value=i.mobile || '';
         q('#botOutput').classList.add('hidden');
         q('#modalBot').style.display='flex'; 
       }
@@ -1411,7 +1399,7 @@
     if(savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
 
     /* --- DIARY MODULE (DECLUTTERED) --- */
-    CT.diary = {};
+    CT.diary = CT.diary || {};
 
     function diaryMarkdown(text){
       if(!text) return '';
