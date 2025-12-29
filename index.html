@@ -120,6 +120,14 @@
     .btn.icon{padding:8px; border-radius:50%}
     .btn:active{transform:scale(0.97)}
 
+    /* icon button used near contact tools */
+    .btn.icon-btn{
+      padding:8px;
+      width:40px; height:40px;
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+    }
+
     input, textarea, select{
       font-family:inherit;font-size:14px;
     }
@@ -369,8 +377,12 @@
         <button class="btn secondary sm" onclick="closeModals()">Esc</button>
       </div>
       <div class="modal-body">
-        <label>Customer Name</label>
-        <input id="tName" type="text" placeholder="John Doe">
+        <label>Customer / Contact Tools</label>
+        <div class="inline">
+          <input id="tName" type="text" placeholder="Customer name" class="grow">
+          <button class="btn secondary icon-btn" onclick="CT.smartPaste('#tName', '#tMobile')" title="Paste & Split">✂️</button>
+          <button class="btn secondary icon-btn" onclick="CT.pickContact('#tName', '#tMobile')" title="Phonebook">📇</button>
+        </div>
         <label>Mobile</label>
         <input id="tMobile" type="tel" placeholder="9876543210">
         <label>Description</label>
@@ -411,7 +423,12 @@
         <button class="btn secondary sm" onclick="closeModals()">Esc</button>
       </div>
       <div class="modal-body">
-        <label>Name</label><input id="lName" type="text">
+        <label>Name / Contact Tools</label>
+        <div class="inline">
+          <input id="lName" type="text" placeholder="Lead name" class="grow">
+          <button class="btn secondary icon-btn" onclick="CT.smartPaste('#lName', '#lMobile')" title="Paste & Split">✂️</button>
+          <button class="btn secondary icon-btn" onclick="CT.pickContact('#lName', '#lMobile')" title="Phonebook">📇</button>
+        </div>
         <label>Mobile</label><input id="lMobile" type="tel">
         <label>Product</label><input id="lProd" type="text">
         <label>Status</label>
@@ -442,8 +459,12 @@
         <button class="btn secondary sm" onclick="closeModals()">Esc</button>
       </div>
       <div class="modal-body">
-        <label>Customer Name</label>
-        <input id="vName" type="text" placeholder="John Doe">
+        <label>Customer / Contact Tools</label>
+        <div class="inline">
+          <input id="vName" type="text" placeholder="John Doe" class="grow">
+          <button class="btn secondary icon-btn" onclick="CT.smartPaste('#vName', '#vMobile')" title="Paste & Split">✂️</button>
+          <button class="btn secondary icon-btn" onclick="CT.pickContact('#vName', '#vMobile')" title="Phonebook">📇</button>
+        </div>
         <label>Customer ID</label>
         <input id="vCustomerId" type="text" placeholder="Internal ID or code">
         <label>Mobile</label>
@@ -609,6 +630,56 @@
 
     // Email config for diary
     const EMAIL_PRO = "diary4mathew@gmail.com";
+
+    // --- Contact Tools (from Pro version) ---
+    CT.smartPaste = async (nameSel, mobileSel) => {
+      try {
+        const text = await navigator.clipboard.readText();
+        const numMatch = text.match(/(\+?\d[\d\s-]{9,}\d)/);
+        if (numMatch) {
+          const phone = numMatch[0];
+          q(mobileSel).value = phone.replace(/[\s-]/g, '');
+          q(nameSel).value = text.replace(phone, '').replace(/[,-]/g, '').trim();
+          toast('✓ Pasted & Split','success');
+        } else {
+          q(nameSel).value = text;
+          toast('Pasted (no number found)','info');
+        }
+      } catch (err) {
+        toast('Tap name field and paste manually','error');
+      }
+    };
+
+    CT.pickContact = async (nameSel, mobileSel) => {
+      if (!('contacts' in navigator) || !navigator.contacts.select) {
+        return toast('Not supported on this device','info');
+      }
+      try {
+        const contact = await navigator.contacts.select(['name','tel'], {multiple: false});
+        if (contact && contact.length > 0) {
+          q(nameSel).value = contact[0].name?.[0] || '';
+          q(mobileSel).value = contact[0].tel?.[0]?.replace(/[\s-]/g, '') || '';
+          toast('✓ Contact Loaded','success');
+        }
+      } catch (e) {
+        // user cancelled; no-op
+      }
+    };
+
+    function attachAutoSplit(nameSel, mobileSel){
+      const el = q(nameSel);
+      if(!el) return;
+      el.addEventListener('input', (e) => {
+        const val = e.target.value;
+        const numMatch = val.match(/(\+?\d[\d\s-]{9,}\d)/);
+        if (numMatch && val.length > 15) {
+          const phone = numMatch[0];
+          q(mobileSel).value = phone.replace(/[\s-]/g, '');
+          e.target.value = val.replace(phone, '').replace(/[,-]/g, '').trim();
+          toast('✓ Auto-split applied','success');
+        }
+      });
+    }
 
     // State
     let tasks = JSON.parse(localStorage.getItem('ct_tasks') || '[]');
@@ -1527,6 +1598,11 @@
     document.addEventListener('click', (e) => {
       if(!e.target.closest('#diaryMenu')) q('#diaryMenu')?.classList.remove('open');
     });
+
+    // Attach auto-split to contact name fields
+    attachAutoSplit('#tName','#tMobile');
+    attachAutoSplit('#lName','#lMobile');
+    attachAutoSplit('#vName','#vMobile');
 
     // Initial render
     render();
