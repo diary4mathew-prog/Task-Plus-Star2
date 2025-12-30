@@ -128,6 +128,13 @@
       background:var(--bg);color:var(--text);outline:none;margin-bottom:12px;
     }
     input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+    textarea{
+      line-height:1.4;
+      min-height:80px;
+    }
+    .textarea-large{
+      min-height:140px;
+    }
 
     label{font-size:12px; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:6px; display:block}
 
@@ -139,11 +146,9 @@
     }
     .chip.active{background:var(--accent); color:#fff; border-color:var(--accent)}
 
-    /* Rows */
     .row{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); align-items:flex-start}
     .row:last-child{border-bottom:none}
     
-    /* Pills */
     .pill{padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800; text-transform:uppercase}
     .p-Pending{background:#20305f; color:#7fb1ff}
     .p-InProgress{background:#4a2b05; color:#ffb067}
@@ -154,7 +159,6 @@
     .small{font-size:12px}
     .wrap{flex-wrap:wrap}
 
-    /* History */
     .hist-group-header{
       padding:12px; background:var(--panel); border-radius:10px; font-weight:700; font-size:14px;
       display:flex; justify-content:space-between; align-items:center; cursor:pointer; margin-bottom:8px;
@@ -197,7 +201,6 @@
       border:1px solid var(--accent);font-weight:600;
     }
 
-    /* --- Settings grid --- */
     .settings-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
     .settings-btn{
       display:flex; flex-direction:column; align-items:center; padding:18px; 
@@ -363,6 +366,7 @@
     </div>
   </div>
 
+  <!-- TASK MODAL -->
   <div id="modalTask" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -377,8 +381,8 @@
         </div>
         <label>Mobile</label>
         <input id="tMobile" type="tel" placeholder="9876543210">
-        <label>Description</label>
-        <textarea id="tDesc" placeholder="Task details..."></textarea>
+        <label>Task Description</label>
+        <textarea id="tDesc" class="textarea-large" placeholder="Task details..."></textarea>
         <div class="inline">
           <div class="grow">
             <label>Due Date</label>
@@ -395,6 +399,12 @@
             </select>
           </div>
         </div>
+
+        <!-- How completed (only for Completed status) -->
+        <div id="tHowWrap" class="hidden">
+          <label>How Completed (optional)</label>
+          <textarea id="tHow" class="textarea-large" placeholder="Notes on how this task was completed"></textarea>
+        </div>
       </div>
       <div class="modal-foot">
         <div class="inline">
@@ -408,6 +418,7 @@
     </div>
   </div>
 
+  <!-- LEAD MODAL -->
   <div id="modalLead" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -429,7 +440,7 @@
           <option>Waiting Confirmation</option>
           <option>Converted</option>
         </select>
-        <label>Notes</label><textarea id="lNotes"></textarea>
+        <label>Notes</label><textarea id="lNotes" class="textarea-large"></textarea>
       </div>
       <div class="modal-foot">
         <div class="inline">
@@ -443,6 +454,7 @@
     </div>
   </div>
 
+  <!-- VISIT MODAL -->
   <div id="modalVisit" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -469,10 +481,13 @@
             <input id="vTime" type="time">
           </div>
         </div>
+        <div class="inline" style="justify-content:flex-end; margin-top:-4px; margin-bottom:8px">
+          <button class="btn secondary sm" onclick="CT.visit.now()">Now</button>
+        </div>
         <label>GPS Location</label>
         <input id="vGps" type="text" placeholder="Paste GPS link or lat,long from other app">
         <label>Notes</label>
-        <textarea id="vNotes" placeholder="Visit details..."></textarea>
+        <textarea id="vNotes" class="textarea-large" placeholder="Visit details..."></textarea>
       </div>
       <div class="modal-foot">
         <div class="inline">
@@ -486,6 +501,7 @@
     </div>
   </div>
 
+  <!-- BOT GEN MODAL (splitter removed) -->
   <div id="modalBot" class="backdrop">
     <div class="modal">
       <div class="modal-head">
@@ -516,13 +532,9 @@
           <button class="btn secondary sm grow" onclick="CT.bot.addDays(2)">+2 Days</button>
         </div>
 
-        <div class="inline" style="margin-top:10px">
-          <div class="grow">
-            <label>Message</label>
-            <input id="bMsg" type="text" placeholder="Paste text (name + mobile + reminder)">
-          </div>
-          <button class="btn secondary sm" style="margin-top:22px" onclick="CT.smartPaste('#bMsg','#bMobile')" title="Split mobile from text">✂️</button>
-        </div>
+        <label>Message</label>
+        <input id="bMsg" type="text" placeholder="Type or paste reminder text">
+
         <label>Mobile (optional)</label>
         <input id="bMobile" type="tel" placeholder="9876543210">
         
@@ -597,7 +609,7 @@
         </div>
         <div>
           <label class="small muted">Notes</label>
-          <textarea id="enBody" placeholder="Write your notes here..." oninput="CT.diary.autoGrow(this)"></textarea>
+          <textarea id="enBody" class="textarea-large" placeholder="Write your notes here..." oninput="CT.diary.autoGrow(this)"></textarea>
         </div>
       </div>
       <div class="modal-foot">
@@ -626,7 +638,7 @@
     const todayISO = () => nowISO().slice(0,10);
     const fmtDate = d => new Date(d).toLocaleDateString(undefined, {weekday:'short', year:'numeric', month:'short', day:'numeric'});
 
-    // --- Smart splitter (no clipboard) used in Tasks, Leads, Visits, Bot ---
+    // --- Smart splitter (no clipboard) used in Tasks, Leads, Visits ---
     CT.smartPaste = (nameSel, mobileSel) => {
       const nameEl = q(nameSel);
       const mobEl  = q(mobileSel);
@@ -642,13 +654,11 @@
         return;
       }
 
-      // Find phone-like patterns: +91, spaces, dashes, 10+ digits
       const matches = raw.match(/(\+?\d[\d\s\-]{8,}\d)/g);
 
       if (matches && matches.length){
         let best = matches[0];
 
-        // Prefer 10-digit Indian mobile starting 6-9
         for (const cand of matches){
           const dig = cand.replace(/\D/g,'');
           if (dig.length===10 && /^[6-9]/.test(dig)) { best=cand; break; }
@@ -662,7 +672,6 @@
 
         if (mobEl) mobEl.value = digits;
 
-        // Remove number and common labels from text
         let cleaned = raw.replace(best,' ');
         cleaned = cleaned.replace(/Mob:|Mobile:|Phone:|Ph:|Tel:|Cell:/gi,' ');
         cleaned = cleaned.replace(/\s+/g,' ').trim();
@@ -678,10 +687,8 @@
       }
     };
 
-    // Email config for diary
     const EMAIL_PRO = "diary4mathew@gmail.com";
 
-    // State
     let tasks = JSON.parse(localStorage.getItem('ct_tasks') || '[]');
     let customers = JSON.parse(localStorage.getItem('ct_cust') || '[]');
     let leads = JSON.parse(localStorage.getItem('ct_leads') || '[]');
@@ -689,7 +696,6 @@
     let diary = JSON.parse(localStorage.getItem('ct_diary') || '[]');
     let visits = JSON.parse(localStorage.getItem('ct_visits') || '[]');
 
-    // Optional migration from legacy diary key
     try {
       const legacy = localStorage.getItem('ct_diary_v1');
       if (legacy && !localStorage.getItem('ct_diary_migrated')) {
@@ -735,7 +741,6 @@
     }
     window.isOverdue = isOverdue;
 
-    // Helper: Copy Text
     window.copyText = (txt) => {
       if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(txt).then(() => toast('Copied!', 'success')).catch(()=>toast('Failed to copy', 'error'));
@@ -747,13 +752,12 @@
       }
     };
 
-    // Helper: Email
     window.emailTask = (tid) => {
       const t = tasks.find(x => x.id === tid);
       if(!t) return;
       const c = customers.find(x => x.id === t.custId) || {};
       const subject = `Task: ${c.name || 'Unknown'} - ${t.status}`;
-      const body = `Customer: ${c.name || 'N/A'}\nMobile: ${c.mobile || 'N/A'}\n\nDescription:\n${t.desc || ''}\n\nDue: ${t.due || 'N/A'}\nStatus: ${t.status}`;
+      const body = `Customer: ${c.name || 'N/A'}\nMobile: ${c.mobile || 'N/A'}\n\nDescription:\n${t.desc || ''}\n\nHow Completed:\n${t.doneNotes || ''}\n\nDue: ${t.due || 'N/A'}\nStatus: ${t.status}`;
       window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
 
@@ -786,15 +790,13 @@
       window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
 
-    /* --- SIDEBAR TOGGLE LOGIC --- */
     window.toggleSidebar = function() {
       q('#sbMenu').classList.toggle('open');
       q('#sbOverlay').classList.toggle('open');
     };
 
-    // Sidebar navigation handlers
     qAll('.nav-row').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         const target = btn.dataset.target;
         if(target) {
           qAll('.nav-row').forEach(r => r.classList.remove('active'));
@@ -821,7 +823,6 @@
       else if(currentView === 'viewDiary') CT.diary.openEntry();
     });
 
-    /* --- RENDER DISPATCH --- */
     function render(){
       const term = q('#globalSearch').value.toLowerCase().trim();
       if(currentView === 'viewTasks') renderTasks(term);
@@ -831,7 +832,6 @@
       else if(currentView === 'viewDiary') CT.diary.renderList();
     }
 
-    /* --- TASKS --- */
     function renderTasks(term){
       const list = q('#taskList'); list.innerHTML = '';
       let pool = tasks.slice();
@@ -840,7 +840,7 @@
         const rank = { "Pending":1, "In Progress":2, "On Hold":3, "Cancelled":4, "Completed":5 };
         pool = pool.filter(t => {
           const c = customers.find(x=>x.id===t.custId);
-          return ((c?.name||'') + (t.desc||'') + (t.due||'')).toLowerCase().includes(term);
+          return ((c?.name||'') + (t.desc||'') + (t.due||'') + (t.doneNotes||'')).toLowerCase().includes(term);
         });
         pool.sort((a,b) => (rank[a.status]||9) - (rank[b.status]||9));
       } else {
@@ -863,10 +863,10 @@
               <span class="pill p-${t.status.replace(' ','')}">${t.status}</span>
             </div>
             <div class="muted" style="margin-top:4px">${t.desc || ''}</div>
+            ${t.status==='Completed' && t.doneNotes ? `<div class="muted small" style="margin-top:4px"><strong>How:</strong> ${t.doneNotes}</div>` : ''}
             ${t.due ? `<div class="pill ${isOverdue(t)?'p-overdue':'p-due'}" style="margin-top:4px; display:inline-block">${t.due}</div>` : ''}
           </div>
           <div style="display:flex; flex-direction:column; gap:6px; margin-left:8px">
-            <button class="btn secondary sm" onclick="wa('${c?.mobile||''}','${c?.name||''}')">💬</button>
             <button class="btn secondary sm" onclick="emailTask('${t.id}')">📧</button>
           </div>
         `;
@@ -874,7 +874,6 @@
       });
     }
 
-    /* --- LEADS --- */
     function renderLeads(term){
       const list = q('#leadList'); list.innerHTML = '';
       let pool = leads.slice();
@@ -901,10 +900,7 @@
             <div class="muted">${l.prod||''}</div>
           </div>
           <div style="display:flex; flex-direction:column; gap:6px; margin-left:8px; align-items:flex-end">
-             <div class="inline" style="gap:6px">
-               <button class="btn secondary sm" onclick="wa('${l.mobile||''}','${l.name||''}')">💬</button>
-               <button class="btn secondary sm" onclick="emailLead('${l.id}')">📧</button>
-             </div>
+             <button class="btn secondary sm" onclick="emailLead('${l.id}')">📧</button>
              ${l.status!=='Converted' ? `<button class="btn primary sm" style="width:100%" onclick="convertLead('${l.id}')">⭐</button>` : ''}
           </div>
         `;
@@ -912,7 +908,6 @@
       });
     }
 
-    /* --- VISITS --- */
     function renderVisits(term){
       const list = q('#visitList'); list.innerHTML = '';
       let pool = visits.slice();
@@ -957,7 +952,6 @@
             ${v.notes ? `<div class="muted" style="margin-top:4px">${v.notes}</div>` : ''}
           </div>
           <div style="display:flex; flex-direction:column; gap:6px; margin-left:8px; align-items:flex-end">
-            <button class="btn secondary sm" onclick="wa('${v.mobile||''}','${v.name||''}')">💬</button>
             ${v.gps ? `<button class="btn secondary sm" onclick="copyText('${safeGps}')">📍</button>` : ''}
             <button class="btn secondary sm" onclick="emailVisit('${v.id}')">📧</button>
           </div>
@@ -966,7 +960,6 @@
       });
     }
 
-    /* --- BOT HISTORY --- */
     function renderBotHist(){
       const list = q('#botHistoryList'); list.innerHTML = '';
       if(!botHist.length){
@@ -1004,7 +997,6 @@
       });
     }
 
-    /* --- MODAL CONTROL --- */
     function closeModals(){
       qAll('.backdrop').forEach(e => e.style.display='none');
     }
@@ -1016,11 +1008,25 @@
       });
     });
 
-    /* --- TASKS LOGIC --- */
+    function updateHowCompletedVisibility(){
+      const status = q('#tStatus').value;
+      const wrap = q('#tHowWrap');
+      if(status === 'Completed'){
+        wrap.classList.remove('hidden');
+      } else {
+        wrap.classList.add('hidden');
+      }
+    }
+
     function openTaskModal(id=null){
       editId = id;
-      q('#tName').value = ''; q('#tMobile').value = ''; q('#tDesc').value = ''; q('#tDue').value = '';
+      q('#tName').value = ''; 
+      q('#tMobile').value = ''; 
+      q('#tDesc').value = ''; 
+      q('#tDue').value = '';
+      q('#tHow').value = '';
       q('#btnDelTask').classList.add('hidden');
+
       if(id){
         const t = tasks.find(x=>x.id===id);
         const c = customers.find(x=>x.id===t.custId) || {};
@@ -1029,16 +1035,22 @@
         q('#tDesc').value = t.desc || ''; 
         q('#tDue').value = t.due || ''; 
         q('#tStatus').value = t.status || 'Pending';
+        q('#tHow').value = t.doneNotes || '';
         q('#btnDelTask').classList.remove('hidden');
       } else {
         q('#tStatus').value = 'Pending';
       }
+
+      updateHowCompletedVisibility();
       q('#modalTask').style.display = 'flex';
     }
     window.openTaskModal = openTaskModal;
 
+    q('#tStatus').addEventListener('change', updateHowCompletedVisibility);
+
     q('#btnSaveTask').onclick = () => {
-      const name = q('#tName').value.trim(); const mob = q('#tMobile').value.trim();
+      const name = q('#tName').value.trim(); 
+      const mob = q('#tMobile').value.trim();
       if(!name) return toast('Name required', 'error');
       let cid = editId ? tasks.find(x=>x.id===editId).custId : null;
       if(!cid) {
@@ -1046,20 +1058,27 @@
         cid = exist ? exist.id : uuid();
         if(!exist) customers.push({id:cid, name, mobile:mob});
       }
+      const desc = q('#tDesc').value;
+      const due = q('#tDue').value;
+      const status = q('#tStatus').value;
+      const doneNotes = q('#tHow').value;
+
       if(editId){
         const t = tasks.find(x=>x.id===editId);
         t.custId = cid;
-        t.desc = q('#tDesc').value; 
-        t.due = q('#tDue').value; 
-        t.status = q('#tStatus').value; 
+        t.desc = desc; 
+        t.due = due; 
+        t.status = status; 
+        t.doneNotes = doneNotes;
         t.updated = nowISO();
       } else {
         tasks.push({
           id:uuid(), 
           custId:cid, 
-          desc:q('#tDesc').value, 
-          due:q('#tDue').value, 
-          status:q('#tStatus').value, 
+          desc,
+          due,
+          status,
+          doneNotes,
           created:nowISO(), 
           updated:nowISO()
         });
@@ -1073,7 +1092,6 @@
       toast('Task Deleted','error');
     };
 
-    /* --- LEADS LOGIC --- */
     function openLeadModal(id=null){
       editId = id;
       q('#lName').value=''; q('#lMobile').value=''; q('#lProd').value=''; q('#lNotes').value='';
@@ -1117,7 +1135,15 @@
       toast('Lead Deleted','error');
     };
 
-    /* --- VISITS LOGIC --- */
+    CT.visit = CT.visit || {};
+    CT.visit.now = function(){
+      const d = new Date();
+      const dateStr = d.toISOString().slice(0,10);
+      const timeStr = d.toTimeString().slice(0,5);
+      q('#vDate').value = dateStr;
+      q('#vTime').value = timeStr;
+    };
+
     function openVisitModal(id=null){
       editId = id;
       q('#vName').value='';
@@ -1198,7 +1224,6 @@
       toast('Visit Deleted','error');
     };
 
-    /* --- BOT GEN --- */
     function openBotModal(){ 
       q('#bDate').value=new Date().toISOString().split('T')[0]; 
       q('#bTime').value='10:00'; 
@@ -1215,8 +1240,16 @@
         const curVal = q('#bDate').value || new Date().toISOString().split('T')[0];
         const cur = new Date(curVal); 
         cur.setDate(cur.getDate()+d); 
-        q('#bDate').value = cur.toISOString().split('T')[0]; 
+        q('#bDate').value = cur.toISOString().split(0,10);
       }
+    };
+
+    // fix: correct date computation
+    CT.bot.addDays = (d) => {
+      const curVal = q('#bDate').value || new Date().toISOString().split('T')[0];
+      const cur = new Date(curVal); 
+      cur.setDate(cur.getDate()+d); 
+      q('#bDate').value = cur.toISOString().split('T')[0];
     };
 
     q('#btnGenBot').onclick = () => {
@@ -1299,7 +1332,6 @@
       }, 2000);
     };
 
-    /* --- HELPERS / SETTINGS --- */
     q('#btnDueSoon').onclick = () => {
       closeModals();
       const l = q('#dueList'); l.innerHTML='';
@@ -1339,11 +1371,6 @@
       q('#modalStats').style.display='flex';
     };
 
-    window.wa = (num, name) => {
-      if(!num) return toast('No Number','error');
-      window.open(`https://wa.me/${num.replace(/\D/g,'')}?text=Hi ${ (name || '').split(' ')[0]}, `, '_blank');
-    };
-    
     qAll('.filters .chip').forEach(c => c.onclick = (e) => {
       const parent = e.target.parentElement;
       parent.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
@@ -1398,7 +1425,6 @@
     const savedTheme = localStorage.getItem('ct_theme');
     if(savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
 
-    /* --- DIARY MODULE (DECLUTTERED) --- */
     CT.diary = CT.diary || {};
 
     function diaryMarkdown(text){
@@ -1606,12 +1632,10 @@
       window.location.href = `mailto:${EMAIL_PRO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
 
-    // Close diary menu when clicking outside
     document.addEventListener('click', (e) => {
       if(!e.target.closest('#diaryMenu')) q('#diaryMenu')?.classList.remove('open');
     });
 
-    // Initial render
     render();
   </script>
 </body>
